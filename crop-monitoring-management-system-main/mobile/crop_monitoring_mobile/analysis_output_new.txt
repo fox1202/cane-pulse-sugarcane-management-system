@@ -1,0 +1,47 @@
+Analyzing crop_monitoring_mobile...                             
+
+warning • The value of the field '_storage' isn't used • lib/providers/app_state.dart:26:30 • unused_field
+   info • The private field _permissions could be 'final' • lib/providers/app_state.dart:33:16 • prefer_final_fields
+   info • The private field _mapCacheSizeMB could be 'final' • lib/providers/app_state.dart:34:10 • prefer_final_fields
+warning • The value of the local variable 'minute' isn't used • lib/providers/app_state.dart:200:11 • unused_local_variable
+warning • The value of the local variable 'event' isn't used • lib/providers/app_state.dart:214:29 • unused_local_variable
+   info • Don't invoke 'print' in production code • lib/providers/app_state.dart:382:7 • avoid_print
+   info • Use 'const' with the constructor to improve performance • lib/screens/about_screen.dart:124:19 • prefer_const_constructors
+   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • lib/screens/dashboard_screen.dart:3:8 • unnecessary_import
+   info • Don't use 'BuildContext's across async gaps • lib/screens/dashboard_screen.dart:213:44 • use_build_context_synchronously
+warning • The declaration '_SyncSuccessOverlay' isn't referenced • lib/screens/dashboard_screen.dart:221:7 • unused_element
+warning • The value of the field '_supabase' isn't used • lib/screens/observation_detail_screen.dart:26:25 • unused_field
+   info • Don't use 'BuildContext's across async gaps • lib/screens/observation_detail_screen.dart:51:28 • use_build_context_synchronously
+   info • The private field _dateRecorded could be 'final' • lib/screens/observation_form_screen.dart:36:12 • prefer_final_fields
+   info • 'desiredAccuracy' is deprecated and shouldn't be used. use settings parameter with AndroidSettings, AppleSettings, WebSettings, or LocationSettings • lib/screens/observation_form_screen.dart:106:55 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:554:21 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:555:21 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/observation_form_screen.dart:558:21 • prefer_const_literals_to_create_immutables
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:602:41 • prefer_const_constructors
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/screens/observation_form_screen.dart:1094:17 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:1203:25 • prefer_const_constructors
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:95:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:116:7 • avoid_print
+   info • Unnecessary 'const' keyword • lib/screens/register_screen.dart:198:36 • unnecessary_const
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:22:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:25:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:27:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:30:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:299:50 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/weather_detail_screen.dart:300:29 • prefer_const_literals_to_create_immutables
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:203:18 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:210:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:262:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:289:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:301:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/supabase_service.dart:117:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:59:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:87:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:107:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:112:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:115:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:118:9 • avoid_print
+warning • The value of the local variable 'theme' isn't used • lib/widgets/app_drawer.dart:14:11 • unused_local_variable
+   info • Use 'const' for final variables initialized to a constant value • lib/widgets/app_drawer.dart:271:5 • prefer_const_declarations
+   info • Use 'const' with the constructor to improve performance • lib/widgets/modern_text_field.dart:161:29 • prefer_const_constructors
+

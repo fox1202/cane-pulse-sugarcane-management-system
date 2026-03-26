@@ -1,0 +1,90 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#FFFFFF"/>
+
+  <ellipse
+    cx="512"
+    cy="512"
+    rx="378"
+    ry="458"
+    stroke="#49A76A"
+    stroke-width="58"
+    stroke-linecap="round"
+    stroke-dasharray="82 36"
+  />
+
+  <g stroke="#49A76A" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M232 164C262 132 294 114 336 102"/>
+    <path d="M246 186L318 150"/>
+    <path d="M278 210L354 176"/>
+
+    <path d="M792 164C762 132 730 114 688 102"/>
+    <path d="M778 186L706 150"/>
+    <path d="M746 210L670 176"/>
+
+    <path d="M184 412C222 384 256 360 298 340"/>
+    <path d="M174 476C214 448 248 424 290 404"/>
+    <path d="M840 412C802 384 768 360 726 340"/>
+    <path d="M850 476C810 448 776 424 734 404"/>
+  </g>
+
+  <g fill="#49A76A">
+    <ellipse cx="334" cy="208" rx="18" ry="14" transform="rotate(-22 334 208)"/>
+    <ellipse cx="690" cy="208" rx="18" ry="14" transform="rotate(22 690 208)"/>
+  </g>
+
+  <text
+    x="512"
+    y="300"
+    text-anchor="middle"
+    font-family="Arial Black, Impact, sans-serif"
+    font-size="214"
+    font-weight="900"
+    letter-spacing="-10"
+    fill="#111111"
+  >zsa</text>
+
+  <g stroke="#111111" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M512 742C512 670 512 600 512 508" stroke-width="54"/>
+    <path d="M512 534C474 500 444 470 394 456" stroke-width="34"/>
+    <path d="M508 564C456 548 412 540 352 542" stroke-width="28"/>
+    <path d="M504 604C460 618 420 642 370 684" stroke-width="24"/>
+    <path d="M520 528C558 494 592 468 640 454" stroke-width="34"/>
+    <path d="M524 560C576 544 618 538 674 540" stroke-width="28"/>
+    <path d="M528 602C578 618 620 644 668 684" stroke-width="24"/>
+    <path d="M514 486C500 442 482 412 446 374" stroke-width="24"/>
+    <path d="M514 486C530 438 548 408 584 368" stroke-width="24"/>
+    <path d="M422 470L378 420" stroke-width="20"/>
+    <path d="M392 548L330 534" stroke-width="18"/>
+    <path d="M402 650L350 708" stroke-width="18"/>
+    <path d="M604 470L648 420" stroke-width="20"/>
+    <path d="M632 548L694 532" stroke-width="18"/>
+    <path d="M622 648L678 706" stroke-width="18"/>
+    <path d="M458 404L430 350" stroke-width="16"/>
+    <path d="M566 398L594 346" stroke-width="16"/>
+    <path d="M514 460L514 406" stroke-width="18"/>
+  </g>
+
+  <path
+    d="M430 824C442 758 454 722 466 704H558C570 722 582 758 594 824C544 836 480 836 430 824Z"
+    fill="#111111"
+  />
+
+  <text
+    x="512"
+    y="904"
+    text-anchor="middle"
+    font-family="Arial Black, Impact, sans-serif"
+    font-size="70"
+    font-weight="900"
+    fill="#111111"
+  >EXPERIMENT</text>
+  <text
+    x="512"
+    y="968"
+    text-anchor="middle"
+    font-family="Arial Black, Impact, sans-serif"
+    font-size="70"
+    font-weight="900"
+    fill="#111111"
+  >STATION</text>
+</svg>

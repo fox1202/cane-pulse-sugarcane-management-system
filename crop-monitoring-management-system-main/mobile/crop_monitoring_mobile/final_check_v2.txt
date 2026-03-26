@@ -1,0 +1,163 @@
+Analyzing crop_monitoring_mobile...                             
+
+  error • Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart' • lib/main.dart:3:8 • uri_does_not_exist
+  error • The values in a const list literal must be constants • lib/main.dart:55:9 • non_constant_list_element
+  error • Undefined name 'AppLocalizations' • lib/main.dart:55:9 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance • lib/screens/about_screen.dart:124:19 • prefer_const_constructors
+  error • Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart' • lib/screens/dashboard_screen.dart:4:8 • uri_does_not_exist
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:27:18 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:208:51 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:208:95 • undefined_identifier
+   info • Don't use 'BuildContext's across async gaps • lib/screens/dashboard_screen.dart:224:44 • use_build_context_synchronously
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:251:18 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:344:18 • undefined_identifier
+warning • Unused import: '../widgets/modern_text_field.dart' • lib/screens/login_screen.dart:8:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps • lib/screens/login_screen.dart:118:40 • use_build_context_synchronously
+warning • Unused import: '../services/supabase_service.dart' • lib/screens/observation_detail_screen.dart:8:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps • lib/screens/observation_detail_screen.dart:51:28 • use_build_context_synchronously
+warning • The declaration '<unnamed>' isn't referenced • lib/screens/observation_form_screen.dart:25:7 • unused_element
+  error • Missing concrete implementation of 'abstract class State<T extends StatefulWidget> with Diagnosticable.build' • lib/screens/observation_form_screen.dart:25:7 • non_abstract_class_inherits_abstract_member
+   info • The private field _dateRecorded could be 'final' • lib/screens/observation_form_screen.dart:38:12 • prefer_final_fields
+warning • The declaration '_pickImage' isn't referenced • lib/screens/observation_form_screen.dart:260:16 • unused_element
+warning • The declaration '_nextPage' isn't referenced • lib/screens/observation_form_screen.dart:276:8 • unused_element
+warning • The declaration '_prevPage' isn't referenced • lib/screens/observation_form_screen.dart:282:8 • unused_element
+warning • The declaration '_submit' isn't referenced • lib/screens/observation_form_screen.dart:302:16 • unused_element
+  error • A try block must be followed by an 'on', 'catch', or 'finally' clause • lib/screens/observation_form_screen.dart:308:5 • missing_catch_or_finally
+  error • Expected a class member • lib/screens/observation_form_screen.dart:486:7 • expected_class_member
+  error • Expected an identifier • lib/screens/observation_form_screen.dart:486:13 • missing_identifier
+  error • Expected a class member • lib/screens/observation_form_screen.dart:497:7 • expected_class_member
+  error • Expected an identifier • lib/screens/observation_form_screen.dart:497:15 • missing_identifier
+  error • Methods must have an explicit list of parameters • lib/screens/observation_form_screen.dart:497:15 • missing_method_parameters
+warning • The value of the local variable 'syncProvider' isn't used • lib/screens/observation_form_screen.dart:504:11 • unused_local_variable
+warning • The value of the local variable 'isFieldMode' isn't used • lib/screens/observation_form_screen.dart:506:11 • unused_local_variable
+  error • Undefined name '_currentPage' • lib/screens/observation_form_screen.dart:525:23 • undefined_identifier
+  error • Undefined name '_currentPage' • lib/screens/observation_form_screen.dart:545:24 • undefined_identifier
+  error • Undefined name '_currentPage' • lib/screens/observation_form_screen.dart:559:21 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:566:21 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:567:21 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/observation_form_screen.dart:570:21 • prefer_const_literals_to_create_immutables
+  error • Undefined name '_formKey' • lib/screens/observation_form_screen.dart:577:16 • undefined_identifier
+  error • Undefined name '_pageController' • lib/screens/observation_form_screen.dart:579:25 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:581:35 • undefined_function
+  error • Undefined name '_currentPage' • lib/screens/observation_form_screen.dart:581:50 • undefined_identifier
+  error • Undefined name '_sectionNameCtrl' • lib/screens/observation_form_screen.dart:590:31 • undefined_identifier
+  error • Undefined name '_blockIdCtrl' • lib/screens/observation_form_screen.dart:596:31 • undefined_identifier
+  error • Undefined name '_fieldNameCtrl' • lib/screens/observation_form_screen.dart:602:31 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:614:41 • prefer_const_constructors
+  error • Undefined name '_currentPosition' • lib/screens/observation_form_screen.dart:626:35 • undefined_identifier
+  error • Undefined name '_currentPosition' • lib/screens/observation_form_screen.dart:629:37 • undefined_identifier
+  error • Undefined name '_currentPosition' • lib/screens/observation_form_screen.dart:631:45 • undefined_identifier
+  error • Undefined name '_currentPosition' • lib/screens/observation_form_screen.dart:631:102 • undefined_identifier
+  error • Undefined name '_getLocation' • lib/screens/observation_form_screen.dart:639:40 • undefined_identifier
+  error • Undefined name '_cropTypeCtrl' • lib/screens/observation_form_screen.dart:655:31 • undefined_identifier
+  error • Undefined name '_ratoonNumberCtrl' • lib/screens/observation_form_screen.dart:661:31 • undefined_identifier
+  error • Undefined name '_varietyCtrl' • lib/screens/observation_form_screen.dart:667:31 • undefined_identifier
+  error • Undefined name '_plantingDate' • lib/screens/observation_form_screen.dart:673:28 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:674:37 • undefined_function
+  error • Undefined name '_plantingDate' • lib/screens/observation_form_screen.dart:674:52 • undefined_identifier
+  error • Undefined name '_expectedHarvestDate' • lib/screens/observation_form_screen.dart:678:28 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:679:37 • undefined_function
+  error • Undefined name '_expectedHarvestDate' • lib/screens/observation_form_screen.dart:679:52 • undefined_identifier
+  error • Undefined name '_cropStage' • lib/screens/observation_form_screen.dart:685:28 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:686:37 • undefined_function
+  error • Undefined name '_cropStage' • lib/screens/observation_form_screen.dart:686:52 • undefined_identifier
+  error • Undefined name '_vigor' • lib/screens/observation_form_screen.dart:699:28 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:700:37 • undefined_function
+  error • Undefined name '_vigor' • lib/screens/observation_form_screen.dart:700:52 • undefined_identifier
+  error • Undefined name '_canopyCoverCtrl' • lib/screens/observation_form_screen.dart:704:31 • undefined_identifier
+  error • Undefined name '_stressType' • lib/screens/observation_form_screen.dart:712:28 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:713:37 • undefined_function
+  error • Undefined name '_stressType' • lib/screens/observation_form_screen.dart:713:52 • undefined_identifier
+  error • Undefined name '_monitoringRemarksCtrl' • lib/screens/observation_form_screen.dart:717:31 • undefined_identifier
+  error • The function '_pickImage' isn't defined • lib/screens/observation_form_screen.dart:739:36 • undefined_function
+  error • The function '_pickImage' isn't defined • lib/screens/observation_form_screen.dart:744:36 • undefined_function
+  error • Undefined name '_images' • lib/screens/observation_form_screen.dart:749:21 • undefined_identifier
+  error • Undefined name '_images' • lib/screens/observation_form_screen.dart:772:32 • undefined_identifier
+  error • Undefined name '_images' • lib/screens/observation_form_screen.dart:778:29 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:796:42 • undefined_function
+  error • Undefined name '_images' • lib/screens/observation_form_screen.dart:796:57 • undefined_identifier
+  error • Undefined name '_soilTypeCtrl' • lib/screens/observation_form_screen.dart:814:71 • undefined_identifier
+  error • Undefined name '_soilTextureCtrl' • lib/screens/observation_form_screen.dart:815:74 • undefined_identifier
+  error • Undefined name '_soilPhCtrl' • lib/screens/observation_form_screen.dart:816:69 • undefined_identifier
+  error • Undefined name '_organicMatterCtrl' • lib/screens/observation_form_screen.dart:817:80 • undefined_identifier
+  error • Undefined name '_drainageClassCtrl' • lib/screens/observation_form_screen.dart:818:76 • undefined_identifier
+  error • Undefined name '_irrigationTypeCtrl' • lib/screens/observation_form_screen.dart:826:77 • undefined_identifier
+  error • Undefined name '_irrigationDate' • lib/screens/observation_form_screen.dart:827:75 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:827:110 • undefined_function
+  error • Undefined name '_irrigationDate' • lib/screens/observation_form_screen.dart:827:125 • undefined_identifier
+  error • Undefined name '_irrigationVolumeCtrl' • lib/screens/observation_form_screen.dart:828:73 • undefined_identifier
+  error • Undefined name '_soilMoisturePctCtrl' • lib/screens/observation_form_screen.dart:829:79 • undefined_identifier
+  error • Undefined name '_waterSourceTypeCtrl' • lib/screens/observation_form_screen.dart:830:74 • undefined_identifier
+  error • Undefined name '_fertilizerTypeCtrl' • lib/screens/observation_form_screen.dart:838:77 • undefined_identifier
+  error • Undefined name '_applicationDate' • lib/screens/observation_form_screen.dart:839:76 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:839:112 • undefined_function
+  error • Undefined name '_applicationDate' • lib/screens/observation_form_screen.dart:839:127 • undefined_identifier
+  error • Undefined name '_applicationRateCtrl' • lib/screens/observation_form_screen.dart:840:74 • undefined_identifier
+  error • Undefined name '_macronutrientNpkCtrl' • lib/screens/observation_form_screen.dart:841:81 • undefined_identifier
+  error • Undefined name '_weedTypeCtrl' • lib/screens/observation_form_screen.dart:849:71 • undefined_identifier
+  error • Undefined name '_weedPressure' • lib/screens/observation_form_screen.dart:850:132 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:850:165 • undefined_function
+  error • Undefined name '_weedPressure' • lib/screens/observation_form_screen.dart:850:180 • undefined_identifier
+  error • Undefined name '_pestTypeCtrl' • lib/screens/observation_form_screen.dart:851:71 • undefined_identifier
+  error • Undefined name '_pestSeverity' • lib/screens/observation_form_screen.dart:852:132 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:852:165 • undefined_function
+  error • Undefined name '_pestSeverity' • lib/screens/observation_form_screen.dart:852:180 • undefined_identifier
+  error • Undefined name '_diseaseTypeCtrl' • lib/screens/observation_form_screen.dart:853:74 • undefined_identifier
+  error • Undefined name '_diseaseSeverity' • lib/screens/observation_form_screen.dart:854:135 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:854:171 • undefined_function
+  error • Undefined name '_diseaseSeverity' • lib/screens/observation_form_screen.dart:854:186 • undefined_identifier
+  error • Undefined name '_weedControlCtrl' • lib/screens/observation_form_screen.dart:862:74 • undefined_identifier
+  error • Undefined name '_pestControlCtrl' • lib/screens/observation_form_screen.dart:863:74 • undefined_identifier
+  error • Undefined name '_diseaseControlCtrl' • lib/screens/observation_form_screen.dart:864:77 • undefined_identifier
+  error • Undefined name '_harvestDate' • lib/screens/observation_form_screen.dart:872:72 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:872:104 • undefined_function
+  error • Undefined name '_harvestDate' • lib/screens/observation_form_screen.dart:872:119 • undefined_identifier
+  error • Undefined name '_yieldCtrl' • lib/screens/observation_form_screen.dart:873:77 • undefined_identifier
+  error • Undefined name '_harvestMethod' • lib/screens/observation_form_screen.dart:874:137 • undefined_identifier
+  error • The function 'setState' isn't defined • lib/screens/observation_form_screen.dart:874:171 • undefined_function
+  error • Undefined name '_harvestMethod' • lib/screens/observation_form_screen.dart:874:186 • undefined_identifier
+  error • Undefined name '_residualOutcomeCtrl' • lib/screens/observation_form_screen.dart:882:85 • undefined_identifier
+  error • Undefined name '_submitting' • lib/screens/observation_form_screen.dart:884:17 • undefined_identifier
+  error • Undefined name '_submit' • lib/screens/observation_form_screen.dart:890:36 • undefined_identifier
+  error • Undefined name '_currentPage' • lib/screens/observation_form_screen.dart:906:28 • undefined_identifier
+  error • Undefined name '_currentPage' • lib/screens/observation_form_screen.dart:922:17 • undefined_identifier
+  error • Undefined name '_prevPage' • lib/screens/observation_form_screen.dart:924:28 • undefined_identifier
+  error • Undefined name '_nextPage' • lib/screens/observation_form_screen.dart:935:28 • undefined_identifier
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/screens/observation_form_screen.dart:1106:17 • deprecated_member_use
+  error • Undefined name 'context' • lib/screens/observation_form_screen.dart:1146:26 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:1215:25 • prefer_const_constructors
+  error • Expected a method, getter, setter or operator declaration • lib/screens/observation_form_screen.dart:1230:1 • expected_executable
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:96:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:117:7 • avoid_print
+  error • The getter 'isFieldMode' isn't defined for the type 'SyncProvider' • lib/screens/observations_list_screen.dart:463:55 • undefined_getter
+  error • The getter 'isFieldMode' isn't defined for the type 'SyncProvider' • lib/screens/observations_list_screen.dart:526:60 • undefined_getter
+warning • Unused import: '../widgets/modern_text_field.dart' • lib/screens/register_screen.dart:8:8 • unused_import
+warning • The value of the local variable 'syncProvider' isn't used • lib/screens/register_screen.dart:125:11 • unused_local_variable
+   info • Unnecessary 'const' keyword • lib/screens/register_screen.dart:201:36 • unnecessary_const
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/storage_management_screen.dart:293:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/storage_management_screen.dart:315:66 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:24:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:27:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:29:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:32:22 • prefer_const_constructors
+warning • The value of the local variable 'condition' isn't used • lib/screens/weather_detail_screen.dart:113:12 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/weather_detail_screen.dart:138:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/weather_detail_screen.dart:142:34 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:302:50 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/weather_detail_screen.dart:303:29 • prefer_const_literals_to_create_immutables
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:203:18 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:210:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:262:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:289:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:301:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/supabase_service.dart:117:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:59:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:87:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:107:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:112:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:115:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:118:9 • avoid_print
+warning • The value of the local variable 'uiProvider' isn't used • lib/widgets/app_drawer.dart:17:11 • unused_local_variable
+   info • Use 'const' for final variables initialized to a constant value • lib/widgets/app_drawer.dart:275:5 • prefer_const_declarations
+   info • Use 'const' with the constructor to improve performance • lib/widgets/modern_text_field.dart:161:29 • prefer_const_constructors
+

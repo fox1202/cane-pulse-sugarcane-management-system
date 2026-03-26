@@ -1,0 +1,131 @@
+Analyzing crop_monitoring_mobile...                             
+
+  error • Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart' • lib/main.dart:3:8 • uri_does_not_exist
+  error • The values in a const list literal must be constants • lib/main.dart:55:9 • non_constant_list_element
+  error • Undefined name 'AppLocalizations' • lib/main.dart:55:9 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance • lib/screens/about_screen.dart:124:19 • prefer_const_constructors
+  error • Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart' • lib/screens/dashboard_screen.dart:4:8 • uri_does_not_exist
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:27:18 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:208:51 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:208:95 • undefined_identifier
+   info • Don't use 'BuildContext's across async gaps • lib/screens/dashboard_screen.dart:224:44 • use_build_context_synchronously
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:251:18 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:344:18 • undefined_identifier
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/dashboard_screen.dart:410:70 • deprecated_member_use
+warning • Unused import: '../widgets/modern_text_field.dart' • lib/screens/login_screen.dart:8:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps • lib/screens/login_screen.dart:118:40 • use_build_context_synchronously
+warning • Unused import: '../services/supabase_service.dart' • lib/screens/observation_detail_screen.dart:8:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps • lib/screens/observation_detail_screen.dart:51:28 • use_build_context_synchronously
+warning • Unused import: '../providers/location_provider.dart' • lib/screens/observation_form_screen.dart:10:8 • unused_import
+warning • Unused import: '../widgets/shimmer_loading.dart' • lib/screens/observation_form_screen.dart:15:8 • unused_import
+warning • Unused import: '../widgets/app_drawer.dart' • lib/screens/observation_form_screen.dart:16:8 • unused_import
+  error • Missing concrete implementation of 'abstract class State<T extends StatefulWidget> with Diagnosticable.build' • lib/screens/observation_form_screen.dart:25:7 • non_abstract_class_inherits_abstract_member
+   info • The private field _dateRecorded could be 'final' • lib/screens/observation_form_screen.dart:38:12 • prefer_final_fields
+warning • The declaration 'build' isn't referenced • lib/screens/observation_form_screen.dart:497:10 • unused_element
+warning • The value of the local variable 'syncProvider' isn't used • lib/screens/observation_form_screen.dart:498:11 • unused_local_variable
+warning • The value of the local variable 'isFieldMode' isn't used • lib/screens/observation_form_screen.dart:500:11 • unused_local_variable
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:560:21 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:561:21 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/observation_form_screen.dart:564:21 • prefer_const_literals_to_create_immutables
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:577:13 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:582:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:588:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:594:17 • referenced_before_declaration
+  error • Local variable '_buildCard' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:601:17 • referenced_before_declaration
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:608:41 • prefer_const_constructors
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:642:13 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:647:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:653:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:659:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDatePicker' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:665:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDatePicker' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:670:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDropdown' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:675:17 • referenced_before_declaration
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:684:13 • referenced_before_declaration
+  error • Local variable '_buildStyledDropdown' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:689:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:696:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDropdown' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:702:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:709:17 • referenced_before_declaration
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:717:13 • referenced_before_declaration
+  error • Local variable '_buildMediaAction' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:730:21 • referenced_before_declaration
+  error • Local variable '_buildMediaAction' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:735:21 • referenced_before_declaration
+  error • Local variable '_buildCard' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:744:19 • referenced_before_declaration
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:803:13 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:808:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:809:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:810:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:811:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:812:17 • referenced_before_declaration
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:815:13 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:820:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDatePicker' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:821:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:822:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:823:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:824:17 • referenced_before_declaration
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:827:13 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:832:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDatePicker' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:833:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:834:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:835:17 • referenced_before_declaration
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:838:13 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:843:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDropdown' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:844:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:845:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDropdown' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:846:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:847:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDropdown' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:848:17 • referenced_before_declaration
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:851:13 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:856:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:857:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:858:17 • referenced_before_declaration
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:861:13 • referenced_before_declaration
+  error • Local variable '_buildStyledDatePicker' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:866:17 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:867:17 • referenced_before_declaration
+  error • Local variable '_buildStyledDropdown' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:868:17 • referenced_before_declaration
+  error • Local variable '_buildPage' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:871:13 • referenced_before_declaration
+  error • Local variable '_buildStyledTextField' can't be referenced before it is declared • lib/screens/observation_form_screen.dart:876:17 • referenced_before_declaration
+   info • The local variable '_buildPage' starts with an underscore • lib/screens/observation_form_screen.dart:952:10 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_buildStyledTextField' starts with an underscore • lib/screens/observation_form_screen.dart:1011:10 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_buildStyledDropdown' starts with an underscore • lib/screens/observation_form_screen.dart:1068:10 • no_leading_underscores_for_local_identifiers
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/screens/observation_form_screen.dart:1100:17 • deprecated_member_use
+   info • The local variable '_buildStyledDatePicker' starts with an underscore • lib/screens/observation_form_screen.dart:1116:10 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_buildCard' starts with an underscore • lib/screens/observation_form_screen.dart:1183:10 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_buildMediaAction' starts with an underscore • lib/screens/observation_form_screen.dart:1202:10 • no_leading_underscores_for_local_identifiers
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:1209:25 • prefer_const_constructors
+  error • Expected to find '}' • lib/screens/observation_form_screen.dart:1225:1 • expected_token
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:95:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:116:7 • avoid_print
+  error • The name 'UIProvider' isn't a type, so it can't be used as a type argument • lib/screens/observations_list_screen.dart:135:37 • non_type_as_type_argument
+  error • The name 'UIProvider' isn't a type, so it can't be used as a type argument • lib/screens/observations_list_screen.dart:289:38 • non_type_as_type_argument
+  error • The name 'UIProvider' isn't a type, so it can't be used as a type argument • lib/screens/observations_list_screen.dart:358:38 • non_type_as_type_argument
+  error • The getter 'isFieldMode' isn't defined for the type 'SyncProvider' • lib/screens/observations_list_screen.dart:462:55 • undefined_getter
+  error • The getter 'isFieldMode' isn't defined for the type 'SyncProvider' • lib/screens/observations_list_screen.dart:525:60 • undefined_getter
+warning • Unused import: '../widgets/modern_text_field.dart' • lib/screens/register_screen.dart:8:8 • unused_import
+warning • The value of the local variable 'syncProvider' isn't used • lib/screens/register_screen.dart:125:11 • unused_local_variable
+   info • Unnecessary 'const' keyword • lib/screens/register_screen.dart:201:36 • unnecessary_const
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/storage_management_screen.dart:293:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/storage_management_screen.dart:315:66 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:24:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:27:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:29:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:32:22 • prefer_const_constructors
+warning • The value of the local variable 'condition' isn't used • lib/screens/weather_detail_screen.dart:113:12 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/weather_detail_screen.dart:138:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/weather_detail_screen.dart:142:34 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:302:50 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/weather_detail_screen.dart:303:29 • prefer_const_literals_to_create_immutables
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:203:18 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:210:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:262:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:289:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:301:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/supabase_service.dart:117:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:59:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:87:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:107:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:112:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:115:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:118:9 • avoid_print
+warning • The value of the local variable 'uiProvider' isn't used • lib/widgets/app_drawer.dart:17:11 • unused_local_variable
+   info • Use 'const' for final variables initialized to a constant value • lib/widgets/app_drawer.dart:275:5 • prefer_const_declarations
+   info • Use 'const' with the constructor to improve performance • lib/widgets/modern_text_field.dart:161:29 • prefer_const_constructors
+

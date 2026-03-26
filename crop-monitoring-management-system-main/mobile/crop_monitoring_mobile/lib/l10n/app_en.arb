@@ -1,0 +1,22 @@
+{
+  "@@locale": "en",
+  "appName": "CanePulse",
+  "welcomeBack": "Welcome back,",
+  "fieldOperations": "SUGARCANE OPERATIONS",
+  "newObservation": "New Cane Observation",
+  "captureRealTimeData": "Capture real-time cane data",
+  "observationHistory": "Sugarcane History",
+  "viewManageRecords": "View and manage cane records",
+  "weatherReport": "CANE WEATHER",
+  "dataHealth": "CANE DATA HEALTH",
+  "cloudSynced": "CLOUD SYNCED",
+  "offlinePending": "OFFLINE PENDING",
+  "systemHealthy": "System Ready",
+  "syncing": "Syncing...",
+  "login": "Login",
+  "register": "Register",
+  "email": "Email",
+  "password": "Password",
+  "forgotPassword": "Forgot Password?",
+  "resetPassword": "Reset Password"
+}

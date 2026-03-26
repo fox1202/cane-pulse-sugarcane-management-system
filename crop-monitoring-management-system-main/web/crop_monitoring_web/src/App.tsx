@@ -1,0 +1,179 @@
+import { lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material'
+import { AuthProvider } from '@/contexts/AuthContext'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { AppLayout } from '@/components/Layout/AppLayout'
+import { LiveQuerySync } from '@/components/LiveQuerySync'
+import { LoginPage } from '@/pages/LoginPage'
+import { HomePage } from '@/pages/HomePage'
+import { theme } from '@/theme/theme'
+
+// Lazy load dashboard and map pages for better performance
+const MapViewPage = lazy(() => import('@/pages/MapViewPage').then(m => ({ default: m.MapViewPage })))
+const DataManagementPage = lazy(() => import('@/pages/DataManagementPage').then(m => ({ default: m.DataManagementPage })))
+const DataDemoPage = lazy(() => import('@/pages/DataDemoPage').then(m => ({ default: m.DataDemoPage })))
+const SignUpPage = lazy(() => import('@/pages/SignUpPage').then(m => ({ default: m.SignUpPage })))
+const SecurityCenterPage = lazy(() => import('@/pages/SecurityCenterPage').then(m => ({ default: m.SecurityCenterPage })))
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })))
+const UpdatePasswordPage = lazy(() => import('@/pages/UpdatePasswordPage').then(m => ({ default: m.UpdatePasswordPage })))
+const DebugDbPage = lazy(() => import('@/pages/DebugDbPage').then(m => ({ default: m.default })))
+const SupabaseConnectionTest = lazy(() => import('@/pages/SupabaseConnectionTest').then(m => ({ default: m.default })))
+const RawDataViewerPage = lazy(() => import('@/pages/RawDataViewerPage').then(m => ({ default: m.RawDataViewerPage })))
+const ObservationEntryFormPage = lazy(() => import('@/pages/ObservationEntryFormPage').then(m => ({ default: m.ObservationEntryFormPage })))
+const FieldStatisticsPage = lazy(() => import('@/pages/FieldStatisticsPage').then(m => ({ default: m.FieldStatisticsPage })))
+const SugarcaneMonitoringPage = lazy(() => import('@/pages/SugarcaneMonitoringPage').then(m => ({ default: m.default })))
+const FarmingCalendarPage = lazy(() => import('@/pages/FarmingCalendarPage').then(m => ({ default: m.FarmingCalendarPage })))
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+})
+
+// Loading fallback
+function LoadingFallback() {
+  return (
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      minHeight="60vh"
+    >
+      <CircularProgress />
+    </Box>
+  )
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <LiveQuerySync />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignUpPage />} />
+              <Route path="/forgot-password" element={<Suspense fallback={<LoadingFallback />}><ForgotPasswordPage /></Suspense>} />
+              <Route path="/update-password" element={<Suspense fallback={<LoadingFallback />}><UpdatePasswordPage /></Suspense>} />
+
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<HomePage />} />
+                <Route
+                  path="data"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <DataManagementPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="map"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <MapViewPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="debug-db"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <DebugDbPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="supabase-test"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <SupabaseConnectionTest />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="raw-data"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <RawDataViewerPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="entry-forms"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <ObservationEntryFormPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="field-statistics"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <FieldStatisticsPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="calendar"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <FarmingCalendarPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="monitoring"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <SugarcaneMonitoringPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="demo"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <DataDemoPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="security"
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <SecurityCenterPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="blocks" element={<Navigate to="/map" replace />} />
+              </Route>
+
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  )
+}
+
+export default App

@@ -1,0 +1,7414 @@
+[
+  {
+    "id": 4,
+    "block_id": "Centre Pivot",
+    "field_name": "CP trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6190150195457,
+              -21.03535247885
+            ],
+            [
+              31.6200847496328,
+              -21.0346310242782
+            ],
+            [
+              31.6201740740388,
+              -21.034752984731
+            ],
+            [
+              31.6203269377022,
+              -21.0351071498919
+            ],
+            [
+              31.620349455299,
+              -21.0355720410116
+            ],
+            [
+              31.6203104241856,
+              -21.0358364050027
+            ],
+            [
+              31.6201822420573,
+              -21.036107021486
+            ],
+            [
+              31.6199712099397,
+              -21.0363124455962
+            ],
+            [
+              31.6197801336567,
+              -21.0364466464705
+            ],
+            [
+              31.6190150195457,
+              -21.03535247885
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.61401205246579,
+    "irrigation_type": "Centre Pivot",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Bulk Plant",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 5,
+    "block_id": "Centre Pivot",
+    "field_name": "CP trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.618879548167,
+              -21.035211479912
+            ],
+            [
+              31.6199516627192,
+              -21.0345205565276
+            ],
+            [
+              31.6200860521056,
+              -21.0346357082287
+            ],
+            [
+              31.6190186685651,
+              -21.0353540565255
+            ],
+            [
+              31.618879548167,
+              -21.035211479912
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.270293323832396,
+    "irrigation_type": "Centre Pivot",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "216043",
+    "trial_name": "A.V.T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 6,
+    "block_id": "Centre Pivot",
+    "field_name": "CP trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6185347349369,
+              -21.0347856577674
+            ],
+            [
+              31.6194498794976,
+              -21.0341168802512
+            ],
+            [
+              31.619961248822,
+              -21.0345104757134
+            ],
+            [
+              31.618874446093,
+              -21.0352127052458
+            ],
+            [
+              31.6185347349369,
+              -21.0347856577674
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.810634715322056,
+    "irrigation_type": "Centre Pivot",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "214044",
+    "trial_name": "V. O. T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 7,
+    "block_id": "Centre Pivot",
+    "field_name": "CP trial E",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6182671066378,
+              -21.0343888510922
+            ],
+            [
+              31.6187305976855,
+              -21.0340334951588
+            ],
+            [
+              31.6194460480277,
+              -21.034113608984
+            ],
+            [
+              31.6185311052416,
+              -21.0347792373024
+            ],
+            [
+              31.6182671066378,
+              -21.0343888510922
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.475626878396028,
+    "irrigation_type": "Centre Pivot",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "216041",
+    "trial_name": "A. V. T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 8,
+    "block_id": "Centre Pivot",
+    "field_name": "CP trial F",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6180444398925,
+              -21.0362970331884
+            ],
+            [
+              31.6178733858317,
+              -21.0361623307037
+            ],
+            [
+              31.6177229302935,
+              -21.0359776184805
+            ],
+            [
+              31.6176180512116,
+              -21.0357567443905
+            ],
+            [
+              31.6175533122832,
+              -21.0354498328495
+            ],
+            [
+              31.6175598834548,
+              -21.0351312831968
+            ],
+            [
+              31.6182219593638,
+              -21.0344692459675
+            ],
+            [
+              31.6197676276325,
+              -21.036471523367
+            ],
+            [
+              31.619642259594,
+              -21.0365752570502
+            ],
+            [
+              31.6191617113246,
+              -21.0367025983517
+            ],
+            [
+              31.6186817903231,
+              -21.0367087140499
+            ],
+            [
+              31.6183070832694,
+              -21.0365797934315
+            ],
+            [
+              31.6180444398925,
+              -21.0362970331884
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 3.11087290411105,
+    "irrigation_type": "Centre Pivot",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 9,
+    "block_id": null,
+    "field_name": null,
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6167232328639,
+              -21.041997376914
+            ],
+            [
+              31.6170364781508,
+              -21.0421002533524
+            ],
+            [
+              31.6167064161099,
+              -21.043104723669
+            ],
+            [
+              31.6164207315576,
+              -21.0430069661772
+            ],
+            [
+              31.6167232328639,
+              -21.041997376914
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.384620394580537,
+    "irrigation_type": null,
+    "water_source": null,
+    "tam": null,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 10,
+    "block_id": "Impala",
+    "field_name": "Impala 1-3",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6229653806367,
+              -21.0376814492504
+            ],
+            [
+              31.623383790948,
+              -21.0367684665074
+            ],
+            [
+              31.6238680484711,
+              -21.0369716766685
+            ],
+            [
+              31.6234159453824,
+              -21.0378675078581
+            ],
+            [
+              31.6229653806367,
+              -21.0376814492504
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.585603751306773,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Hot Water Treatment",
+    "contact_person": "Dr T. P. Chibarabada",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 11,
+    "block_id": "Impala",
+    "field_name": "Impala A1-3",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6206853785223,
+              -21.0370091835001
+            ],
+            [
+              31.6208986344213,
+              -21.0365641274536
+            ],
+            [
+              31.621837223719,
+              -21.0369693013813
+            ],
+            [
+              31.6216176833702,
+              -21.0374022286929
+            ],
+            [
+              31.6206853785223,
+              -21.0370091835001
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.573573480758352,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Gene Bank",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 12,
+    "block_id": "Impala",
+    "field_name": "Impala A4-7",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6209023348834,
+              -21.0365642226073
+            ],
+            [
+              31.6212049800337,
+              -21.0359842432491
+            ],
+            [
+              31.6221481602895,
+              -21.0363691118216
+            ],
+            [
+              31.6218355746581,
+              -21.0369677454089
+            ],
+            [
+              31.6209023348834,
+              -21.0365642226073
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.777993039594515,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "P.R.V.T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 13,
+    "block_id": "Impala",
+    "field_name": "Impala A8-11",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6212337038155,
+              -21.0359335033857
+            ],
+            [
+              31.6215177009431,
+              -21.0353343405887
+            ],
+            [
+              31.6224532286949,
+              -21.0357821977459
+            ],
+            [
+              31.6221516571338,
+              -21.0363674425204
+            ],
+            [
+              31.6212337038155,
+              -21.0359335033857
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.78232784901493,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "217037",
+    "trial_name": "P.R.V.T",
+    "contact_person": "DR. L. T Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 14,
+    "block_id": "Impala",
+    "field_name": "Impala B1-12",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6214596728696,
+              -21.0352673738298
+            ],
+            [
+              31.6219077457879,
+              -21.0344566180486
+            ],
+            [
+              31.6228627482561,
+              -21.0348763248564
+            ],
+            [
+              31.6225009703212,
+              -21.0357196458084
+            ],
+            [
+              31.6214596728696,
+              -21.0352673738298
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.15640713677384,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Bulk Planting",
+    "contact_person": "DR L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 15,
+    "block_id": "Impala",
+    "field_name": "Impala B13-18",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6219408519771,
+              -21.0344156077016
+            ],
+            [
+              31.6222855833316,
+              -21.0337007268773
+            ],
+            [
+              31.6233173736507,
+              -21.0341573443452
+            ],
+            [
+              31.6228682381411,
+              -21.0348779543222
+            ],
+            [
+              31.6219408519771,
+              -21.0344156077016
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.02188298131822,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 16,
+    "block_id": "Impala",
+    "field_name": "Impala C1-5",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6217193978378,
+              -21.0374533616603
+            ],
+            [
+              31.6221192731652,
+              -21.0367173603652
+            ],
+            [
+              31.6230712698123,
+              -21.0371524874775
+            ],
+            [
+              31.6226834493953,
+              -21.0378674080497
+            ],
+            [
+              31.6217193978378,
+              -21.0374533616603
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.995034672003285,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 88,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Gene Bank",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 17,
+    "block_id": "Impala",
+    "field_name": "Impala C10-11",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6223835285229,
+              -21.0361360649396
+            ],
+            [
+              31.622549873171,
+              -21.0358343524863
+            ],
+            [
+              31.6234834971618,
+              -21.0362685010062
+            ],
+            [
+              31.6233350364829,
+              -21.0366183638012
+            ],
+            [
+              31.6223835285229,
+              -21.0361360649396
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.437610753103336,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 88,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Gene Bank",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 18,
+    "block_id": "Impala",
+    "field_name": "Impala C6-9",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6221193673224,
+              -21.0367202035921
+            ],
+            [
+              31.6223836729677,
+              -21.0361340502089
+            ],
+            [
+              31.6233257189257,
+              -21.0366197209089
+            ],
+            [
+              31.6230674439556,
+              -21.0371472066932
+            ],
+            [
+              31.6221193673224,
+              -21.0367202035921
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.744884360852998,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 88,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Agronomy Trial",
+    "contact_person": "Mr S. Chinorumba",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 19,
+    "block_id": "Impala",
+    "field_name": "Impala D1-12",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6226156199773,
+              -21.0357835824013
+            ],
+            [
+              31.6231181220371,
+              -21.0348011340717
+            ],
+            [
+              31.6240361072743,
+              -21.0351661817033
+            ],
+            [
+              31.6235717701307,
+              -21.036169415273
+            ],
+            [
+              31.6226156199773,
+              -21.0357835824013
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.28312053492836,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 20,
+    "block_id": "Impala",
+    "field_name": "Impala D13-14",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6231082642735,
+              -21.0347644736253
+            ],
+            [
+              31.6233986802346,
+              -21.0342452607006
+            ],
+            [
+              31.6237496126425,
+              -21.0343497020233
+            ],
+            [
+              31.6234171462751,
+              -21.0348863973821
+            ],
+            [
+              31.6231082642735,
+              -21.0347644736253
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.2416862546451,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "333037",
+    "trial_name": "Varietal Resistance to RSD",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 21,
+    "block_id": "Impala",
+    "field_name": "Impala D15-16",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6234186818879,
+              -21.0348836753029
+            ],
+            [
+              31.6237512338806,
+              -21.0343498499091
+            ],
+            [
+              31.6240177303585,
+              -21.0345345572484
+            ],
+            [
+              31.6237342094883,
+              -21.0350445424719
+            ],
+            [
+              31.6234186818879,
+              -21.0348836753029
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.236700468916924,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "331050",
+    "trial_name": "Leaf Scald Inoculation Trial",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 22,
+    "block_id": "Impala",
+    "field_name": "Impala D17-18",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6237360309734,
+              -21.0350499703726
+            ],
+            [
+              31.6240169795063,
+              -21.0345334107894
+            ],
+            [
+              31.6243342353253,
+              -21.034636015971
+            ],
+            [
+              31.6240333679469,
+              -21.0351672283597
+            ],
+            [
+              31.6237360309734,
+              -21.0350499703726
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.222693352439336,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "3300148",
+    "trial_name": "Smut Inoculation Trial",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 23,
+    "block_id": "Impala",
+    "field_name": "Impala E11",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6245536062225,
+              -21.0383513911054
+            ],
+            [
+              31.6250048641452,
+              -21.037483237912
+            ],
+            [
+              31.6251510801202,
+              -21.0375520034338
+            ],
+            [
+              31.6248207371085,
+              -21.0382223422066
+            ],
+            [
+              31.6247408217831,
+              -21.0383085736721
+            ],
+            [
+              31.6246364310378,
+              -21.0383601734144
+            ],
+            [
+              31.6245536062225,
+              -21.0383513911054
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.18021082025765,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "330040",
+    "trial_name": "Resistance to RSD",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 24,
+    "block_id": "Impala",
+    "field_name": "Impala E4",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6234187500231,
+              -21.0378896644324
+            ],
+            [
+              31.6238676659719,
+              -21.0369823025629
+            ],
+            [
+              31.6240348230183,
+              -21.0370665995638
+            ],
+            [
+              31.6235674787356,
+              -21.0379335991748
+            ],
+            [
+              31.6234187500231,
+              -21.0378896644324
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.195603455550809,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "333035",
+    "trial_name": "Varietal Resistance to RSD",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 25,
+    "block_id": "Impala",
+    "field_name": "Impala E5-6",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6235672742451,
+              -21.0379336429615
+            ],
+            [
+              31.6240337877171,
+              -21.0370658666267
+            ],
+            [
+              31.6243456812848,
+              -21.0371963481825
+            ],
+            [
+              31.6238695251261,
+              -21.0380838930889
+            ],
+            [
+              31.6235672742451,
+              -21.0379336429615
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.387363666032426,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "330046",
+    "trial_name": "Smut Susceptibility Trial",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 26,
+    "block_id": "Impala",
+    "field_name": "Impala E7-8",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6238706177016,
+              -21.0380840072019
+            ],
+            [
+              31.6243486596977,
+              -21.0372020850938
+            ],
+            [
+              31.6246723465697,
+              -21.03733599328
+            ],
+            [
+              31.6242014772883,
+              -21.0382006667121
+            ],
+            [
+              31.6238706177016,
+              -21.0380840072019
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.398423552237042,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "330046",
+    "trial_name": "Smut Inoculation Trial",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 27,
+    "block_id": "Impala",
+    "field_name": "Impala E9-10",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6242027429842,
+              -21.0382354569002
+            ],
+            [
+              31.6246688465653,
+              -21.0373355772938
+            ],
+            [
+              31.6250014396318,
+              -21.0374845080851
+            ],
+            [
+              31.6245525306958,
+              -21.0383511096662
+            ],
+            [
+              31.6242027429842,
+              -21.0382354569002
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.417613224459747,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 74,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "3300148",
+    "trial_name": "Smut Susceptibility Trial",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.205112",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 28,
+    "block_id": "Impala",
+    "field_name": "Impala F1",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6234325963451,
+              -21.0367343271327
+            ],
+            [
+              31.6239001904666,
+              -21.0357989143734
+            ],
+            [
+              31.6240716104756,
+              -21.0358899394857
+            ],
+            [
+              31.6236051235082,
+              -21.0367851897666
+            ],
+            [
+              31.6234325963451,
+              -21.0367343271327
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.219896417174943,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 29,
+    "block_id": "Impala",
+    "field_name": "Impala F10",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6248716326363,
+              -21.0373684535558
+            ],
+            [
+              31.6253348948536,
+              -21.0364682866243
+            ],
+            [
+              31.6254859093625,
+              -21.0365163022728
+            ],
+            [
+              31.6250256071555,
+              -21.0374412328276
+            ],
+            [
+              31.6248716326363,
+              -21.0373684535558
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.19277891960699,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "3310149",
+    "trial_name": "Leaf Scald Inoculation",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 30,
+    "block_id": "Impala",
+    "field_name": "Impala F11",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6250220465065,
+              -21.0374343403206
+            ],
+            [
+              31.6254859093625,
+              -21.0365163022728
+            ],
+            [
+              31.6256369848994,
+              -21.0365791252137
+            ],
+            [
+              31.6251696928157,
+              -21.0375200445838
+            ],
+            [
+              31.6250220465065,
+              -21.0374343403206
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.200111634186394,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 31,
+    "block_id": "Impala",
+    "field_name": "Impala F2-3",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6236051235082,
+              -21.0367851897666
+            ],
+            [
+              31.6240699920264,
+              -21.0358858394704
+            ],
+            [
+              31.6243675426128,
+              -21.0360510761821
+            ],
+            [
+              31.6238676843932,
+              -21.0369142514359
+            ],
+            [
+              31.6236051235082,
+              -21.0367851897666
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.366729832468292,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 32,
+    "block_id": "Impala",
+    "field_name": "Impala F4",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.623867982481,
+              -21.0369169069356
+            ],
+            [
+              31.6243690476706,
+              -21.0360495340624
+            ],
+            [
+              31.6245187922819,
+              -21.0361170863273
+            ],
+            [
+              31.6240364366628,
+              -21.0370018118249
+            ],
+            [
+              31.623867982481,
+              -21.0369169069356
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.204102951223122,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 33,
+    "block_id": "Impala",
+    "field_name": "Impala F5-6",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.624035401292,
+              -21.0370029438952
+            ],
+            [
+              31.6245173239405,
+              -21.036120228732
+            ],
+            [
+              31.62485034593,
+              -21.0362340079636
+            ],
+            [
+              31.6243790749371,
+              -21.0371556994475
+            ],
+            [
+              31.624035401292,
+              -21.0370029438952
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.42557462338757,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "3300149",
+    "trial_name": "Smut Inoculation Trial",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 34,
+    "block_id": "Impala",
+    "field_name": "Impala F7-8",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6243817494374,
+              -21.0371513787862
+            ],
+            [
+              31.6248516541044,
+              -21.0362345758388
+            ],
+            [
+              31.6251718447011,
+              -21.0364015504739
+            ],
+            [
+              31.6247020032159,
+              -21.0372701294408
+            ],
+            [
+              31.6243817494374,
+              -21.0371513787862
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.407356102630043,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 35,
+    "block_id": "Impala",
+    "field_name": "Impala F9",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6247024510029,
+              -21.0372703434045
+            ],
+            [
+              31.6251707798695,
+              -21.0364044078437
+            ],
+            [
+              31.6253345050359,
+              -21.0364699161133
+            ],
+            [
+              31.6248686770407,
+              -21.0373676033104
+            ],
+            [
+              31.6247024510029,
+              -21.0372703434045
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.211752307201131,
+    "irrigation_type": "Overhead Sprinkler",
+    "water_source": "Dam 1",
+    "tam": 75,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "333036",
+    "trial_name": "Varietal resistance to RSD",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 36,
+    "block_id": "Sable",
+    "field_name": "K3 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6144463010817,
+              -21.0339599059892
+            ],
+            [
+              31.6149205482085,
+              -21.0338871065292
+            ],
+            [
+              31.6151462645717,
+              -21.0346226370807
+            ],
+            [
+              31.614614572655,
+              -21.0347407831739
+            ],
+            [
+              31.6144463010817,
+              -21.0339599059892
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.461804055834212,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 98,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "PRVT",
+    "contact_person": "Dr L T Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 37,
+    "block_id": "Sable",
+    "field_name": "K3 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6149404588629,
+              -21.0338809156432
+            ],
+            [
+              31.6154700410634,
+              -21.0337592830379
+            ],
+            [
+              31.6156530401426,
+              -21.0345149597069
+            ],
+            [
+              31.6151595001872,
+              -21.0346158893281
+            ],
+            [
+              31.6149404588629,
+              -21.0338809156432
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.465829831336167,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 98,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "217040",
+    "trial_name": "Pre-Release Variety Trial",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 38,
+    "block_id": "Sable",
+    "field_name": "K4 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6146186759067,
+              -21.0347743346682
+            ],
+            [
+              31.6147665100275,
+              -21.0347339876662
+            ],
+            [
+              31.614944683623,
+              -21.0355306121249
+            ],
+            [
+              31.6147813261919,
+              -21.0355648694406
+            ],
+            [
+              31.6146186759067,
+              -21.0347743346682
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.149833934940007,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 98,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "220023",
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 39,
+    "block_id": null,
+    "field_name": null,
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6147772879363,
+              -21.0347266800141
+            ],
+            [
+              31.6156558708003,
+              -21.0345276404896
+            ],
+            [
+              31.6158460956659,
+              -21.0353508043644
+            ],
+            [
+              31.6149589459036,
+              -21.0355316643893
+            ],
+            [
+              31.6147772879363,
+              -21.0347266800141
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.870190169669535,
+    "irrigation_type": null,
+    "water_source": null,
+    "tam": null,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 40,
+    "block_id": "Sable",
+    "field_name": "L1 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6151467835305,
+              -21.032023536629
+            ],
+            [
+              31.616536134387,
+              -21.0317335083716
+            ],
+            [
+              31.6166260612813,
+              -21.0320826515393
+            ],
+            [
+              31.6152282251244,
+              -21.0323608161186
+            ],
+            [
+              31.6151467835305,
+              -21.032023536629
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.580077884832785,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "2200324",
+    "trial_name": "Variety X PlantingDate X Harvesting Date",
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 41,
+    "block_id": "Sable",
+    "field_name": "L1 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6152268404977,
+              -21.0323683183245
+            ],
+            [
+              31.616626441169,
+              -21.0320803796277
+            ],
+            [
+              31.6166642550904,
+              -21.0322161232174
+            ],
+            [
+              31.6152529424088,
+              -21.0324988618837
+            ],
+            [
+              31.6152268404977,
+              -21.0323683183245
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.226480308799246,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "2200324",
+    "trial_name": "Variety X PlantingDate X HarvestingDate",
+    "contact_person": "Dr T. P. Chibarabada",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 42,
+    "block_id": "Sable",
+    "field_name": "L1 trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.615248348688,
+              -21.0324960928045
+            ],
+            [
+              31.6166626557105,
+              -21.0322176986853
+            ],
+            [
+              31.616734862883,
+              -21.0324712687358
+            ],
+            [
+              31.615301209918,
+              -21.0327637514433
+            ],
+            [
+              31.615248348688,
+              -21.0324960928045
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.44888222646314,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Fertiliser Trial",
+    "contact_person": "Mr S. Chinorumba",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 43,
+    "block_id": "Sable",
+    "field_name": "L2 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6153155879786,
+              -21.0328221471823
+            ],
+            [
+              31.6167244683498,
+              -21.0325246817053
+            ],
+            [
+              31.6168401661409,
+              -21.032987063908
+            ],
+            [
+              31.6154126097671,
+              -21.0332876569746
+            ],
+            [
+              31.6153155879786,
+              -21.0328221471823
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.79604671558634,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Fertiliser Trial",
+    "contact_person": "Dr T. P. Chibarabada",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 44,
+    "block_id": "Sable",
+    "field_name": "L2 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6154133377044,
+              -21.0332949320099
+            ],
+            [
+              31.6168400854444,
+              -21.0329915687007
+            ],
+            [
+              31.616952825842,
+              -21.0334148118824
+            ],
+            [
+              31.615511233381,
+              -21.0337156302814
+            ],
+            [
+              31.6154133377044,
+              -21.0332949320099
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.735124153710153,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 79,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "2200323",
+    "trial_name": "Variety X PlantingDate X HarvestingDate",
+    "contact_person": "Dr T. P. Chibarabada",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 45,
+    "block_id": "Sable",
+    "field_name": "L3 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.615527347879,
+              -21.0337591233823
+            ],
+            [
+              31.6169632371611,
+              -21.0334588765959
+            ],
+            [
+              31.617017850454,
+              -21.0337357111463
+            ],
+            [
+              31.6155851707098,
+              -21.0340266297698
+            ],
+            [
+              31.615527347879,
+              -21.0337591233823
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.469683302669972,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "214042",
+    "trial_name": "Agronomy Trial",
+    "contact_person": "Dr T. P. Chibarabada",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 46,
+    "block_id": "Sable",
+    "field_name": "L3 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6155871556517,
+              -21.0340332537491
+            ],
+            [
+              31.61702017177,
+              -21.0337282020315
+            ],
+            [
+              31.617082786579,
+              -21.033981574042
+            ],
+            [
+              31.6156374355019,
+              -21.0342655623297
+            ],
+            [
+              31.6155871556517,
+              -21.0340332537491
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.422516162382979,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "214042",
+    "trial_name": "Agronomy Trial",
+    "contact_person": "Dr T. P. Chibarabada",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 47,
+    "block_id": "Sable",
+    "field_name": "L4 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6156481134246,
+              -21.0343261115895
+            ],
+            [
+              31.6170696870646,
+              -21.0340321631989
+            ],
+            [
+              31.6172526488097,
+              -21.0347373323751
+            ],
+            [
+              31.6158131348561,
+              -21.0350214264067
+            ],
+            [
+              31.6156481134246,
+              -21.0343261115895
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.214070445265,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 72,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "6400422",
+    "trial_name": "Fertiliser Trial",
+    "contact_person": "Dr T. P. Chibarabada",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 48,
+    "block_id": "Sable",
+    "field_name": "L4 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6158194625245,
+              -21.0350318611915
+            ],
+            [
+              31.6172483215693,
+              -21.0347643542732
+            ],
+            [
+              31.6173221356415,
+              -21.0350561480168
+            ],
+            [
+              31.615887680872,
+              -21.0353291374377
+            ],
+            [
+              31.6158194625245,
+              -21.0350318611915
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.508775865381514,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 72,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 49,
+    "block_id": "Sable",
+    "field_name": "M1",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6141362946342,
+              -21.0368411913557
+            ],
+            [
+              31.6151529297679,
+              -21.0366621762364
+            ],
+            [
+              31.6153340778644,
+              -21.0375337227033
+            ],
+            [
+              31.6144249638243,
+              -21.0377283238023
+            ],
+            [
+              31.6142910907849,
+              -21.0376197003029
+            ],
+            [
+              31.6141362946342,
+              -21.0368411913557
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.07818010399061,
+    "irrigation_type": "Sub-Surface Drip",
+    "water_source": "Dam 3",
+    "tam": 100,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Drip and Furrow Comparative Irrigaton",
+    "contact_person": "Dr G. Mabaya",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 50,
+    "block_id": "Sable",
+    "field_name": "M2",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6152288961867,
+              -21.036662945643
+            ],
+            [
+              31.6162620751016,
+              -21.0364624713166
+            ],
+            [
+              31.6164346251574,
+              -21.0373119147923
+            ],
+            [
+              31.6154052226877,
+              -21.0375347275869
+            ],
+            [
+              31.6152288961867,
+              -21.036662945643
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.06685047870673,
+    "irrigation_type": "Sub-Surface Drip Irrigation Trial",
+    "water_source": "Dam 3",
+    "tam": 100,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Sub-Surface Drip Irrigation Trial",
+    "contact_person": "Dr G. Mabaya",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 52,
+    "block_id": "Sable",
+    "field_name": "M4",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6150460648852,
+              -21.0357555786983
+            ],
+            [
+              31.616028158147,
+              -21.0355658640188
+            ],
+            [
+              31.6162245983009,
+              -21.0363850766674
+            ],
+            [
+              31.6152141754116,
+              -21.0365661982709
+            ],
+            [
+              31.6150460648852,
+              -21.0357555786983
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.97592318559157,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 100,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "22002444",
+    "trial_name": "Variety Trial",
+    "contact_person": "Mr S. Chinorumba",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:03.725894",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 78,
+    "block_id": "Shumba",
+    "field_name": "S6 trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6105990656125,
+              -21.0388688463546
+            ],
+            [
+              31.6115534390242,
+              -21.0386998715979
+            ],
+            [
+              31.6116341982106,
+              -21.0391017641508
+            ],
+            [
+              31.6106962693934,
+              -21.039302537733
+            ],
+            [
+              31.6105990656125,
+              -21.0388688463546
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.475157229172489,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "217037",
+    "trial_name": "PRVT",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 79,
+    "block_id": "Shumba",
+    "field_name": "S6 trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.610699552954,
+              -21.0393032809533
+            ],
+            [
+              31.6116350026155,
+              -21.0391009807259
+            ],
+            [
+              31.6117173903251,
+              -21.0393172469911
+            ],
+            [
+              31.6107521434201,
+              -21.0395192812144
+            ],
+            [
+              31.6107205905675,
+              -21.039441954596
+            ],
+            [
+              31.610699552954,
+              -21.0393032809533
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.254366546594273,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "216042",
+    "trial_name": "A. V. T PPS",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 80,
+    "block_id": "Sable",
+    "field_name": "Sable J3",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6135814760228,
+              -21.0341577347426
+            ],
+            [
+              31.6143224933916,
+              -21.034004018044
+            ],
+            [
+              31.6144418427278,
+              -21.0347295985744
+            ],
+            [
+              31.6137356011499,
+              -21.0348629446174
+            ],
+            [
+              31.6135814760228,
+              -21.0341577347426
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.620076392766556,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 85,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 81,
+    "block_id": "Sable",
+    "field_name": "Sable J4",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6137472284646,
+              -21.0349375037847
+            ],
+            [
+              31.6144618326448,
+              -21.0347882579267
+            ],
+            [
+              31.6146376956226,
+              -21.0355693683708
+            ],
+            [
+              31.6139058387331,
+              -21.0357006038888
+            ],
+            [
+              31.6137472284646,
+              -21.0349375037847
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.671492759076849,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 94,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Pre-Release Variety",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 82,
+    "block_id": "Sable",
+    "field_name": "Sable J4",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6137472284646,
+              -21.0349375037847
+            ],
+            [
+              31.6144618326448,
+              -21.0347882579267
+            ],
+            [
+              31.6146376956226,
+              -21.0355693683708
+            ],
+            [
+              31.6139058387331,
+              -21.0357006038888
+            ],
+            [
+              31.6137472284646,
+              -21.0349375037847
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.671492759076849,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 100,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Pre-release Variety Trial",
+    "contact_person": "Dr. L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 83,
+    "block_id": "Sable",
+    "field_name": "Sable J4",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6137472284646,
+              -21.0349375037847
+            ],
+            [
+              31.6144618326448,
+              -21.0347882579267
+            ],
+            [
+              31.6146376956226,
+              -21.0355693683708
+            ],
+            [
+              31.6139058387331,
+              -21.0357006038888
+            ],
+            [
+              31.6137472284646,
+              -21.0349375037847
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.671492759076849,
+    "irrigation_type": "farrow",
+    "water_source": "dam 3",
+    "tam": 100,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Pre- Released variety trial",
+    "contact_person": "Dr. L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 84,
+    "block_id": "Sable",
+    "field_name": "Sable K1",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6139564419836,
+              -21.0322467610984
+            ],
+            [
+              31.6150553038918,
+              -21.0320300101765
+            ],
+            [
+              31.6152212922856,
+              -21.0327809023217
+            ],
+            [
+              31.6141105122671,
+              -21.0330097207977
+            ],
+            [
+              31.6139564419836,
+              -21.0322467610984
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.0062472064143,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 100,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Variety Trial",
+    "contact_person": "Mr. S. Chinorumba",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 110,
+    "block_id": null,
+    "field_name": null,
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6155846504839,
+              -21.042767839702
+            ],
+            [
+              31.6160874221263,
+              -21.0429006608369
+            ],
+            [
+              31.6157354035509,
+              -21.0439178857751
+            ],
+            [
+              31.6152393330673,
+              -21.0437338897142
+            ],
+            [
+              31.6155846504839,
+              -21.042767839702
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.635236680418367,
+    "irrigation_type": null,
+    "water_source": null,
+    "tam": null,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:06.034419",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 53,
+    "block_id": "Sable",
+    "field_name": "N1A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6166168539883,
+              -21.0317246775173
+            ],
+            [
+              31.6175045805857,
+              -21.0315532558938
+            ],
+            [
+              31.6176695921248,
+              -21.0322989236785
+            ],
+            [
+              31.6167857735551,
+              -21.0324613076688
+            ],
+            [
+              31.6166168539883,
+              -21.0317246775173
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.78979073951106,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 60,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 54,
+    "block_id": "Sable",
+    "field_name": "N1B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6175660896266,
+              -21.0315502827887
+            ],
+            [
+              31.6182138166075,
+              -21.0314216086249
+            ],
+            [
+              31.6183780277321,
+              -21.0321664484808
+            ],
+            [
+              31.6177405724258,
+              -21.0322954259385
+            ],
+            [
+              31.6175660896266,
+              -21.0315502827887
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.577656867578817,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 60,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Variety Bulking",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 55,
+    "block_id": "Sable",
+    "field_name": "N2",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6168026599637,
+              -21.0325308950441
+            ],
+            [
+              31.618409946928,
+              -21.0322493859467
+            ],
+            [
+              31.6185993110421,
+              -21.0330787615318
+            ],
+            [
+              31.6169949781855,
+              -21.0333944619638
+            ],
+            [
+              31.6168026599637,
+              -21.0325308950441
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.63444271788938,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "22002035",
+    "trial_name": "Variety Trial",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 56,
+    "block_id": "Sable",
+    "field_name": "N3",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6170397437989,
+              -21.0334830603048
+            ],
+            [
+              31.6181997819409,
+              -21.0332407290188
+            ],
+            [
+              31.6183113950127,
+              -21.0337332713706
+            ],
+            [
+              31.6171261190721,
+              -21.0339527286616
+            ],
+            [
+              31.6170397437989,
+              -21.0334830603048
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.677461177565027,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Cane Performances in Ridges vs Furrows",
+    "contact_person": "Dr G. Mabaya",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 57,
+    "block_id": "Sable",
+    "field_name": "N4 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.617161695977,
+              -21.0340236120723
+            ],
+            [
+              31.617762120476,
+              -21.0339136952955
+            ],
+            [
+              31.6178539810296,
+              -21.034459082359
+            ],
+            [
+              31.6173699869094,
+              -21.0349315502737
+            ],
+            [
+              31.617161695977,
+              -21.0340236120723
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.505130469322634,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 60,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "23003",
+    "trial_name": "Disease Demostration",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 58,
+    "block_id": "Sable",
+    "field_name": "N4 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6177880044354,
+              -21.0339042838002
+            ],
+            [
+              31.6182838085942,
+              -21.0337907673202
+            ],
+            [
+              31.6183454839582,
+              -21.0339519756781
+            ],
+            [
+              31.6178776150609,
+              -21.0344087953138
+            ],
+            [
+              31.6177880044354,
+              -21.0339042838002
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.209984829663438,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 60,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "330017",
+    "trial_name": "Disease Demonstration",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 59,
+    "block_id": "Shumba",
+    "field_name": "S1 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6136659007363,
+              -21.0357116675609
+            ],
+            [
+              31.6124355959098,
+              -21.0359621126145
+            ],
+            [
+              31.6123382794013,
+              -21.0355695854989
+            ],
+            [
+              31.6136088245473,
+              -21.0353190940552
+            ],
+            [
+              31.613686402233,
+              -21.0356366491965
+            ],
+            [
+              31.6136659007363,
+              -21.0357116675609
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.595891894224699,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 70,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "216041",
+    "trial_name": "PRVT PP",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 60,
+    "block_id": "Shumba",
+    "field_name": "S1 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6136098900077,
+              -21.0353132156309
+            ],
+            [
+              31.6123348262358,
+              -21.0355696999077
+            ],
+            [
+              31.6122594388709,
+              -21.0352411390377
+            ],
+            [
+              31.6135264946563,
+              -21.0349967672945
+            ],
+            [
+              31.6136098900077,
+              -21.0353132156309
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.496010697081337,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 70,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 61,
+    "block_id": "Shumba",
+    "field_name": "S1 trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6121373274907,
+              -21.0347284561391
+            ],
+            [
+              31.6133985729215,
+              -21.0344764354808
+            ],
+            [
+              31.6135249790088,
+              -21.034996669409
+            ],
+            [
+              31.6122577113196,
+              -21.0352396789003
+            ],
+            [
+              31.6121373274907,
+              -21.0347284561391
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.787696738340642,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 70,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Variety Display",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 62,
+    "block_id": "Shumba",
+    "field_name": "S1 trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6121025978668,
+              -21.0345951063162
+            ],
+            [
+              31.6133891989541,
+              -21.034345612317
+            ],
+            [
+              31.6134128608254,
+              -21.0344662795802
+            ],
+            [
+              31.6121333049132,
+              -21.0347203988471
+            ],
+            [
+              31.6121025978668,
+              -21.0345951063162
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.189999576595789,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 70,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Bulk Planting",
+    "contact_person": "Dr L. T.  Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 63,
+    "block_id": "Shumba",
+    "field_name": "S1 trial E",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6120394470543,
+              -21.0343256459995
+            ],
+            [
+              31.6133138851268,
+              -21.03406517166
+            ],
+            [
+              31.6133768074559,
+              -21.0343398160193
+            ],
+            [
+              31.6121078089735,
+              -21.0345904200262
+            ],
+            [
+              31.6120394470543,
+              -21.0343256459995
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.415188897537873,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 70,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "214045",
+    "trial_name": "PPS",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 64,
+    "block_id": "Shumba",
+    "field_name": "S1 trial F",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6116695484943,
+              -21.0327028682262
+            ],
+            [
+              31.6129347247273,
+              -21.032428373964
+            ],
+            [
+              31.6133245133651,
+              -21.0340548824056
+            ],
+            [
+              31.6120339308499,
+              -21.0343139840555
+            ],
+            [
+              31.6116695484943,
+              -21.0327028682262
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 2.50343172274938,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 1",
+    "tam": 70,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "214045",
+    "trial_name": "V. O. T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 65,
+    "block_id": "Shumba",
+    "field_name": "S2",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6103509982832,
+              -21.0329766401691
+            ],
+            [
+              31.611558497746,
+              -21.0327816920337
+            ],
+            [
+              31.6123416688497,
+              -21.0359492238258
+            ],
+            [
+              31.6110838284194,
+              -21.0362151449352
+            ],
+            [
+              31.6103509982832,
+              -21.0329766401691
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 4.75804827880675,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 2",
+    "tam": 70,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 66,
+    "block_id": "Shumba",
+    "field_name": "S3 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.609718397233,
+              -21.0363174536225
+            ],
+            [
+              31.610966694982,
+              -21.0361062982199
+            ],
+            [
+              31.6110018037605,
+              -21.0362368659402
+            ],
+            [
+              31.6097535981235,
+              -21.0365026368724
+            ],
+            [
+              31.609718397233,
+              -21.0363174536225
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.237097214984742,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 2",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 67,
+    "block_id": "Shumba",
+    "field_name": "S3 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6094525781397,
+              -21.0351172452083
+            ],
+            [
+              31.6106738600222,
+              -21.0349043108807
+            ],
+            [
+              31.6109660764554,
+              -21.0361057947557
+            ],
+            [
+              31.6097182313255,
+              -21.0363170142359
+            ],
+            [
+              31.6094525781397,
+              -21.0351172452083
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.77883636791643,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 2",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "214044",
+    "trial_name": "V. O. T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 68,
+    "block_id": "Shumba",
+    "field_name": "S3 trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6091341933164,
+              -21.0337717698946
+            ],
+            [
+              31.6103776832886,
+              -21.0335032140294
+            ],
+            [
+              31.6106736612707,
+              -21.0349037692126
+            ],
+            [
+              31.6094516439629,
+              -21.0351167727718
+            ],
+            [
+              31.6091341933164,
+              -21.0337717698946
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 2.03821618534488,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 2",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "212046",
+    "trial_name": "Single Line Trials",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 69,
+    "block_id": "Shumba",
+    "field_name": "S3 trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.609009146883,
+              -21.0332436955764
+            ],
+            [
+              31.6102651853134,
+              -21.0329992611159
+            ],
+            [
+              31.610376729169,
+              -21.0334948773433
+            ],
+            [
+              31.6091330771541,
+              -21.0337634680248
+            ],
+            [
+              31.609009146883,
+              -21.0332436955764
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.767145512353044,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "217039",
+    "trial_name": "PRVT",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 70,
+    "block_id": "Shumba",
+    "field_name": "S4 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6124591046567,
+              -21.0360828851837
+            ],
+            [
+              31.6137245045344,
+              -21.0358112190312
+            ],
+            [
+              31.6140972557877,
+              -21.0373737408729
+            ],
+            [
+              31.6128460040025,
+              -21.0377496025105
+            ],
+            [
+              31.6124591046567,
+              -21.0360828851837
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 2.48657112527617,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Single Stool Trial",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 71,
+    "block_id": "Shumba",
+    "field_name": "S4 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6128467030652,
+              -21.0377514288631
+            ],
+            [
+              31.6140920198253,
+              -21.0373636767076
+            ],
+            [
+              31.6143662612094,
+              -21.0385921771801
+            ],
+            [
+              31.6142585519839,
+              -21.0388021061864
+            ],
+            [
+              31.6131211668473,
+              -21.0390247280166
+            ],
+            [
+              31.6128467030652,
+              -21.0377514288631
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 2.05131797855288,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Variety Bulking",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 72,
+    "block_id": "Shumba",
+    "field_name": "S5 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6110822351866,
+              -21.0363414934183
+            ],
+            [
+              31.6123815748609,
+              -21.0360674487271
+            ],
+            [
+              31.6128008481599,
+              -21.0379381382081
+            ],
+            [
+              31.6114832254645,
+              -21.0381702550149
+            ],
+            [
+              31.6110822351866,
+              -21.0363414934183
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 2.91290310109909,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 73,
+    "block_id": "Shumba",
+    "field_name": "S5 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6114841065968,
+              -21.0381712280424
+            ],
+            [
+              31.6128008418411,
+              -21.0379390207026
+            ],
+            [
+              31.6128713482551,
+              -21.0383451595307
+            ],
+            [
+              31.6115794906259,
+              -21.0385853603734
+            ],
+            [
+              31.6114841065968,
+              -21.0381712280424
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.639936363312537,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "217036",
+    "trial_name": "PRVT",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 74,
+    "block_id": "Shumba",
+    "field_name": "S5 trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6115806854143,
+              -21.0385857949022
+            ],
+            [
+              31.6128711715052,
+              -21.0383453284229
+            ],
+            [
+              31.6129888234496,
+              -21.0388153656345
+            ],
+            [
+              31.6116825568275,
+              -21.0390330260185
+            ],
+            [
+              31.6115806854143,
+              -21.0385857949022
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.716205161593323,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "216042",
+    "trial_name": "A. V. T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 75,
+    "block_id": "Shumba",
+    "field_name": "S5 trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.61168489372,
+              -21.0390335147142
+            ],
+            [
+              31.612988955022,
+              -21.0388157127696
+            ],
+            [
+              31.6130650915948,
+              -21.0390698499991
+            ],
+            [
+              31.6117610355073,
+              -21.039303911248
+            ],
+            [
+              31.61168489372,
+              -21.0390335147142
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.41453572556942,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 76,
+    "block_id": "Shumba",
+    "field_name": "S6 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6097994940086,
+              -21.0366149854474
+            ],
+            [
+              31.6110179116932,
+              -21.0363329872109
+            ],
+            [
+              31.6114540059235,
+              -21.0382674060253
+            ],
+            [
+              31.6102858901693,
+              -21.0384701388263
+            ],
+            [
+              31.6101292445761,
+              -21.0381970584777
+            ],
+            [
+              31.6097994940086,
+              -21.0366149854474
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 2.82926917744994,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 77,
+    "block_id": "Shumba",
+    "field_name": "S6 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6102848003544,
+              -21.038466678382
+            ],
+            [
+              31.6114522962385,
+              -21.0382700836848
+            ],
+            [
+              31.6115535792941,
+              -21.0386849628222
+            ],
+            [
+              31.610598214296,
+              -21.0388700621508
+            ],
+            [
+              31.6102848003544,
+              -21.038466678382
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.546813181552654,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "217037",
+    "trial_name": "PRVT",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.301679",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 109,
+    "block_id": null,
+    "field_name": null,
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6146675253202,
+              -21.0436329983367
+            ],
+            [
+              31.6148659789052,
+              -21.0437182569104
+            ],
+            [
+              31.6145681862974,
+              -21.0445021827187
+            ],
+            [
+              31.6143161965367,
+              -21.0446019283339
+            ],
+            [
+              31.6146675253202,
+              -21.0436329983367
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.225069770956721,
+    "irrigation_type": null,
+    "water_source": null,
+    "tam": null,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:06.034419",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 107,
+    "block_id": "Zebra",
+    "field_name": "Z4 trial F",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.614866043424,
+              -21.0437183090233
+            ],
+            [
+              31.6151332551787,
+              -21.0438214855891
+            ],
+            [
+              31.614949953403,
+              -21.0443631471265
+            ],
+            [
+              31.6145681264848,
+              -21.0445056938425
+            ],
+            [
+              31.614866043424,
+              -21.0437183090233
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.243388609445003,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 6.1,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": "2100-57C",
+    "trial_name": "H.W.T",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": "Sugarcane",
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T11:07:42.134337",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 106,
+    "block_id": "Zebra",
+    "field_name": "Z4 trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6144694211427,
+              -21.0436013891768
+            ],
+            [
+              31.6146675253202,
+              -21.0436329983367
+            ],
+            [
+              31.6143161965367,
+              -21.0446019283339
+            ],
+            [
+              31.614099045181,
+              -21.0446691381411
+            ],
+            [
+              31.6144694211427,
+              -21.0436013891768
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.236577905626406,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 6.1,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": "2100-57A",
+    "trial_name": "H.W.T",
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": "Sugarcane",
+    "crop_class": null,
+    "planting_date": "2025-06-03",
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T13:37:08.336913",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 104,
+    "block_id": "Zebra",
+    "field_name": "Z4 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6138331364372,
+              -21.0433851791808
+            ],
+            [
+              31.6144592031903,
+              -21.0435864919419
+            ],
+            [
+              31.6142841585377,
+              -21.0440550578529
+            ],
+            [
+              31.6136694067943,
+              -21.0438487315367
+            ],
+            [
+              31.6138331364372,
+              -21.0433851791808
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.373508426307944,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 6.1,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": "Break Crop",
+    "crop_class": "Soyabeans",
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T11:07:52.541474",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 103,
+    "block_id": "Zebra",
+    "field_name": "Z4 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6130393084404,
+              -21.043101760473
+            ],
+            [
+              31.6138345668345,
+              -21.0433665212259
+            ],
+            [
+              31.6136668411628,
+              -21.0438548285578
+            ],
+            [
+              31.6128770604615,
+              -21.0436015348694
+            ],
+            [
+              31.6130393084404,
+              -21.043101760473
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.501140122328319,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 6.1,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": null,
+    "trial_name": "YSA Trial",
+    "contact_person": "C. Mukanga",
+    "crop_type": "Sugarcane",
+    "crop_class": "Plant Cane",
+    "planting_date": "2025-11-04",
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T13:47:15.93104",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 85,
+    "block_id": "Sable",
+    "field_name": "Sable K2 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6142431409336,
+              -21.0330553423479
+            ],
+            [
+              31.6146267474874,
+              -21.0329568039449
+            ],
+            [
+              31.6148240501204,
+              -21.033834048686
+            ],
+            [
+              31.6144486641978,
+              -21.0339095078025
+            ],
+            [
+              31.6142431409336,
+              -21.0330553423479
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.399365008016925,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 100,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 86,
+    "block_id": "Sable",
+    "field_name": "Sable K2 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6146359895613,
+              -21.032962567888
+            ],
+            [
+              31.6152587972852,
+              -21.032840094145
+            ],
+            [
+              31.6154596762286,
+              -21.0337165925473
+            ],
+            [
+              31.6148313207743,
+              -21.0338399034869
+            ],
+            [
+              31.6146359895613,
+              -21.032962567888
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.661190173789019,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 100,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Pre-Release Variety Trial",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 87,
+    "block_id": "Zebra",
+    "field_name": "Z1 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6142193378,
+              -21.0400124954604
+            ],
+            [
+              31.6148197637798,
+              -21.0402002042061
+            ],
+            [
+              31.6144651866454,
+              -21.0411515916771
+            ],
+            [
+              31.6138669245841,
+              -21.0409560158674
+            ],
+            [
+              31.6142193378,
+              -21.0400124954604
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.73347527752541,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "64002443",
+    "trial_name": "Fertiliser Trial",
+    "contact_person": "Mr S. Chinorumba",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 88,
+    "block_id": "Zebra",
+    "field_name": "Z1 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6148184238209,
+              -21.0402010703
+            ],
+            [
+              31.6152647627334,
+              -21.04035506816
+            ],
+            [
+              31.6149016924807,
+              -21.041299529051
+            ],
+            [
+              31.6144649268533,
+              -21.0411514399039
+            ],
+            [
+              31.6148184238209,
+              -21.0402010703
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.545204988551206,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "YSA Trial",
+    "contact_person": "C. Mukanga",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 89,
+    "block_id": "Zebra",
+    "field_name": "Z1 trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6152684177343,
+              -21.0403501907859
+            ],
+            [
+              31.6158033199067,
+              -21.0405183491888
+            ],
+            [
+              31.6154554137339,
+              -21.0414865329943
+            ],
+            [
+              31.6149022800627,
+              -21.0413005733767
+            ],
+            [
+              31.6152684177343,
+              -21.0403501907859
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.675180443466093,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "214044",
+    "trial_name": "VOT. PP",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 90,
+    "block_id": "Zebra",
+    "field_name": "Z1 trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6158003507777,
+              -21.0405178527541
+            ],
+            [
+              31.6164996388409,
+              -21.0407338594077
+            ],
+            [
+              31.6161354222863,
+              -21.0417173724295
+            ],
+            [
+              31.615450842933,
+              -21.0414847969329
+            ],
+            [
+              31.6158003507777,
+              -21.0405178527541
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.871073693889462,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 79,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": "Variety Bulking",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 91,
+    "block_id": "Zebra",
+    "field_name": "Z1 trial E",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6165031162182,
+              -21.0407311861474
+            ],
+            [
+              31.6171505189867,
+              -21.0409510561521
+            ],
+            [
+              31.6168014939885,
+              -21.0419320816119
+            ],
+            [
+              31.616138137219,
+              -21.0417181068335
+            ],
+            [
+              31.6165031162182,
+              -21.0407311861474
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.83354833714969,
+    "irrigation_type": null,
+    "water_source": "Furrow",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "216043",
+    "trial_name": "A.V.T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 92,
+    "block_id": "Zebra",
+    "field_name": "Z1 trial F",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6171505189867,
+              -21.0409510561521
+            ],
+            [
+              31.6174178616274,
+              -21.0410429881949
+            ],
+            [
+              31.6170505160583,
+              -21.0420181618803
+            ],
+            [
+              31.6168014939885,
+              -21.0419320816119
+            ],
+            [
+              31.6171505189867,
+              -21.0409510561521
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.328204847173308,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "217040",
+    "trial_name": "P.R.V.T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 93,
+    "block_id": "Zebra",
+    "field_name": "Z2 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6138362067074,
+              -21.0410510300475
+            ],
+            [
+              31.6149986943932,
+              -21.0414026660603
+            ],
+            [
+              31.6146637261339,
+              -21.0424008415713
+            ],
+            [
+              31.6134680025202,
+              -21.042001212707
+            ],
+            [
+              31.6138362067074,
+              -21.0410510300475
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.47794417286125,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 94,
+    "block_id": "Zebra",
+    "field_name": "Z2 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6150048391827,
+              -21.0414052667198
+            ],
+            [
+              31.6154348202071,
+              -21.041534572136
+            ],
+            [
+              31.6150843924851,
+              -21.0425680161997
+            ],
+            [
+              31.6146661295419,
+              -21.0424029489068
+            ],
+            [
+              31.6150048391827,
+              -21.0414052667198
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.555573325807796,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": "Mr P. Zvoutete",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 95,
+    "block_id": "Zebra",
+    "field_name": "Z2 trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6154364275673,
+              -21.0415346597552
+            ],
+            [
+              31.615869430186,
+              -21.0416943935545
+            ],
+            [
+              31.6155352089462,
+              -21.0427018352507
+            ],
+            [
+              31.6150879932923,
+              -21.0425688310644
+            ],
+            [
+              31.6154364275673,
+              -21.0415346597552
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.576099415697799,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "2200325",
+    "trial_name": "PlantingDate X Variety X HarvestingDate",
+    "contact_person": "Dr T. P. Chibarabada",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 96,
+    "block_id": "Zebra",
+    "field_name": "Z2 trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6158684349971,
+              -21.0417022660884
+            ],
+            [
+              31.6161035007205,
+              -21.0417840840207
+            ],
+            [
+              31.6157671871441,
+              -21.0428023371648
+            ],
+            [
+              31.6155338936073,
+              -21.0427021457291
+            ],
+            [
+              31.6158684349971,
+              -21.0417022660884
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.307915574787957,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "216041",
+    "trial_name": "P.R.V.T PPS",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 97,
+    "block_id": "Zebra",
+    "field_name": "Z2 trial E",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6161011341745,
+              -21.0417855094059
+            ],
+            [
+              31.6167222489867,
+              -21.0419969120967
+            ],
+            [
+              31.6164191694369,
+              -21.0430056558366
+            ],
+            [
+              31.6157687596315,
+              -21.0428011059834
+            ],
+            [
+              31.6161011341745,
+              -21.0417855094059
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.818842428502866,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 80,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "2200325",
+    "trial_name": "PlantingDate * Variety * HarvestingDate",
+    "contact_person": "Mr S. Chinorumba",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 101,
+    "block_id": "Zebra",
+    "field_name": "Z3 trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6151495152401,
+              -21.042616873543
+            ],
+            [
+              31.6155854207257,
+              -21.0427631118714
+            ],
+            [
+              31.6152449601326,
+              -21.0437356524182
+            ],
+            [
+              31.6148210410049,
+              -21.0436027660932
+            ],
+            [
+              31.6151495152401,
+              -21.042616873543
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.539664548449532,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": null,
+    "ph": null,
+    "remarks": null,
+    "date_recorded": null,
+    "trial_number": "216041",
+    "trial_name": "A.V. T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": null,
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T08:31:05.707564",
+    "residue_type": null,
+    "management_method": null,
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": null,
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 111,
+    "block_id": "Sable",
+    "field_name": "Sable J4",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6137472284646,
+              -21.0349375037847
+            ],
+            [
+              31.6144618326448,
+              -21.0347882579267
+            ],
+            [
+              31.6146376956226,
+              -21.0355693683708
+            ],
+            [
+              31.6139058387331,
+              -21.0357006038888
+            ],
+            [
+              31.6137472284646,
+              -21.0349375037847
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.671492759076849,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 100,
+    "soil_type": null,
+    "ph": 7,
+    "remarks": null,
+    "date_recorded": "2026-03-20",
+    "trial_number": null,
+    "trial_name": "Pre-release Variety Trial",
+    "contact_person": "Dr. L. T. Mpofu",
+    "crop_type": "Sugarcane",
+    "crop_class": null,
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T10:51:58.612708",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 51,
+    "block_id": "Sable",
+    "field_name": "M3",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6139298656313,
+              -21.0359775976809
+            ],
+            [
+              31.6149803481568,
+              -21.0357676344522
+            ],
+            [
+              31.6151536885752,
+              -21.0365868512169
+            ],
+            [
+              31.6141193027105,
+              -21.0367702639391
+            ],
+            [
+              31.6139298656313,
+              -21.0359775976809
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.01072053416021,
+    "irrigation_type": "Sub-Surface Drip Irrigation",
+    "water_source": "Dam 3",
+    "tam": 100,
+    "soil_type": "SaL",
+    "ph": 6.34,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": null,
+    "trial_name": "Cane performance on ridges and furrow",
+    "contact_person": "Dr G. Mabaya",
+    "crop_type": "Sugarcane",
+    "crop_class": "Plant Cane",
+    "planting_date": "2024-12-14",
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T11:07:32.606142",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 3,
+    "block_id": "Centre Pivot",
+    "field_name": "CP trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6187323095299,
+              -21.0340353845676
+            ],
+            [
+              31.6190283930026,
+              -21.0338240267668
+            ],
+            [
+              31.6191154833655,
+              -21.0338107250866
+            ],
+            [
+              31.6195440767059,
+              -21.0338586680476
+            ],
+            [
+              31.6199690790924,
+              -21.0339810391283
+            ],
+            [
+              31.6206246102283,
+              -21.0342619802773
+            ],
+            [
+              31.6208117614567,
+              -21.0343916142129
+            ],
+            [
+              31.6208748815426,
+              -21.0345390043235
+            ],
+            [
+              31.6208297269327,
+              -21.0347459832297
+            ],
+            [
+              31.6207627712272,
+              -21.0350023158658
+            ],
+            [
+              31.6206464732563,
+              -21.0352739480994
+            ],
+            [
+              31.620369611346,
+              -21.0357689621188
+            ],
+            [
+              31.6203549440795,
+              -21.0357003808449
+            ],
+            [
+              31.6203449984876,
+              -21.0351527989091
+            ],
+            [
+              31.620214168737,
+              -21.0348019567998
+            ],
+            [
+              31.6199990530195,
+              -21.0345439365569
+            ],
+            [
+              31.6197395455494,
+              -21.0343083639103
+            ],
+            [
+              31.6193958338143,
+              -21.0341149982148
+            ],
+            [
+              31.6190727700296,
+              -21.034042294348
+            ],
+            [
+              31.6187323095299,
+              -21.0340353845676
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.32348094970926,
+    "irrigation_type": "Centre Pivot",
+    "water_source": "Dam 1",
+    "tam": 102,
+    "soil_type": "SaL",
+    "ph": 7,
+    "remarks": "6.07",
+    "date_recorded": "2026-03-21",
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": "Fallow Period",
+    "crop_class": "None",
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T12:50:27.226732",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 102,
+    "block_id": "Zebra",
+    "field_name": "Z3 trial F",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6160887621825,
+              -21.0429354901167
+            ],
+            [
+              31.6167008987229,
+              -21.0431187348545
+            ],
+            [
+              31.6164588139157,
+              -21.0437738857719
+            ],
+            [
+              31.6163786635381,
+              -21.0438771008763
+            ],
+            [
+              31.6161676479363,
+              -21.0439924883656
+            ],
+            [
+              31.6159786681168,
+              -21.0440058805918
+            ],
+            [
+              31.6157388561319,
+              -21.0439180014013
+            ],
+            [
+              31.6160887621825,
+              -21.0429354901167
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.721300161993362,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaCL",
+    "ph": 6.27,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": "Fallow Period",
+    "crop_class": "None",
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T13:48:15.661678",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 108,
+    "block_id": "Zebra",
+    "field_name": "Z4 trial G",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6151370733206,
+              -21.0438214854642
+            ],
+            [
+              31.6158838803575,
+              -21.0440323290956
+            ],
+            [
+              31.6149537664434,
+              -21.0443738411093
+            ],
+            [
+              31.6151370733206,
+              -21.0438214854642
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.260308018116593,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 6.1,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": "Fallow Period",
+    "crop_class": "None",
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T11:07:32.606142",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 105,
+    "block_id": "Zebra",
+    "field_name": "Z4 trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6129018186548,
+              -21.0436667155699
+            ],
+            [
+              31.6142526693278,
+              -21.0441214027272
+            ],
+            [
+              31.6140181083361,
+              -21.0446830069355
+            ],
+            [
+              31.6137897653054,
+              -21.0446686226117
+            ],
+            [
+              31.6126335436891,
+              -21.0442690301894
+            ],
+            [
+              31.6129018186548,
+              -21.0436667155699
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.08756385584647,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 6.1,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": "2200-A20-32",
+    "trial_name": "Variety Trial",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": "Sugarcane",
+    "crop_class": "5th Ratoon",
+    "planting_date": "2020-12-12",
+    "previous_cutting_date": "2025-06-15",
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T11:07:52.541474",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 112,
+    "block_id": "Zebra",
+    "field_name": "Z3 trial D",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6151495152401,
+              -21.042616873543
+            ],
+            [
+              31.6155854207257,
+              -21.0427631118714
+            ],
+            [
+              31.6152449601326,
+              -21.0437356524182
+            ],
+            [
+              31.6148210410049,
+              -21.0436027660932
+            ],
+            [
+              31.6151495152401,
+              -21.042616873543
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.539664548449532,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 6.35,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": "2160-41E",
+    "trial_name": "A.V. T",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": "Sugarcane",
+    "crop_class": "1st Ratoon",
+    "planting_date": "2024-04-17",
+    "previous_cutting_date": "2025-03-08",
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T10:52:46.781238",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 100,
+    "block_id": "Zebra",
+    "field_name": "Z3 trial C",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6149013229995,
+              -21.0425527407845
+            ],
+            [
+              31.6151533326634,
+              -21.0426168732698
+            ],
+            [
+              31.6148172273194,
+              -21.0436027659998
+            ],
+            [
+              31.6145693824568,
+              -21.0434990182451
+            ],
+            [
+              31.6149013229995,
+              -21.0425527407845
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.310984225287718,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 5.53,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": "2160/41 PPL",
+    "trial_name": "A.V.T. PPS",
+    "contact_person": "Dr L. T. Mpofu",
+    "crop_type": "Sugarcane",
+    "crop_class": "Plant Cane",
+    "planting_date": "2025-10-23",
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T13:58:37.728753",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 99,
+    "block_id": "Zebra",
+    "field_name": "Z3 trial B",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6138681399592,
+              -21.0422005074518
+            ],
+            [
+              31.6149013247164,
+              -21.0425527435318
+            ],
+            [
+              31.6145694507095,
+              -21.0435027335088
+            ],
+            [
+              31.6135162037858,
+              -21.0431513448452
+            ],
+            [
+              31.6138681399592,
+              -21.0422005074518
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 1.28296321094689,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 6.03,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": "Break Crop",
+    "crop_class": "Soyabeans",
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T14:01:04.136016",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  },
+  {
+    "id": 98,
+    "block_id": "Zebra",
+    "field_name": "Z3 trial A",
+    "polygon": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [
+              31.6134534715967,
+              -21.0420378713152
+            ],
+            [
+              31.613868268274,
+              -21.0422007971361
+            ],
+            [
+              31.6135199190337,
+              -21.0431510872052
+            ],
+            [
+              31.6130995073087,
+              -21.0430158924905
+            ],
+            [
+              31.6134534715967,
+              -21.0420378713152
+            ]
+          ]
+        ]
+      ]
+    },
+    "area": 0.525037234418761,
+    "irrigation_type": "Furrow",
+    "water_source": "Dam 3",
+    "tam": 68,
+    "soil_type": "SaL",
+    "ph": 6.03,
+    "remarks": null,
+    "date_recorded": "2026-03-21",
+    "trial_number": null,
+    "trial_name": null,
+    "contact_person": null,
+    "crop_type": "Fallow Period",
+    "crop_class": "None",
+    "planting_date": null,
+    "previous_cutting_date": null,
+    "expected_harvest_date": null,
+    "actual_cutting_date": null,
+    "yield": null,
+    "cane_quality_remarks": null,
+    "created_at": "2026-03-21T14:01:54.767137",
+    "residue_type": "None",
+    "management_method": "N/A",
+    "residue_remarks": null,
+    "fertiliser_type": null,
+    "application_date": null,
+    "application_rate": "0.0",
+    "foliar_sampling_date": null,
+    "herbicide_name": null,
+    "herbicide_application_date": null,
+    "herbicide_application_rate": null,
+    "pest_remarks": null,
+    "disease_remarks": null
+  }
+]

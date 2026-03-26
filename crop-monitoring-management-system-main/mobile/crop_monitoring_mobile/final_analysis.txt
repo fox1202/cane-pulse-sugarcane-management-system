@@ -1,0 +1,100 @@
+Analyzing crop_monitoring_mobile...                             
+
+  error • Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart' • lib/main.dart:3:8 • uri_does_not_exist
+  error • The values in a const list literal must be constants • lib/main.dart:55:9 • non_constant_list_element
+  error • Undefined name 'AppLocalizations' • lib/main.dart:55:9 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance • lib/screens/about_screen.dart:124:19 • prefer_const_constructors
+  error • Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart' • lib/screens/dashboard_screen.dart:4:8 • uri_does_not_exist
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:27:18 • undefined_identifier
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/dashboard_screen.dart:191:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/dashboard_screen.dart:191:88 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/dashboard_screen.dart:199:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/dashboard_screen.dart:199:80 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/dashboard_screen.dart:201:83 • deprecated_member_use
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:208:51 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:208:95 • undefined_identifier
+   info • Don't use 'BuildContext's across async gaps • lib/screens/dashboard_screen.dart:224:44 • use_build_context_synchronously
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:251:18 • undefined_identifier
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/dashboard_screen.dart:262:33 • deprecated_member_use
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:344:18 • undefined_identifier
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/dashboard_screen.dart:356:44 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/dashboard_screen.dart:410:70 • deprecated_member_use
+warning • Unused import: '../widgets/modern_text_field.dart' • lib/screens/login_screen.dart:8:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps • lib/screens/login_screen.dart:118:40 • use_build_context_synchronously
+warning • Unused import: '../services/supabase_service.dart' • lib/screens/observation_detail_screen.dart:8:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps • lib/screens/observation_detail_screen.dart:51:28 • use_build_context_synchronously
+  error • Missing concrete implementation of 'abstract class State<T extends StatefulWidget> with Diagnosticable.build' • lib/screens/observation_form_screen.dart:25:7 • non_abstract_class_inherits_abstract_member
+   info • The private field _dateRecorded could be 'final' • lib/screens/observation_form_screen.dart:38:12 • prefer_final_fields
+  error • Expected a class member • lib/screens/observation_form_screen.dart:501:5 • expected_class_member
+   info • The variable name 'Scaffold' isn't a lowerCamelCase identifier • lib/screens/observation_form_screen.dart:501:12 • non_constant_identifier_names
+  error • 'Scaffold' must have a method body because '_ObservationFormScreenState' isn't abstract • lib/screens/observation_form_screen.dart:501:12 • concrete_class_with_abstract_member
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/screens/observation_form_screen.dart:502:22 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/screens/observation_form_screen.dart:502:22 • obsolete_colon_for_default_value
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/screens/observation_form_screen.dart:503:13 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/screens/observation_form_screen.dart:503:13 • obsolete_colon_for_default_value
+  error • The default value of an optional parameter must be constant • lib/screens/observation_form_screen.dart:503:15 • non_constant_default_value
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/screens/observation_form_screen.dart:558:11 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/screens/observation_form_screen.dart:558:11 • obsolete_colon_for_default_value
+  error • The default value of an optional parameter must be constant • lib/screens/observation_form_screen.dart:558:13 • non_constant_default_value
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:559:21 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:560:21 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/observation_form_screen.dart:563:21 • prefer_const_literals_to_create_immutables
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:607:41 • prefer_const_constructors
+  error • Named parameters must be enclosed in curly braces ('{' and '}') • lib/screens/observation_form_screen.dart:899:26 • named_parameter_outside_group
+  error • Using a colon as the separator before a default value is no longer supported • lib/screens/observation_form_screen.dart:899:26 • obsolete_colon_for_default_value
+  error • The default value of an optional parameter must be constant • lib/screens/observation_form_screen.dart:899:28 • non_constant_default_value
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/screens/observation_form_screen.dart:1099:17 • deprecated_member_use
+  error • Undefined name 'context' • lib/screens/observation_form_screen.dart:1139:26 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:1208:25 • prefer_const_constructors
+  error • Expected a method, getter, setter or operator declaration • lib/screens/observation_form_screen.dart:1223:1 • expected_executable
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:95:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:116:7 • avoid_print
+  error • The getter 'isFieldMode' isn't defined for the type 'SyncProvider' • lib/screens/observations_list_screen.dart:135:43 • undefined_getter
+  error • The getter 'isFieldMode' isn't defined for the type 'SyncProvider' • lib/screens/observations_list_screen.dart:289:55 • undefined_getter
+  error • The getter 'isFieldMode' isn't defined for the type 'SyncProvider' • lib/screens/observations_list_screen.dart:357:54 • undefined_getter
+  error • The getter 'isFieldMode' isn't defined for the type 'SyncProvider' • lib/screens/observations_list_screen.dart:461:55 • undefined_getter
+  error • The getter 'isFieldMode' isn't defined for the type 'SyncProvider' • lib/screens/observations_list_screen.dart:524:60 • undefined_getter
+  error • Expected a method, getter, setter or operator declaration • lib/screens/register_screen.dart:1:1 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/screens/register_screen.dart:1:2 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/screens/register_screen.dart:1:3 • expected_executable
+warning • Unused import: '../widgets/modern_text_field.dart' • lib/screens/register_screen.dart:9:8 • unused_import
+warning • The value of the local variable 'syncProvider' isn't used • lib/screens/register_screen.dart:126:11 • unused_local_variable
+   info • Unnecessary 'const' keyword • lib/screens/register_screen.dart:202:36 • unnecessary_const
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/storage_management_screen.dart:293:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/storage_management_screen.dart:315:66 • deprecated_member_use
+warning • The value of the local variable 'weatherProvider' isn't used • lib/screens/weather_detail_screen.dart:14:11 • unused_local_variable
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:24:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:27:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:29:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:32:22 • prefer_const_constructors
+  error • Undefined name 'appState' • lib/screens/weather_detail_screen.dart:40:39 • undefined_identifier
+  error • Undefined name 'appState' • lib/screens/weather_detail_screen.dart:51:43 • undefined_identifier
+  error • Undefined name 'appState' • lib/screens/weather_detail_screen.dart:56:41 • undefined_identifier
+  error • 2 positional arguments expected by '_buildStatsGrid', but 1 found • lib/screens/weather_detail_screen.dart:56:49 • not_enough_positional_arguments
+  error • Undefined name 'appState' • lib/screens/weather_detail_screen.dart:61:51 • undefined_identifier
+  error • Undefined class 'AppState' • lib/screens/weather_detail_screen.dart:76:45 • undefined_class
+  error • Undefined name 'weatherProvider' • lib/screens/weather_detail_screen.dart:90:17 • undefined_identifier
+warning • The value of the local variable 'condition' isn't used • lib/screens/weather_detail_screen.dart:113:12 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/weather_detail_screen.dart:138:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/weather_detail_screen.dart:142:34 • deprecated_member_use
+  error • Undefined class 'AppState' • lib/screens/weather_detail_screen.dart:250:36 • undefined_class
+  error • Undefined name 'weatherProvider' • lib/screens/weather_detail_screen.dart:270:19 • undefined_identifier
+  error • Undefined name 'uiProvider' • lib/screens/weather_detail_screen.dart:271:25 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:302:50 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/weather_detail_screen.dart:303:29 • prefer_const_literals_to_create_immutables
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:203:18 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:210:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:262:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:289:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:301:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/supabase_service.dart:117:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:59:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:87:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:107:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:112:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:115:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:118:9 • avoid_print
+warning • The value of the local variable 'uiProvider' isn't used • lib/widgets/app_drawer.dart:17:11 • unused_local_variable
+   info • Use 'const' for final variables initialized to a constant value • lib/widgets/app_drawer.dart:275:5 • prefer_const_declarations
+   info • Use 'const' with the constructor to improve performance • lib/widgets/modern_text_field.dart:161:29 • prefer_const_constructors
+

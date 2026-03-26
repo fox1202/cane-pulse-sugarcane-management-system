@@ -1,0 +1,57 @@
+Analyzing crop_monitoring_mobile...                             
+
+  error • Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart' • lib/main.dart:3:8 • uri_does_not_exist
+  error • Undefined name 'AppLocalizations' • lib/main.dart:54:9 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance • lib/screens/about_screen.dart:124:19 • prefer_const_constructors
+  error • Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart' • lib/screens/dashboard_screen.dart:4:8 • uri_does_not_exist
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:27:18 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:208:51 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:208:95 • undefined_identifier
+   info • Don't use 'BuildContext's across async gaps • lib/screens/dashboard_screen.dart:224:44 • use_build_context_synchronously
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:251:18 • undefined_identifier
+  error • Undefined name 'AppLocalizations' • lib/screens/dashboard_screen.dart:344:18 • undefined_identifier
+  error • Undefined name 'syncProvider' • lib/screens/login_screen.dart:114:15 • undefined_identifier
+  error • Undefined name 'syncProvider' • lib/screens/login_screen.dart:115:13 • undefined_identifier
+  error • Undefined name 'syncProvider' • lib/screens/login_screen.dart:116:17 • undefined_identifier
+   info • Don't use 'BuildContext's across async gaps • lib/screens/login_screen.dart:118:40 • use_build_context_synchronously
+  error • The method 'WaveClipper' isn't defined for the type '_LoginScreenState' • lib/screens/login_screen.dart:327:24 • undefined_method
+warning • Unused import: '../services/supabase_service.dart' • lib/screens/observation_detail_screen.dart:8:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps • lib/screens/observation_detail_screen.dart:51:28 • use_build_context_synchronously
+warning • Unused import: '../providers/location_provider.dart' • lib/screens/observation_form_screen.dart:10:8 • unused_import
+warning • Unused import: '../widgets/shimmer_loading.dart' • lib/screens/observation_form_screen.dart:15:8 • unused_import
+warning • Unused import: '../widgets/app_drawer.dart' • lib/screens/observation_form_screen.dart:16:8 • unused_import
+   info • The private field _dateRecorded could be 'final' • lib/screens/observation_form_screen.dart:38:12 • prefer_final_fields
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:564:21 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:565:21 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/observation_form_screen.dart:568:21 • prefer_const_literals_to_create_immutables
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:612:41 • prefer_const_constructors
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/screens/observation_form_screen.dart:1104:17 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/screens/observation_form_screen.dart:1213:25 • prefer_const_constructors
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:96:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/observations_list_screen.dart:117:7 • avoid_print
+warning • Unused import: '../widgets/modern_text_field.dart' • lib/screens/register_screen.dart:8:8 • unused_import
+warning • The value of the local variable 'syncProvider' isn't used • lib/screens/register_screen.dart:125:11 • unused_local_variable
+   info • Unnecessary 'const' keyword • lib/screens/register_screen.dart:201:36 • unnecessary_const
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:24:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:27:22 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:29:13 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:32:22 • prefer_const_constructors
+warning • The value of the local variable 'condition' isn't used • lib/screens/weather_detail_screen.dart:113:12 • unused_local_variable
+   info • Use 'const' with the constructor to improve performance • lib/screens/weather_detail_screen.dart:302:50 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/weather_detail_screen.dart:303:29 • prefer_const_literals_to_create_immutables
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:203:18 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:210:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:262:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:289:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/local_db.dart:301:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/supabase_service.dart:117:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:59:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:87:21 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:107:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:112:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:115:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/sync_service.dart:118:9 • avoid_print
+warning • The value of the local variable 'uiProvider' isn't used • lib/widgets/app_drawer.dart:17:11 • unused_local_variable
+   info • Use 'const' for final variables initialized to a constant value • lib/widgets/app_drawer.dart:275:5 • prefer_const_declarations
+   info • Use 'const' with the constructor to improve performance • lib/widgets/modern_text_field.dart:161:29 • prefer_const_constructors
+

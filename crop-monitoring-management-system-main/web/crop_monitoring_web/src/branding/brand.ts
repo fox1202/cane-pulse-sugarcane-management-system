@@ -1,0 +1,6 @@
+export const BRAND_NAME = 'Cane Pulse'
+export const BRAND_NAME_UPPER = 'CANE PULSE'
+export const BRAND_DESCRIPTION = 'Sugarcane Field Management System'
+export const BRAND_SYSTEM_TAGLINE = 'SUGARCANE FIELD MANAGEMENT SYSTEM'
+export const BRAND_LOGO_ALT = 'Cane Pulse logo'
+export const BRAND_LOGO_PATH = '/zsa-logo.svg'
