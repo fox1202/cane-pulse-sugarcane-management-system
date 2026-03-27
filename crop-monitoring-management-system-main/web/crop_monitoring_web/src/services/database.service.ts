@@ -16,6 +16,18 @@ export interface PredefinedField extends Field {
     geom?: any
 }
 
+export interface CreatePredefinedFieldInput {
+    field_name: string
+    section_name?: string
+    block_id: string
+    latitude: number
+    longitude: number
+    geom: any
+    created_by?: string
+    crop_type?: string
+    date_recorded?: string
+}
+
 export interface MobileObservationEntryFormFields {
     selected_field?: string
     field_id?: string
@@ -376,6 +388,23 @@ function getHardcodedPredefinedFields(): PredefinedField[] {
         geom: HARDCODED_FIELD_SHAPEFILE.features[idx]?.geometry,
         observation_count: field.observation_count ?? 0,
     }))
+}
+
+function mergePredefinedFields(primaryFields: PredefinedField[], secondaryFields: PredefinedField[]): PredefinedField[] {
+    const merged = new Map<string, PredefinedField>()
+
+    ;[...primaryFields, ...secondaryFields].forEach((field, index) => {
+        const identityKey = buildFieldLookupKey(field.field_name, field.section_name, field.block_id)
+        const fallbackKey = normalizeLookupToken(field.field_name) || `field-${index}`
+        const key = identityKey !== '||' ? identityKey : fallbackKey
+
+        if (!merged.has(key)) {
+            merged.set(key, field)
+        }
+    })
+
+    return Array.from(merged.values())
+        .sort((left, right) => left.field_name.localeCompare(right.field_name, undefined, { sensitivity: 'base' }))
 }
 
 function applyRegistryFieldToSubmission(
@@ -782,11 +811,7 @@ export async function fetchPredefinedFields(): Promise<PredefinedField[]> {
             throw error
         }
 
-        if (!data || data.length === 0) {
-            return getHardcodedPredefinedFields()
-        }
-
-        return data.map((row: any) => ({
+        const liveFields = (data ?? []).map((row: any) => ({
             id: row.id,
             field_name: row.field_name,
             section_name: row.section_name,
@@ -802,9 +827,76 @@ export async function fetchPredefinedFields(): Promise<PredefinedField[]> {
             geom: row.geom,
             observation_count: 0,
         }))
+
+        if (liveFields.length === 0) {
+            return getHardcodedPredefinedFields()
+        }
+
+        return mergePredefinedFields(liveFields, getHardcodedPredefinedFields())
     } catch (error) {
         console.warn('Failed to fetch predefined fields from Supabase, using bundled field registry instead.', error)
         return getHardcodedPredefinedFields()
+    }
+}
+
+export async function createPredefinedField(input: CreatePredefinedFieldInput): Promise<PredefinedField> {
+    const payload = {
+        field_name: toNullableString(input.field_name),
+        section_name: toNullableString(input.section_name) ?? '',
+        block_id: toNullableString(input.block_id),
+        latitude: toNullableNumber(input.latitude),
+        longitude: toNullableNumber(input.longitude),
+        geom: input.geom ?? null,
+        created_by: toNullableString(input.created_by),
+        crop_type: toNullableString(input.crop_type),
+        date_recorded: toNullableDateValue(input.date_recorded),
+    }
+
+    const { data, error } = await supabase
+        .from('fields')
+        .insert(payload)
+        .select(`
+            id,
+            field_name,
+            section_name,
+            block_id,
+            latitude,
+            longitude,
+            geom,
+            created_at,
+            created_by,
+            date_recorded,
+            crop_type,
+            is_synced,
+            local_updated_at,
+            updated_at
+        `)
+        .single()
+
+    if (error) {
+        if (isMissingRelationError(error)) {
+            throw new Error('The field registry table is not available, so new fields cannot be created yet.')
+        }
+
+        throw error
+    }
+
+    return {
+        id: data.id,
+        field_name: data.field_name,
+        section_name: data.section_name,
+        block_id: data.block_id,
+        latitude: Number(data.latitude) || 0,
+        longitude: Number(data.longitude) || 0,
+        created_at: data.created_at || undefined,
+        created_by: data.created_by || undefined,
+        date_recorded: data.date_recorded || undefined,
+        crop_type: data.crop_type || undefined,
+        is_synced: typeof data.is_synced === 'boolean' ? data.is_synced : undefined,
+        local_updated_at: data.local_updated_at || undefined,
+        updated_at: data.updated_at || undefined,
+        geom: data.geom,
+        observation_count: 0,
     }
 }
 

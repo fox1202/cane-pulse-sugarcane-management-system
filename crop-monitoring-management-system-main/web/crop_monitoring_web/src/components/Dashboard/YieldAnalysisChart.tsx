@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react'
 import {
   Box,
-  Chip,
   Grid,
   LinearProgress,
   Paper,
@@ -278,17 +277,28 @@ function InsightCard({
   )
 }
 
-function MetricCard({
+function MetricGroupCard({
   label,
-  value,
+  items,
   helper,
   tone,
+  columns = 2,
 }: {
   label: string
-  value: string
+  items: Array<{
+    label: string
+    value: string
+  }>
   helper?: string
   tone: string
+  columns?: 2 | 3 | 4
 }) {
+  const gridTemplateColumns = columns === 4
+    ? { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' }
+    : columns === 3
+      ? { xs: 'repeat(3, minmax(0, 1fr))' }
+      : { xs: 'repeat(2, minmax(0, 1fr))' }
+
   return (
     <Paper
       sx={{
@@ -316,37 +326,72 @@ function MetricCard({
         }}
       />
       <Box sx={{ position: 'relative', zIndex: 1 }}>
-      <Box sx={{ width: 48, height: 6, borderRadius: 999, bgcolor: alpha(tone, 0.68), mb: 1.4 }} />
-      <Typography
-        sx={{
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          color: alpha(tone, 0.86),
-          mb: 1,
-          fontFamily: MONO,
-        }}
-      >
-        {label}
-      </Typography>
-      <Typography
-        sx={{
-          fontSize: { xs: 26, md: 32 },
-          fontWeight: 900,
-          color: 'text.primary',
-          lineHeight: 1.05,
-          letterSpacing: '-0.04em',
-          fontFamily: DISPLAY,
-        }}
-      >
-        {value}
-      </Typography>
-      {helper && (
-        <Typography sx={{ mt: 0.8, fontSize: 12, color: 'text.secondary', lineHeight: 1.5, fontFamily: '"Nunito", sans-serif' }}>
-          {helper}
+        <Box sx={{ width: 48, height: 6, borderRadius: 999, bgcolor: alpha(tone, 0.68), mb: 1.4 }} />
+        <Typography
+          sx={{
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: alpha(tone, 0.86),
+            mb: 1.2,
+            fontFamily: MONO,
+          }}
+        >
+          {label}
         </Typography>
-      )}
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1,
+            gridTemplateColumns,
+          }}
+        >
+          {items.map((item) => (
+            <Box
+              key={item.label}
+              sx={{
+                p: 1.15,
+                borderRadius: '16px',
+                border: `1px solid ${alpha(tone, 0.14)}`,
+                bgcolor: alpha(tone, 0.06),
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: alpha(tone, 0.8),
+                  mb: 0.55,
+                  fontFamily: MONO,
+                }}
+              >
+                {item.label}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: { xs: 18, md: 21 },
+                  fontWeight: 900,
+                  color: 'text.primary',
+                  lineHeight: 1.08,
+                  letterSpacing: '-0.03em',
+                  fontFamily: DISPLAY,
+                }}
+              >
+                {item.value}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+
+        {helper && (
+          <Typography sx={{ mt: 1.1, fontSize: 12, color: 'text.secondary', lineHeight: 1.5, fontFamily: '"Nunito", sans-serif' }}>
+            {helper}
+          </Typography>
+        )}
       </Box>
     </Paper>
   )
@@ -1248,22 +1293,6 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
   const minTam = useMemo(() => (tamValues.length > 0 ? Math.min(...tamValues) : null), [tamValues])
   const maxTam = useMemo(() => (tamValues.length > 0 ? Math.max(...tamValues) : null), [tamValues])
 
-  const heroNote = useMemo(() => {
-    if (fieldSnapshots.length === 0) {
-      return 'No live field records are available yet.'
-    }
-
-    if (measuredFields.length === 0) {
-      return 'Live records are available, but none of the latest field snapshots include a mapped area yet.'
-    }
-
-    if (typedMeasuredFields.length === measuredFields.length) {
-      return `All ${measuredFields.length} mapped fields are classified for crop coverage and ratoon grouping.`
-    }
-
-    return `${typedMeasuredFields.length} of ${measuredFields.length} mapped fields are fully classified for crop coverage.`
-  }, [fieldSnapshots.length, measuredFields.length, typedMeasuredFields.length])
-
   const areaOverviewData = useMemo<CoverageDatum[]>(
     () => [
       {
@@ -1453,102 +1482,50 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         />
 
         <Grid container spacing={2.4} sx={{ position: 'relative', zIndex: 1 }}>
-          <Grid size={{ xs: 12, lg: 7 }}>
-            <Typography
-              sx={{
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: '0.16em',
-                textTransform: 'uppercase',
-                color: 'primary.main',
-                mb: 1,
-              }}
-            >
-              Field Intelligence Canvas
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: { xs: 28, md: 40 },
-                fontWeight: 900,
-                lineHeight: 1.02,
-                letterSpacing: '-0.05em',
-                color: 'text.primary',
-                maxWidth: 680,
-                mb: 1.2,
-              }}
-            >
-              Live area, soil, and crop coverage shaped from the latest field records
-            </Typography>
-            <Typography sx={{ maxWidth: 720, fontSize: 13.5, lineHeight: 1.8, color: 'text.secondary', mb: 2.1 }}>
-              Each chart keeps the latest usable snapshot for every field, then combines mapped area,
-              pH, TAM, soil type, sugarcane ratoons, break crops, and fallow coverage into one view.
-            </Typography>
-
-            <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 1.6 }}>
-              <Chip
-                size="small"
-                label={`${fieldSnapshots.length} live field snapshots`}
-                sx={{ bgcolor: alpha(AREA_COLORS.mapped, 0.1), color: 'primary.dark', fontWeight: 700 }}
-              />
-              <Chip
-                size="small"
-                label={`${measuredFields.length} mapped fields`}
-                sx={{ bgcolor: alpha(AREA_COLORS.sugarcane, 0.12), color: 'primary.dark', fontWeight: 700 }}
-              />
-              <Chip
-                size="small"
-                label={`${phFields.length} pH readings`}
-                sx={{ bgcolor: alpha(AREA_COLORS.phTarget, 0.12), color: 'primary.dark', fontWeight: 700 }}
-              />
-              <Chip
-                size="small"
-                label={`${tamFields.length} TAM readings`}
-                sx={{ bgcolor: alpha(AREA_COLORS.breakCrop, 0.14), color: 'primary.dark', fontWeight: 700 }}
-              />
-              <Chip
-                size="small"
-                label={`${uniqueSoilTypes} soil type(s)`}
-                sx={{ bgcolor: alpha(AREA_COLORS.fallow, 0.14), color: 'primary.dark', fontWeight: 700 }}
-              />
-            </Stack>
-
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.7 }}>
-              {heroNote}
-            </Typography>
-          </Grid>
-
-          <Grid size={{ xs: 12, lg: 5 }}>
+          <Grid size={{ xs: 12 }}>
             <Grid container spacing={1.4}>
-              <Grid size={{ xs: 6 }}>
-                <MetricCard
-                  label="Classified Land"
-                  value={formatMetricValue(classifiedMeasuredArea, 'ha')}
-                  helper="Mapped area that can be placed into crop coverage and ratoon charts."
+              <Grid size={{ xs: 12 }}>
+                <MetricGroupCard
+                  label="Coverage Snapshot"
+                  items={[
+                    { label: 'Snapshots', value: String(fieldSnapshots.length) },
+                    { label: 'Mapped', value: String(measuredFields.length) },
+                    { label: 'Classified', value: formatMetricValue(classifiedMeasuredArea, 'ha') },
+                    { label: 'Soil Types', value: String(uniqueSoilTypes) },
+                  ]}
+                  helper="The latest field coverage and data-readiness counts behind this board."
                   tone={AREA_COLORS.sugarcane}
+                  columns={4}
                 />
               </Grid>
-              <Grid size={{ xs: 6 }}>
-                <MetricCard
-                  label="Soil Types Logged"
-                  value={String(uniqueSoilTypes)}
-                  helper="Distinct soil labels currently attached to live field snapshots."
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <MetricGroupCard
+                  label="Soil pH Summary"
+                  items={[
+                    { label: 'Average', value: formatMetricValue(averagePh) },
+                    { label: 'Low', value: formatMetricValue(minPh) },
+                    { label: 'High', value: formatMetricValue(maxPh) },
+                  ]}
+                  helper={phFields.length > 0
+                    ? `${phFields.length} latest field reading(s) shape the current pH range.`
+                    : 'No live soil pH readings are available yet.'}
+                  tone={AREA_COLORS.phTarget}
+                  columns={3}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <MetricGroupCard
+                  label="TAM Summary"
+                  items={[
+                    { label: 'Average', value: formatMetricValue(averageTam, 'mm', 0) },
+                    { label: 'Low', value: formatMetricValue(minTam, 'mm', 0) },
+                    { label: 'High', value: formatMetricValue(maxTam, 'mm', 0) },
+                  ]}
+                  helper={tamFields.length > 0
+                    ? `${tamFields.length} latest field reading(s) shape the current TAM range.`
+                    : 'No live TAM readings are available yet.'}
                   tone={AREA_COLORS.breakCrop}
-                />
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <MetricCard
-                  label="Lowest pH"
-                  value={formatMetricValue(minPh)}
-                  helper={maxPh === null ? 'No pH range is available yet.' : `Highest pH is ${maxPh.toFixed(2)}.`}
-                  tone={AREA_COLORS.phAcidic}
-                />
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <MetricCard
-                  label="Highest TAM"
-                  value={formatMetricValue(maxTam, 'mm')}
-                  helper={minTam === null ? 'No TAM range is available yet.' : `Lowest TAM is ${minTam.toFixed(0)} mm.`}
-                  tone={AREA_COLORS.phAlkaline}
+                  columns={3}
                 />
               </Grid>
             </Grid>
@@ -1569,38 +1546,6 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
           '& > *': { minWidth: 0 },
         }}
       >
-        <Box sx={{ gridColumn: { xl: 'span 3' } }}>
-          <MetricCard
-            label="Latest Field Snapshots"
-            value={String(fieldSnapshots.length)}
-            helper="One latest dated snapshot per field for the live charts below."
-            tone={AREA_COLORS.mapped}
-          />
-        </Box>
-        <Box sx={{ gridColumn: { xl: 'span 3' } }}>
-          <MetricCard
-            label="Total Mapped Area"
-            value={formatMetricValue(totalMeasuredArea, 'ha')}
-            helper="Using recorded hectares first, then polygon geometry when hectares are missing."
-            tone={AREA_COLORS.sugarcane}
-          />
-        </Box>
-        <Box sx={{ gridColumn: { xl: 'span 3' } }}>
-          <MetricCard
-            label="Average Soil pH"
-            value={formatMetricValue(averagePh)}
-            helper={`${phFields.length} field(s) contribute to the live pH profile.`}
-            tone={AREA_COLORS.phTarget}
-          />
-        </Box>
-        <Box sx={{ gridColumn: { xl: 'span 3' } }}>
-          <MetricCard
-            label="Average TAM"
-            value={formatMetricValue(averageTam, 'mm', 0)}
-            helper={`${tamFields.length} field(s) contribute to the live TAM profile.`}
-            tone={AREA_COLORS.breakCrop}
-          />
-        </Box>
         <Box sx={{ gridColumn: { xl: 'span 6' } }}>
           <InsightCard
             eyebrow="Coverage Lead"
@@ -1711,33 +1656,6 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
-
-                <Grid container spacing={1.2}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <MetricCard
-                      label="Average pH"
-                      value={formatMetricValue(averagePh)}
-                      helper="Mean of latest field pH values."
-                      tone={AREA_COLORS.phTarget}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <MetricCard
-                      label="Lowest pH"
-                      value={formatMetricValue(minPh)}
-                      helper="Most acidic latest field snapshot."
-                      tone={AREA_COLORS.phAcidic}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <MetricCard
-                      label="Highest pH"
-                      value={formatMetricValue(maxPh)}
-                      helper="Most alkaline latest field snapshot."
-                      tone={AREA_COLORS.phAlkaline}
-                    />
-                  </Grid>
-                </Grid>
               </Box>
             ) : (
               <EmptyState message="Soil pH charts will appear here once fields include live pH readings." />
@@ -1939,32 +1857,17 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
           >
             {fallowFields.length > 0 ? (
               <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.6 }}>
-                <Grid container spacing={1.2}>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <MetricCard
-                      label="Fallow Area"
-                      value={formatMetricValue(totalFallowArea, 'ha')}
-                      helper="Total mapped land currently sitting in fallow."
-                      tone={AREA_COLORS.fallow}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <MetricCard
-                      label="Fallow Fields"
-                      value={String(fallowFields.length)}
-                      helper="Mapped fields currently tagged as fallow period."
-                      tone={AREA_COLORS.breakCrop}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <MetricCard
-                      label="Share of Land"
-                      value={`${fallowShare.toFixed(1)}%`}
-                      helper="Fallow share of the full mapped area in the live statistics set."
-                      tone={AREA_COLORS.mapped}
-                    />
-                  </Grid>
-                </Grid>
+                <MetricGroupCard
+                  label="Fallow Summary"
+                  items={[
+                    { label: 'Area', value: formatMetricValue(totalFallowArea, 'ha') },
+                    { label: 'Fields', value: String(fallowFields.length) },
+                    { label: 'Share', value: `${fallowShare.toFixed(1)}%` },
+                  ]}
+                  helper="Grouped fallow totals for the current live mapped area."
+                  tone={AREA_COLORS.fallow}
+                  columns={3}
+                />
 
                 <Box sx={{ flex: 1, minHeight: 0 }}>
                   <CoverageRows

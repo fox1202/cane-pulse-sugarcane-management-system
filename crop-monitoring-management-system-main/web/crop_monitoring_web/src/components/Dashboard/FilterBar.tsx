@@ -93,23 +93,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange, o
 
                 <Grid size={{ xs: 12, sm: 6, md: 3, lg: 1.5 }}>
                     <FormControl fullWidth variant="filled" size="small">
-                        <InputLabel>Section</InputLabel>
-                        <Select
-                            value={filters.section}
-                            onChange={(e) => onFilterChange('section', e.target.value)}
-                            label="Section"
-                            sx={{ borderRadius: 2 }}
-                        >
-                            <MenuItem value="all">All Sections</MenuItem>
-                            {options.sections.map((s: string) => (
-                                <MenuItem key={s} value={s}>{s}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 6, md: 3, lg: 1.5 }}>
-                    <FormControl fullWidth variant="filled" size="small">
                         <InputLabel>Block</InputLabel>
                         <Select
                             value={filters.block}

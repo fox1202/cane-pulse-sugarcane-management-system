@@ -226,7 +226,7 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                         >
                             {fieldOptions.map((field) => (
                                 <MenuItem key={`${field.block_id}-${field.field_name}`} value={field.field_name}>
-                                    {field.field_name} ({field.section_name} / {field.block_id})
+                                    {field.field_name} ({field.block_id})
                                 </MenuItem>
                             ))}
                         </TextField>
@@ -237,16 +237,7 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                             </Typography>
                         )}
                     </Grid>
-                    <Grid size={{ xs: 12, md: 4 }}>
-                        <TextField
-                            fullWidth
-                            label="Section"
-                            value={selectedField?.section_name || formData.section_name || ''}
-                            InputProps={{ readOnly: true }}
-                            disabled
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, md: 8 }}>
                         <TextField
                             fullWidth
                             label="Block ID"

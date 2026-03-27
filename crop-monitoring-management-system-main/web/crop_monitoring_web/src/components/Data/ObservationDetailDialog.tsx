@@ -13,7 +13,6 @@ import {
     Paper,
 } from '@mui/material'
 import {
-    LocationOn,
     AccessTime,
     StorageRounded,
     PersonOutlineRounded,
@@ -268,7 +267,6 @@ export const ObservationDetailDialog = ({
         || entryForm?.selected_field
         || observation.field_name
         || 'Untitled Record'
-    const displaySection = currentSheet?.section_name || observation.section_name
     const displayBlockId = currentSheet?.block_id || observation.block_id
     const displayRecordedAt = currentSheet?.date_recorded || entryForm?.date_recorded || observation.date_recorded
     const displayCropType = currentSheet?.crop_class
@@ -289,7 +287,6 @@ export const ObservationDetailDialog = ({
     const fieldItems = [
         { label: 'Field Name', value: displayFieldName },
         { label: 'Selected Field', value: entryForm?.selected_field },
-        { label: 'Section', value: displaySection },
         { label: 'Block', value: displayBlockId },
         { label: 'Recorded', value: formatDateTime(displayRecordedAt) },
     ].filter((item) => hasValue(item.value))
@@ -388,9 +385,6 @@ export const ObservationDetailDialog = ({
                             {displayFieldName}
                         </Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.2, alignItems: 'center' }}>
-                            {hasValue(displaySection) && (
-                                <Chip size="small" icon={<LocationOn />} label={displaySection} sx={{ bgcolor: 'rgba(47,159,90,0.12)', color: 'primary.dark', fontWeight: 700 }} />
-                            )}
                             {hasValue(displayBlockId) && (
                                 <Chip size="small" label={displayBlockId} sx={{ bgcolor: 'rgba(47,159,90,0.08)', color: 'primary.dark', fontWeight: 700 }} />
                             )}

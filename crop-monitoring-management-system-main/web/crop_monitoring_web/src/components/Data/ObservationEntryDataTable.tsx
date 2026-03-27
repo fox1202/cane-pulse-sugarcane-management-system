@@ -68,7 +68,6 @@ interface ObservationEntrySheetColumn {
 export const OBSERVATION_ENTRY_SHEET_COLUMNS: ObservationEntrySheetColumn[] = [
     { key: 'dateRecorded', label: 'Date Recorded', minWidth: 150 },
     { key: 'fieldId', label: 'Field Name', minWidth: 170 },
-    { key: 'section', label: 'Section', minWidth: 150, wrap: true },
     { key: 'blockId', label: 'Block ID', minWidth: 140 },
     { key: 'area', label: 'Area (ha)', minWidth: 110 },
     { key: 'irrigationType', label: 'Irrigation Type', minWidth: 150 },
@@ -85,7 +84,6 @@ export const OBSERVATION_ENTRY_SHEET_COLUMNS: ObservationEntrySheetColumn[] = [
     { key: 'plantingDate', label: 'Planting Date', minWidth: 150 },
     { key: 'previousCuttingDate', label: 'Previous Cutting Date', minWidth: 180 },
     { key: 'expectedHarvestDate', label: 'Expected Harvest Date', minWidth: 180 },
-    { key: 'stress', label: 'Stress', minWidth: 120 },
     { key: 'cropVigor', label: 'Crop Vigor', minWidth: 130 },
     { key: 'canopyCover', label: 'Canopy Cover', minWidth: 130 },
     { key: 'residueType', label: 'Residue Type', minWidth: 140 },

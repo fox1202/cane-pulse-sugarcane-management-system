@@ -182,6 +182,10 @@ function getSugarcaneSortOrder(label: string): number {
     return 999
 }
 
+function normalizeCollectorToken(value?: string | null): string {
+    return String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
 // ─── Map Bounds Fitter ─────────────────────────────────────────────────────────
 function MapBoundsFitter({
     fieldShapes,
@@ -454,7 +458,6 @@ function MobileRecordInfoPanel({ record }: { record: MobileObservationRecord }) 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.55 }}>
                 <PopupInfoRow label="Collector"        value={collectorLabel} />
                 <PopupInfoRow label="Recorded"         value={formatDisplayDate(recordedAt, true)} />
-                <PopupInfoRow label="Section"          value={currentSheet?.section_name || record.section_name} />
                 <PopupInfoRow label="Block"            value={currentSheet?.block_id || record.block_id} />
                 <PopupInfoRow label="Crop"             value={cropType} />
                 <PopupInfoRow label="Trial"            value={trialLabel} />
@@ -601,7 +604,7 @@ function FieldBoundaryLayer({
                                     {String(feature.properties?.field_name ?? 'RECORDED AREA').toUpperCase()}
                                 </Typography>
                                 <Typography sx={{ fontSize: '0.58rem', color: POPUP_SUB, fontFamily: MONO, mt: 0.4 }}>
-                                    {[feature.properties?.section_name, feature.properties?.block_id].filter(Boolean).join(' / ') || 'RECORDED MOBILE BOUNDARY'}
+                                    {feature.properties?.block_id || 'RECORDED MOBILE BOUNDARY'}
                                 </Typography>
                                 {mobileRecord
                                     ? <MobileRecordInfoPanel record={mobileRecord} />
@@ -896,6 +899,7 @@ export function MapViewPage() {
     const [error,        setError]        = useState<Error | null>(null)
     const [selectedCropType,    setSelectedCropType]    = useState<string>(DEFAULT_CROP_TYPE)
     const [selectedCropClass,   setSelectedCropClass]   = useState<string>('all')
+    const [selectedCollector,   setSelectedCollector]   = useState<string>('all')
     const [userLocation,        setUserLocation]        = useState<[number, number] | null>(null)
     const [manualLocationRequest, setManualLocationRequest] = useState(false)
     const [mapLayer,            setMapLayer]            = useState<MapLayer>('satellite')
@@ -977,6 +981,16 @@ export function MapViewPage() {
         return cropClass || cropTypeRaw
     }, [normalizeCropClass, normalizeCropType])
 
+    const getCollectorLabel = useCallback((record?: MobileObservationRecord | null, field?: Partial<Field> | null): string => {
+        return String(
+            record?.monitoring_sheet?.contact_person
+            || record?.collector_id
+            || record?.entry_form?.contact_person
+            || field?.created_by
+            || ''
+        ).trim().replace(/\s+/g, ' ')
+    }, [])
+
     const mobileRecordsForCropType = useMemo(
         () => mobileRecords.filter((record) =>
             selectedCropType === 'all' || normalizeCropType(getMobileCropType(record)) === selectedCropType
@@ -991,6 +1005,7 @@ export function MapViewPage() {
         setCollectionFilter('recorded')
         setSelectedCropType('all')
         setSelectedCropClass('all')
+        setSelectedCollector('all')
     }, [focusObservation])
 
     const loadMapData = useCallback(async () => {
@@ -1173,6 +1188,56 @@ export function MapViewPage() {
         return normalizeCropClass(value) === selectedCropClass
     }, [selectedCropClass, normalizeCropClass])
 
+    const collectorOptions = useMemo(
+        () => {
+            const optionMap = new Map<string, string>()
+
+            mobileRecordsForCropType.forEach((record) => {
+                if (!matchesSelectedCropClass(getMobileCropClass(record))) {
+                    return
+                }
+
+                const label = getCollectorLabel(record)
+                const token = normalizeCollectorToken(label)
+                if (token && !optionMap.has(token)) {
+                    optionMap.set(token, label)
+                }
+            })
+
+            fields.forEach((field) => {
+                if (selectedCropType !== 'all' && normalizeCropType(field.crop_type) !== selectedCropType) {
+                    return
+                }
+
+                const label = getCollectorLabel(undefined, field)
+                const token = normalizeCollectorToken(label)
+                if (token && !optionMap.has(token)) {
+                    optionMap.set(token, label)
+                }
+            })
+
+            return Array.from(optionMap.entries())
+                .map(([value, label]) => ({ value, label }))
+                .sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: 'base' }))
+        },
+        [fields, getCollectorLabel, getMobileCropClass, matchesSelectedCropClass, mobileRecordsForCropType, normalizeCropType, selectedCropType]
+    )
+
+    useEffect(() => {
+        if (selectedCollector === 'all') {
+            return
+        }
+
+        if (!collectorOptions.some((option) => option.value === selectedCollector)) {
+            setSelectedCollector('all')
+        }
+    }, [collectorOptions, selectedCollector])
+
+    const matchesSelectedCollector = useCallback((value?: string | null) => {
+        if (selectedCollector === 'all') return true
+        return normalizeCollectorToken(value) === selectedCollector
+    }, [selectedCollector])
+
     const getFieldCropClass = useCallback((field: Field, matchedRecord?: MobileObservationRecord | null): string => {
         const linkedRecord = matchedRecord ?? getMobileRecordForBoundary(field, mobileRecordsForCropType)
         const linkedCropClass = getMobileCropClass(linkedRecord)
@@ -1201,6 +1266,13 @@ export function MapViewPage() {
         return ''
     }, [getMobileCropClass, mobileRecordsForCropType, normalizeCropClass, selectedCropType])
 
+    const matchesSelectedCollectorField = useCallback((field?: Partial<Field> | null, matchedRecord?: MobileObservationRecord | null) => {
+        if (selectedCollector === 'all') return true
+
+        const collectorLabel = getCollectorLabel(matchedRecord, field)
+        return matchesSelectedCollector(collectorLabel)
+    }, [getCollectorLabel, matchesSelectedCollector, selectedCollector])
+
     // ── Mobile helpers ────────────────────────────────────────────────────────
     const hasRenderableMobileGeometry = (record: MobileObservationRecord) =>
         hasCoordinates(record.latitude, record.longitude) || Boolean(getMobileSpatialGeometry(record))
@@ -1208,9 +1280,10 @@ export function MapViewPage() {
     const mobileRecordsForFieldLinking = useMemo(
         () => mobileRecordsForCropType.filter((record) => {
             if (!matchesSelectedCropClass(getMobileCropClass(record))) return false
+            if (!matchesSelectedCollector(getCollectorLabel(record))) return false
             return Boolean(record.field_name || record.entry_form?.selected_field || record.block_id || record.section_name)
         }),
-        [mobileRecordsForCropType, matchesSelectedCropClass, getMobileCropClass]
+        [mobileRecordsForCropType, matchesSelectedCropClass, getMobileCropClass, matchesSelectedCollector, getCollectorLabel]
     )
 
     const recordedBoundaryMobileRecords = useMemo(
@@ -1238,8 +1311,11 @@ export function MapViewPage() {
     )
 
     const cropClassFilteredFields = useMemo(
-        () => linkedFields.filter((field) => matchesSelectedCropClass(getFieldCropClass(field))),
-        [linkedFields, matchesSelectedCropClass, getFieldCropClass]
+        () => linkedFields.filter((field) =>
+            matchesSelectedCropClass(getFieldCropClass(field))
+            && matchesSelectedCollectorField(field, getMobileRecordForBoundary(field, mobileRecordsForFieldLinking))
+        ),
+        [linkedFields, matchesSelectedCropClass, getFieldCropClass, matchesSelectedCollectorField, mobileRecordsForFieldLinking]
     )
 
     const filteredFields = useMemo(() =>
@@ -1355,6 +1431,10 @@ export function MapViewPage() {
                 return false
             }
 
+            if (!matchesSelectedCollectorField(matchedField, matchedRecordForType ?? matchedRecordedRecord)) {
+                return false
+            }
+
             return matchesRecordedBoundaryFilter(isRecorded)
         }),
         [
@@ -1368,6 +1448,7 @@ export function MapViewPage() {
             getMobileCropClass,
             getFieldCropClass,
             matchesSelectedCropClass,
+            matchesSelectedCollectorField,
             matchesRecordedBoundaryFilter,
         ]
     )
@@ -1393,6 +1474,10 @@ export function MapViewPage() {
                 return false
             }
 
+            if (!matchesSelectedCollectorField(matchedField, matchedRecordForType ?? matchedRecordedRecord)) {
+                return false
+            }
+
             return matchesRecordedBoundaryFilter(isRecorded)
         }),
         [
@@ -1406,6 +1491,7 @@ export function MapViewPage() {
             getMobileCropClass,
             getFieldCropClass,
             matchesSelectedCropClass,
+            matchesSelectedCollectorField,
             matchesRecordedBoundaryFilter,
         ]
     )
@@ -1644,6 +1730,9 @@ export function MapViewPage() {
         : selectedCropType === 'Break Crop'
             ? 'ALL BREAK CROPS'
             : 'ALL CLASSES'
+    const selectedCollectorLabel = selectedCollector === 'all'
+        ? 'ALL COLLECTORS'
+        : collectorOptions.find((option) => option.value === selectedCollector)?.label ?? selectedCollector
     // ── Labels ────────────────────────────────────────────────────────────────
     const activeTileSource = mapLayer === 'satellite' ? SATELLITE_TILE_SOURCES[satelliteSourceIndex] : TERRAIN_TILE_SOURCE
 
@@ -1799,6 +1888,25 @@ export function MapViewPage() {
                                             ))}
                                         </ControlSelect>
                                     )}
+                                    <ControlSelect
+                                        label="Collector"
+                                        value={selectedCollector}
+                                        onChange={setSelectedCollector}
+                                        renderValue={(value) =>
+                                            value === 'all'
+                                                ? 'ALL COLLECTORS'
+                                                : selectedCollectorLabel.toUpperCase()
+                                        }
+                                    >
+                                        <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
+                                            ALL COLLECTORS
+                                        </MenuItem>
+                                        {collectorOptions.map((collector) => (
+                                            <MenuItem key={collector.value} value={collector.value} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
+                                                {collector.label.toUpperCase()}
+                                            </MenuItem>
+                                        ))}
+                                    </ControlSelect>
                                 </Box>
 
                             </HudPanel>

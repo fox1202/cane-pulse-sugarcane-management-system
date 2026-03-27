@@ -473,9 +473,6 @@ function DataManagementPageContent() {
                 </Paper>
             ) : (
                 <>
-                    <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary' }}>
-                        Scroll sideways to see every observation column from the latest mobile form and the live record feed.
-                    </Typography>
                     <ObservationTable
                         observations={paginatedObservations}
                         onView={handleView}

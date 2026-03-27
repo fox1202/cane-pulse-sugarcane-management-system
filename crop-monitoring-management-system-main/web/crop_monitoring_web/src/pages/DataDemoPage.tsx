@@ -469,7 +469,7 @@ function ObsTable() {
       }
     >
       <ColBar
-        cols={["Field / Section", "Crop Type", "Stress", "Recorded", "Media"]}
+        cols={["Field", "Crop Type", "Stress", "Recorded", "Media"]}
         template="1.4fr 1.2fr 1fr 1fr 80px"
       />
       {MOCK_OBS.map((obs, i) => {
@@ -486,10 +486,6 @@ function ObsTable() {
                   fontFamily: "'Cabinet Grotesk', sans-serif",
                   fontWeight: 700, fontSize: 14, color: C.t90,
                 }}>{obs.field_name || 'Unknown'}</div>
-                <div style={{
-                  fontFamily: "'DM Mono', monospace",
-                  fontSize: 10, color: C.t35, marginTop: 1,
-                }}>{obs.section_name || '—'}</div>
               </div>
 
               {/* Crop */}

@@ -10,13 +10,17 @@ import {
     DialogTitle,
     Grid,
     MenuItem,
+    Paper,
     Stack,
     TextField,
     Typography,
 } from '@mui/material';
 import { UploadFileOutlined } from '@mui/icons-material';
+import L from 'leaflet';
+import { MapContainer, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import {
     bulkCreateObservationEntryFormSubmissions,
+    createPredefinedField,
     createObservationEntryFormSubmission,
     fetchPredefinedFields,
     getPredefinedFieldByName,
@@ -69,6 +73,78 @@ const BREAK_CROP_CLASS_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet
 const FALLOW_CROP_CLASS_OPTIONS = ['None'];
 const RESIDUE_TYPE_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'None'];
 const RESIDUE_MANAGEMENT_METHOD_OPTIONS = ['Ploughed in', 'Parting', 'Broadcasting', 'None'];
+const DRAW_NEW_FIELD_VALUE = '__draw_new_field__';
+const DEFAULT_DRAW_CENTER: [number, number] = [-18.922, 31.134];
+
+type DrawPoint = [number, number];
+
+function buildPolygonGeometryFromPoints(points: DrawPoint[]): { type: 'Polygon'; coordinates: number[][][] } | undefined {
+    if (points.length < 3) {
+        return undefined;
+    }
+
+    const ring = points.map(([latitude, longitude]) => [longitude, latitude]);
+    const [firstLongitude, firstLatitude] = ring[0];
+
+    return {
+        type: 'Polygon',
+        coordinates: [[
+            ...ring,
+            [firstLongitude, firstLatitude],
+        ]],
+    };
+}
+
+function getPointCentroid(points: DrawPoint[]): { latitude: number; longitude: number } | null {
+    if (points.length === 0) {
+        return null;
+    }
+
+    const latitude = points.reduce((sum, [value]) => sum + value, 0) / points.length;
+    const longitude = points.reduce((sum, [, value]) => sum + value, 0) / points.length;
+
+    return {
+        latitude: Number(latitude.toFixed(6)),
+        longitude: Number(longitude.toFixed(6)),
+    };
+}
+
+function DrawingMapClickCapture({ onAddPoint }: { onAddPoint: (point: DrawPoint) => void }) {
+    useMapEvents({
+        click(event) {
+            onAddPoint([
+                Number(event.latlng.lat.toFixed(6)),
+                Number(event.latlng.lng.toFixed(6)),
+            ]);
+        },
+    });
+
+    return null;
+}
+
+function DrawingMapViewport({
+    points,
+    fallbackCenter,
+}: {
+    points: DrawPoint[]
+    fallbackCenter: [number, number]
+}) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (points.length === 0) {
+            map.setView(fallbackCenter, 14, { animate: true });
+            return;
+        }
+
+        const bounds = L.latLngBounds(points.map(([latitude, longitude]) => [latitude, longitude] as [number, number]));
+        if (bounds.isValid()) {
+            map.fitBounds(bounds.pad(0.35), { padding: [18, 18], animate: true, duration: 0.8 });
+        }
+    }, [fallbackCenter, map, points]);
+
+    return null;
+}
 
 function createEmptySubmission(collectorId: string): ObservationEntryFormSubmissionInput {
     return {
@@ -273,17 +349,36 @@ function SectionHeading({ title }: { title: string }) {
 }
 
 function buildFreshFormData(
+    currentSubmission: ObservationEntryFormSubmissionInput,
     collectorId: string,
     matchedField?: PredefinedField
 ): ObservationEntryFormSubmissionInput {
     const empty = createEmptySubmission(collectorId);
+    const preserved = {
+        ...currentSubmission,
+        collector_id: collectorId,
+    };
 
     if (!matchedField) {
-        return empty;
+        return {
+            ...preserved,
+            selected_field: '',
+            field_id: '',
+            field_name: '',
+            section_name: '',
+            block_id: '',
+            area: undefined,
+            block_size: undefined,
+            latitude: 0,
+            longitude: 0,
+            spatial_data: undefined,
+            geom_polygon: undefined,
+            crop_type: preserved.crop_type || empty.crop_type,
+        };
     }
 
     return {
-        ...empty,
+        ...preserved,
         field_id: matchedField.field_name,
         selected_field: matchedField.field_name,
         field_name: matchedField.field_name,
@@ -295,7 +390,7 @@ function buildFreshFormData(
         longitude: matchedField.longitude ?? empty.longitude,
         spatial_data: matchedField.geom ?? undefined,
         geom_polygon: matchedField.geom ?? undefined,
-        crop_type: matchedField.crop_type || empty.crop_type,
+        crop_type: matchedField.crop_type || preserved.crop_type || empty.crop_type,
     };
 }
 
@@ -307,6 +402,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const { user } = useAuth();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const csvInputRef = useRef<HTMLInputElement | null>(null);
+    const dialogContentRef = useRef<HTMLDivElement | null>(null);
     const [predefinedFields, setPredefinedFields] = useState<PredefinedField[]>([]);
     const [formData, setFormData] = useState<ObservationEntryFormSubmissionInput>(createEmptySubmission(user?.id || ''));
     const [loadingFields, setLoadingFields] = useState(false);
@@ -316,6 +412,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const [error, setError] = useState<string | null>(null);
     const [parseSummary, setParseSummary] = useState<string | null>(null);
     const [parseWarnings, setParseWarnings] = useState<string[]>([]);
+    const [isCreatingCustomField, setIsCreatingCustomField] = useState(false);
+    const [drawPoints, setDrawPoints] = useState<DrawPoint[]>([]);
 
     useEffect(() => {
         if (!open) return;
@@ -324,6 +422,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setError(null);
         setParseSummary(null);
         setParseWarnings([]);
+        setIsCreatingCustomField(false);
+        setDrawPoints([]);
     }, [open, user?.id]);
 
     useEffect(() => {
@@ -361,6 +461,41 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         [predefinedFields, formData.field_name]
     );
 
+    const drawingMapCenter = useMemo<[number, number]>(() => {
+        const coordinateFields = predefinedFields.filter((field) =>
+            Number.isFinite(field.latitude) &&
+            Number.isFinite(field.longitude) &&
+            (field.latitude !== 0 || field.longitude !== 0)
+        );
+
+        if (coordinateFields.length === 0) {
+            return DEFAULT_DRAW_CENTER;
+        }
+
+        const latitude = coordinateFields.reduce((sum, field) => sum + field.latitude, 0) / coordinateFields.length;
+        const longitude = coordinateFields.reduce((sum, field) => sum + field.longitude, 0) / coordinateFields.length;
+
+        return [
+            Number(latitude.toFixed(6)),
+            Number(longitude.toFixed(6)),
+        ];
+    }, [predefinedFields]);
+
+    const drawnGeometry = useMemo(
+        () => buildPolygonGeometryFromPoints(drawPoints),
+        [drawPoints]
+    );
+
+    const drawnCentroid = useMemo(
+        () => getPointCentroid(drawPoints),
+        [drawPoints]
+    );
+
+    const drawnArea = useMemo(
+        () => estimateGeometryAreaHa(drawnGeometry),
+        [drawnGeometry]
+    );
+
     const selectableFieldOptions = useMemo(() => {
         return predefinedFields
             .map((field) => ({
@@ -386,21 +521,58 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleFieldSelection = (fieldName: string) => {
-        const match = getPredefinedFieldByName(predefinedFields, fieldName);
-        const resolvedFieldName = match?.field_name || fieldName;
-
-        if (!match) {
-            setFormData({
-                ...createEmptySubmission(user?.id || formData.collector_id || ''),
-                field_id: resolvedFieldName,
-                selected_field: resolvedFieldName,
-                field_name: resolvedFieldName,
-            });
+    useEffect(() => {
+        if (!isCreatingCustomField) {
             return;
         }
 
-        setFormData(buildFreshFormData(user?.id || formData.collector_id || '', match));
+        setFormData((prev) => ({
+            ...prev,
+            area: drawnArea,
+            block_size: drawnArea,
+            spatial_data: drawnGeometry ?? undefined,
+            geom_polygon: drawnGeometry ?? undefined,
+            latitude: drawnCentroid?.latitude ?? 0,
+            longitude: drawnCentroid?.longitude ?? 0,
+        }));
+    }, [drawnArea, drawnCentroid, drawnGeometry, isCreatingCustomField]);
+
+    const handleFieldSelection = (fieldName: string) => {
+        if (fieldName === DRAW_NEW_FIELD_VALUE) {
+            setIsCreatingCustomField(true);
+            setDrawPoints([]);
+            setFormData((prev) => buildFreshFormData(
+                prev,
+                user?.id || prev.collector_id || '',
+            ));
+            return;
+        }
+
+        const match = getPredefinedFieldByName(predefinedFields, fieldName);
+        setIsCreatingCustomField(false);
+        setDrawPoints([]);
+
+        if (!match) {
+            return;
+        }
+
+        setFormData((prev) => buildFreshFormData(
+            prev,
+            user?.id || prev.collector_id || '',
+            match,
+        ));
+    };
+
+    const handleAddDrawPoint = (point: DrawPoint) => {
+        setDrawPoints((prev) => [...prev, point]);
+    };
+
+    const handleUndoDrawPoint = () => {
+        setDrawPoints((prev) => prev.slice(0, -1));
+    };
+
+    const handleClearDrawPoints = () => {
+        setDrawPoints([]);
     };
 
     const handlePdfSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -467,12 +639,76 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setError(null);
 
         try {
-            if (!formData.field_name) {
+            if (!formData.field_name && !isCreatingCustomField) {
                 throw new Error('Please select a field before saving.');
             }
 
-            const fieldExists = predefinedFields.some((field) => field.field_name === formData.field_name);
-            if (!fieldExists) {
+            let resolvedField = selectedField;
+            let registryFields = predefinedFields;
+
+            if (isCreatingCustomField) {
+                const normalizedFieldName = formData.field_name.trim();
+                const hasExistingField = predefinedFields.some((field) =>
+                    field.field_name.trim().toLowerCase() === normalizedFieldName.toLowerCase()
+                );
+
+                if (!normalizedFieldName) {
+                    throw new Error('Please enter a new trial or field name.');
+                }
+
+                if (hasExistingField) {
+                    throw new Error('That field name already exists in the registry. Please select it from the list instead.');
+                }
+
+                if (!formData.block_id?.trim()) {
+                    throw new Error('Please enter a block ID for the new field or trial.');
+                }
+
+                if (!drawnGeometry || drawPoints.length < 3) {
+                    throw new Error('Please draw the new field or trial boundary on the map using at least 3 points.');
+                }
+
+                if (!drawnCentroid) {
+                    throw new Error('Unable to calculate the center of the drawn field boundary.');
+                }
+
+                const createdField = await createPredefinedField({
+                    field_name: normalizedFieldName,
+                    section_name: formData.section_name || '',
+                    block_id: formData.block_id,
+                    latitude: drawnCentroid.latitude,
+                    longitude: drawnCentroid.longitude,
+                    geom: drawnGeometry,
+                    created_by: user?.id,
+                    crop_type: formData.crop_type,
+                    date_recorded: formData.date_recorded,
+                });
+
+                registryFields = [...predefinedFields, createdField]
+                    .sort((left, right) => left.field_name.localeCompare(right.field_name, undefined, { sensitivity: 'base' }));
+                resolvedField = createdField;
+
+                setPredefinedFields(registryFields);
+                setIsCreatingCustomField(false);
+                setDrawPoints([]);
+                setFormData((prev) => buildFreshFormData(
+                    {
+                        ...prev,
+                        field_name: normalizedFieldName,
+                        block_id: createdField.block_id,
+                        area: drawnArea,
+                        block_size: drawnArea,
+                        spatial_data: drawnGeometry,
+                        geom_polygon: drawnGeometry,
+                        latitude: drawnCentroid.latitude,
+                        longitude: drawnCentroid.longitude,
+                    },
+                    user?.id || prev.collector_id || '',
+                    createdField,
+                ));
+            }
+
+            if (!resolvedField) {
                 throw new Error('Please choose a predefined field from the registry.');
             }
 
@@ -483,13 +719,18 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             const submission = {
                 ...formData,
                 collector_id: user?.id || formData.collector_id,
-                section_name: selectedField?.section_name || formData.section_name,
-                block_id: selectedField?.block_id || formData.block_id,
-                latitude: formData.latitude ?? selectedField?.latitude ?? 0,
-                longitude: formData.longitude ?? selectedField?.longitude ?? 0,
+                selected_field: resolvedField.field_name || formData.selected_field,
+                field_id: resolvedField.field_name || formData.field_id,
+                field_name: resolvedField.field_name || formData.field_name,
+                section_name: resolvedField.section_name || formData.section_name,
+                block_id: resolvedField.block_id || formData.block_id,
+                spatial_data: formData.spatial_data ?? resolvedField.geom ?? undefined,
+                geom_polygon: formData.geom_polygon ?? resolvedField.geom ?? undefined,
+                latitude: formData.latitude ?? resolvedField.latitude ?? 0,
+                longitude: formData.longitude ?? resolvedField.longitude ?? 0,
             };
 
-            await createObservationEntryFormSubmission(submission, predefinedFields);
+            await createObservationEntryFormSubmission(submission, registryFields);
 
             await onSubmitted();
             onClose();
@@ -500,10 +741,14 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         }
     };
 
+    const handleEditForm = () => {
+        dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     return (
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>Upload CSV/PDF or Manually Enter Field Observation Form</DialogTitle>
-            <DialogContent dividers>
+            <DialogContent ref={dialogContentRef} dividers>
                 <Stack spacing={2.5}>
                     <Alert severity="info">
                         Upload a text-based PDF to auto-fill one form, upload a CSV for bulk import, or leave it blank and type the details manually.
@@ -576,9 +821,12 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 select
                                 fullWidth
                                 label="Field ID"
-                                value={formData.field_name}
+                                value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : formData.field_name}
                                 onChange={(e) => handleFieldSelection(e.target.value)}
                                 disabled={loadingFields}
+                                helperText={isCreatingCustomField
+                                    ? 'Drawing a new field or trial. Save the form to add it to the registry.'
+                                    : 'Can’t find it in the list? Choose "Draw New Trial / Field".'}
                                 SelectProps={{
                                     MenuProps: {
                                         PaperProps: {
@@ -625,26 +873,133 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         {field.value}
                                     </MenuItem>
                                 ))}
+                                <MenuItem value={DRAW_NEW_FIELD_VALUE} sx={{ fontWeight: 800, color: 'primary.main' }}>
+                                    Draw New Trial / Field
+                                </MenuItem>
                             </TextField>
                         </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Block ID"
-                                value={selectedField?.block_id || formData.block_id || ''}
-                                InputProps={{ readOnly: true }}
-                                disabled
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        {isCreatingCustomField ? (
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    fullWidth
+                                    label="New Trial / Field Name"
+                                    value={formData.field_name || ''}
+                                    onChange={(e) => updateField('field_name', e.target.value)}
+                                    helperText="This name will be saved into the field registry for future use."
+                                />
+                            </Grid>
+                        ) : (
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Block ID"
+                                    value={selectedField?.block_id || formData.block_id || ''}
+                                    InputProps={{ readOnly: true }}
+                                    disabled
+                                />
+                            </Grid>
+                        )}
+                        {isCreatingCustomField && (
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Block ID"
+                                    value={formData.block_id || ''}
+                                    onChange={(e) => updateField('block_id', e.target.value)}
+                                    helperText="Set the block where this new field or trial belongs."
+                                />
+                            </Grid>
+                        )}
+                        <Grid size={{ xs: 12, md: isCreatingCustomField ? 6 : 4 }}>
                             <TextField
                                 fullWidth
                                 label="Area"
                                 value={formData.area ?? formData.block_size ?? ''}
                                 InputProps={{ readOnly: true }}
                                 disabled
+                                helperText={isCreatingCustomField ? 'Area is estimated from the drawn boundary.' : undefined}
                             />
                         </Grid>
+                        {isCreatingCustomField && (
+                            <Grid size={{ xs: 12 }}>
+                                <Alert severity="info" sx={{ mb: 1 }}>
+                                    If the trial or field is missing from the registry, enter its name, then click the map to place boundary points. Add at least 3 points.
+                                </Alert>
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        borderRadius: 3,
+                                        overflow: 'hidden',
+                                        borderColor: 'rgba(86,184,112,0.24)',
+                                        bgcolor: 'rgba(255,255,255,0.96)',
+                                    }}
+                                >
+                                    <Box sx={{ height: 320, width: '100%' }}>
+                                        <MapContainer
+                                            center={drawingMapCenter}
+                                            zoom={14}
+                                            style={{ height: '100%', width: '100%' }}
+                                            scrollWheelZoom
+                                        >
+                                            <TileLayer
+                                                attribution="&copy; OpenStreetMap contributors"
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            />
+                                            <DrawingMapClickCapture onAddPoint={handleAddDrawPoint} />
+                                            <DrawingMapViewport points={drawPoints} fallbackCenter={drawingMapCenter} />
+                                            {drawPoints.length >= 2 && (
+                                                <Polyline
+                                                    positions={drawPoints}
+                                                    pathOptions={{ color: '#2f7f4f', weight: 3 }}
+                                                />
+                                            )}
+                                            {drawPoints.length >= 3 && (
+                                                <Polygon
+                                                    positions={drawPoints}
+                                                    pathOptions={{
+                                                        color: '#1b5e20',
+                                                        weight: 3,
+                                                        fillColor: '#56b870',
+                                                        fillOpacity: 0.22,
+                                                    }}
+                                                />
+                                            )}
+                                        </MapContainer>
+                                    </Box>
+                                    <Stack
+                                        direction={{ xs: 'column', sm: 'row' }}
+                                        spacing={1.5}
+                                        alignItems={{ xs: 'stretch', sm: 'center' }}
+                                        justifyContent="space-between"
+                                        sx={{ p: 2 }}
+                                    >
+                                        <Typography variant="body2" color="text.secondary">
+                                            {drawPoints.length < 3
+                                                ? `${drawPoints.length} point(s) placed. Add at least 3 points to complete the boundary.`
+                                                : `Boundary ready with ${drawPoints.length} point(s). Estimated area: ${drawnArea ?? 'N/A'} ha.`}
+                                        </Typography>
+                                        <Stack direction="row" spacing={1}>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                onClick={handleUndoDrawPoint}
+                                                disabled={drawPoints.length === 0}
+                                            >
+                                                Undo Last Point
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                variant="text"
+                                                onClick={handleClearDrawPoints}
+                                                disabled={drawPoints.length === 0}
+                                            >
+                                                Clear Drawing
+                                            </Button>
+                                        </Stack>
+                                    </Stack>
+                                </Paper>
+                            </Grid>
+                        )}
                         <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
                                 select
@@ -1014,6 +1369,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
+                <Button
+                    onClick={handleEditForm}
+                    variant="outlined"
+                    disabled={saving || parsingPdf || importingCsv || loadingFields}
+                >
+                    Edit Form
+                </Button>
                 <Button onClick={handleSubmit} variant="contained" disabled={saving || parsingPdf || importingCsv || loadingFields}>
                     {saving ? 'Saving...' : 'Save Form'}
                 </Button>

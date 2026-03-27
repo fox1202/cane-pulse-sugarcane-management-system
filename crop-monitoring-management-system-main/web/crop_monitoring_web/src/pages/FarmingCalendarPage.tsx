@@ -547,13 +547,6 @@ export function FarmingCalendarPage() {
 
                             <Typography sx={{ fontSize: { xs: '2.2rem', md: '3.5rem' }, fontWeight: 900, color: FOREST, lineHeight: 0.98, mb: 1.1, maxWidth: 740 }}>
                                 Farming Calendar
-                                <Box component="span" sx={{ display: 'block', color: MINT }}>
-                                    seasonal field rhythm
-                                </Box>
-                            </Typography>
-
-                            <Typography sx={{ fontSize: '1rem', color: TEXT_MID, lineHeight: 1.82, maxWidth: 760, mb: 2.3 }}>
-                                The workbook now reads like a proper planning board. Switch between plant cane and ratoon cane, scan the seasonal pulse month by month, and keep the original Excel file attached to the system for reference.
                             </Typography>
 
                             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems={{ xs: 'stretch', sm: 'center' }}>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
     Container,
     Box,
@@ -8,12 +8,10 @@ import {
     CircularProgress,
     Alert,
     useTheme,
-    Chip,
     Stack,
 } from '@mui/material'
 import { AddCircleOutline, RefreshOutlined, DownloadOutlined } from '@mui/icons-material'
 import { useObservationEntryForms } from '@/hooks/useObservationEntryForms'
-import type { ObservationEntryForm } from '@/types/database.types'
 import { ObservationEntryIntakeDialog } from '@/components/Data/ObservationEntryIntakeDialog'
 import {
     ObservationEntryDataTable,
@@ -21,17 +19,9 @@ import {
     buildObservationEntrySheetRow,
 } from '@/components/Data/ObservationEntryDataTable'
 
-type EntryViewFilter = 'all' | 'withYield' | 'withStress' | 'withRemarks'
-
-function hasMeaningfulStress(form: ObservationEntryForm) {
-    const normalized = (form.stress ?? '').trim().toLowerCase()
-    return Boolean(normalized) && !['none', 'no', 'normal', 'healthy', 'optimal', 'n/a', 'na'].includes(normalized)
-}
-
 export function ObservationEntryFormPage() {
     const theme = useTheme()
     const [intakeOpen, setIntakeOpen] = useState(false)
-    const [viewFilter, setViewFilter] = useState<EntryViewFilter>('all')
     const {
         data: forms = [],
         isLoading: loading,
@@ -39,26 +29,6 @@ export function ObservationEntryFormPage() {
         refetch,
         isFetching,
     } = useObservationEntryForms()
-
-    const formsWithYield = useMemo(
-        () => forms.filter((form) => typeof form.yield === 'number' && Number.isFinite(form.yield)),
-        [forms]
-    )
-    const formsWithStress = useMemo(
-        () => forms.filter((form) => hasMeaningfulStress(form)),
-        [forms]
-    )
-    const formsWithRemarks = useMemo(
-        () => forms.filter((form) => Boolean((form.remarks ?? '').trim())),
-        [forms]
-    )
-
-    const displayedForms = useMemo(() => {
-        if (viewFilter === 'withYield') return formsWithYield
-        if (viewFilter === 'withStress') return formsWithStress
-        if (viewFilter === 'withRemarks') return formsWithRemarks
-        return forms
-    }, [forms, formsWithRemarks, formsWithStress, formsWithYield, viewFilter])
 
     const handleExportCSV = () => {
         if (forms.length === 0) {
@@ -135,39 +105,8 @@ export function ObservationEntryFormPage() {
 
             {forms.length > 0 ? (
                 <Box>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
-                        <Chip
-                            label={`All Rows (${forms.length})`}
-                            clickable
-                            color={viewFilter === 'all' ? 'primary' : 'default'}
-                            variant={viewFilter === 'all' ? 'filled' : 'outlined'}
-                            onClick={() => setViewFilter('all')}
-                        />
-                        <Chip
-                            label={`With Yield (${formsWithYield.length})`}
-                            clickable
-                            color={viewFilter === 'withYield' ? 'warning' : 'default'}
-                            variant={viewFilter === 'withYield' ? 'filled' : 'outlined'}
-                            onClick={() => setViewFilter('withYield')}
-                        />
-                        <Chip
-                            label={`With Stress (${formsWithStress.length})`}
-                            clickable
-                            color={viewFilter === 'withStress' ? 'error' : 'default'}
-                            variant={viewFilter === 'withStress' ? 'filled' : 'outlined'}
-                            onClick={() => setViewFilter('withStress')}
-                        />
-                        <Chip
-                            label={`With Remarks (${formsWithRemarks.length})`}
-                            clickable
-                            color={viewFilter === 'withRemarks' ? 'success' : 'default'}
-                            variant={viewFilter === 'withRemarks' ? 'filled' : 'outlined'}
-                            onClick={() => setViewFilter('withRemarks')}
-                        />
-                    </Stack>
-
                     <ObservationEntryDataTable
-                        forms={displayedForms}
+                        forms={forms}
                         emptyMessage="No monitoring rows match the current filter."
                     />
                 </Box>

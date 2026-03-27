@@ -91,7 +91,6 @@ interface ObservationColumn {
 const OBSERVATION_COLUMNS: ObservationColumn[] = [
     { key: 'dateRecorded', label: 'Date Recorded', minWidth: 150 },
     { key: 'fieldId', label: 'Field ID', minWidth: 170 },
-    { key: 'section', label: 'Section', minWidth: 120 },
     { key: 'blockId', label: 'Block ID', minWidth: 140 },
     { key: 'area', label: 'Area (ha)', minWidth: 110 },
     { key: 'irrigationType', label: 'Irrigation Type', minWidth: 150 },
@@ -108,7 +107,6 @@ const OBSERVATION_COLUMNS: ObservationColumn[] = [
     { key: 'plantingDate', label: 'Planting Date', minWidth: 150 },
     { key: 'previousCuttingDate', label: 'Previous Cutting Date', minWidth: 180 },
     { key: 'expectedHarvestDate', label: 'Expected Harvest Date', minWidth: 180 },
-    { key: 'stress', label: 'Stress', minWidth: 130 },
     { key: 'cropVigor', label: 'Crop Vigor', minWidth: 130 },
     { key: 'canopyCover', label: 'Canopy Cover', minWidth: 130 },
     { key: 'residueType', label: 'Residue Type', minWidth: 140 },

@@ -11,7 +11,6 @@ import {
   InsightsRounded,
   TableChartRounded,
   MapRounded,
-  SecurityRounded,
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -20,7 +19,6 @@ import {
   BRAND_DESCRIPTION,
   BRAND_NAME,
 } from '@/branding/brand'
-import { canAccessRoles } from '@/utils/roleAccess'
 
 interface NavItemDef {
   path: string
@@ -40,10 +38,6 @@ const PRIMARY_NAV: NavItemDef[] = [
   { path: '/map', label: 'Map View', sub: 'Fields and boundaries', icon: <MapRounded fontSize="small" /> },
 ]
 
-const MANAGEMENT_NAV: NavItemDef[] = [
-  { path: '/security', label: 'Security', sub: 'Access approvals', icon: <SecurityRounded fontSize="small" />, roles: ['admin'] },
-]
-
 export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -58,10 +52,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('') || 'U'
   const roleLabel = role.charAt(0).toUpperCase() + role.slice(1)
-  const allNav = [
-    ...PRIMARY_NAV,
-    ...MANAGEMENT_NAV.filter((item) => canAccessRoles(role, item.roles)),
-  ]
+  const allNav = PRIMARY_NAV
 
   return (
     <Box
