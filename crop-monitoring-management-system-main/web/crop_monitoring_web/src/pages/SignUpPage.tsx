@@ -57,7 +57,7 @@ function AuthMiniBadge({ label }: { label: string }) {
                     letterSpacing: '0.12em',
                     textTransform: 'uppercase',
                     color: GOLD,
-                    fontFamily: '"Space Mono", monospace',
+                    fontFamily: '"Times New Roman", Times, serif',
                     whiteSpace: 'nowrap',
                 }}
             >
@@ -71,7 +71,7 @@ const authFieldSx = {
     mb: 2.2,
     '& .MuiInputLabel-root': {
         color: 'rgba(35,64,52,0.52)',
-        fontFamily: '"Space Mono", monospace',
+        fontFamily: '"Times New Roman", Times, serif',
         fontSize: '0.72rem',
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
@@ -92,7 +92,7 @@ const authFieldSx = {
         },
     },
     '& .MuiInputBase-input': {
-        fontFamily: '"Space Mono", monospace',
+        fontFamily: '"Times New Roman", Times, serif',
         fontSize: '0.9rem',
         color: '#234034',
         py: 1.7,
@@ -193,7 +193,7 @@ export function SignUpPage() {
                             fontSize: 'clamp(2rem, 3.4vw, 2.8rem)',
                             fontWeight: 800,
                             letterSpacing: '-0.04em',
-                            fontFamily: '"Syne", sans-serif',
+                            fontFamily: '"Times New Roman", Times, serif',
                             color: '#234034',
                             mb: 1.1,
                         }}
@@ -260,10 +260,10 @@ export function SignUpPage() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <BrandLogo size={40} borderRadius={10} />
                             <Box>
-                                <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'text.primary', letterSpacing: '0.12em', fontFamily: '"Space Mono", monospace', lineHeight: 1.2 }}>
+                                <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'text.primary', letterSpacing: '0.12em', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.2 }}>
                                     {BRAND_NAME_UPPER}
                                 </Typography>
-                                <Typography sx={{ fontSize: '0.52rem', color: TEXT_DIM, letterSpacing: '0.16em', fontFamily: '"Space Mono", monospace' }}>
+                                <Typography sx={{ fontSize: '0.52rem', color: TEXT_DIM, letterSpacing: '0.16em', fontFamily: '"Times New Roman", Times, serif' }}>
                                     {BRAND_SYSTEM_TAGLINE}
                                 </Typography>
                             </Box>
@@ -271,7 +271,7 @@ export function SignUpPage() {
 
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.7, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.62)', border: `1px solid rgba(27,94,32,0.16)`, backdropFilter: 'blur(12px)' }}>
                             <SignalCellularAlt sx={{ fontSize: 12, color: GOLD }} />
-                            <Typography sx={{ fontSize: '0.55rem', color: GOLD, fontFamily: '"Space Mono", monospace', letterSpacing: '0.1em' }}>
+                            <Typography sx={{ fontSize: '0.55rem', color: GOLD, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.1em' }}>
                                 ACCESS REQUESTS OPEN
                             </Typography>
                         </Box>
@@ -305,7 +305,7 @@ export function SignUpPage() {
                 <Box sx={{ width: '100%', maxWidth: 560, position: 'relative', zIndex: 1 }}>
                     <Box sx={{ display: { xs: 'flex', lg: 'none' }, alignItems: 'center', gap: 1.5, mb: 3.2 }}>
                         <BrandLogo size={36} borderRadius={9} />
-                        <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'text.primary', letterSpacing: '0.12em', fontFamily: '"Space Mono", monospace' }}>
+                        <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'text.primary', letterSpacing: '0.12em', fontFamily: '"Times New Roman", Times, serif' }}>
                             {BRAND_NAME_UPPER}
                         </Typography>
                     </Box>
@@ -359,7 +359,7 @@ export function SignUpPage() {
                             <Box sx={{ mb: 3.8 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                                     <Box sx={{ width: 30, height: 2, bgcolor: GOLD, borderRadius: 1 }} />
-                                    <Typography sx={{ fontSize: '0.58rem', color: GOLD_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.18em' }}>
+                                    <Typography sx={{ fontSize: '0.58rem', color: GOLD_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.18em' }}>
                                         REGISTRATION REQUEST
                                     </Typography>
                                 </Box>
@@ -369,7 +369,7 @@ export function SignUpPage() {
                                         fontWeight: 800,
                                         color: 'text.primary',
                                         letterSpacing: '-0.035em',
-                                        fontFamily: '"Syne", sans-serif',
+                                        fontFamily: '"Times New Roman", Times, serif',
                                         lineHeight: 1.02,
                                         mb: 1.2,
                                     }}
@@ -508,7 +508,7 @@ export function SignUpPage() {
                                         bgcolor: GOLD,
                                         color: '#f9fff9',
                                         cursor: loading ? 'not-allowed' : 'pointer',
-                                        fontFamily: '"Space Mono", monospace',
+                                        fontFamily: '"Times New Roman", Times, serif',
                                         fontSize: '0.78rem',
                                         fontWeight: 700,
                                         letterSpacing: '0.12em',
@@ -528,7 +528,7 @@ export function SignUpPage() {
                         </form>
 
                         <Box sx={{ mt: 4, pt: 4, borderTop: '1px solid rgba(27,94,32,0.08)', textAlign: 'center' }}>
-                            <Typography sx={{ fontSize: '0.65rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.06em' }}>
+                            <Typography sx={{ fontSize: '0.65rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.06em' }}>
                                 ALREADY APPROVED?{' '}
                                 <Box
                                     component={RouterLink}

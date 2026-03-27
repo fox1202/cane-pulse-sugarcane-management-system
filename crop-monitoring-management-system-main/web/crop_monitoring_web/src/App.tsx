@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material'
+import { ThemeProvider, CssBaseline, CircularProgress, Box, Paper, Stack, Typography } from '@mui/material'
+import { AutoAwesomeRounded, SpaRounded } from '@mui/icons-material'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AppLayout } from '@/components/Layout/AppLayout'
@@ -41,12 +42,54 @@ const queryClient = new QueryClient({
 function LoadingFallback() {
   return (
     <Box
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      minHeight="60vh"
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '60vh',
+        px: 2,
+      }}
     >
-      <CircularProgress />
+      <Paper
+        elevation={0}
+        sx={{
+          px: 4.5,
+          py: 3.5,
+          borderRadius: 7,
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          maxWidth: 360,
+        }}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: -32,
+            right: -24,
+            width: 120,
+            height: 120,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(234,143,115,0.16) 0%, transparent 70%)',
+          }}
+        />
+        <Stack spacing={1.4} alignItems="center" sx={{ position: 'relative', zIndex: 1 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <AutoAwesomeRounded sx={{ color: 'secondary.dark', fontSize: 18 }} />
+            <Typography variant="overline" sx={{ color: 'text.secondary' }}>
+              Loading Workspace
+            </Typography>
+            <SpaRounded sx={{ color: 'primary.dark', fontSize: 18 }} />
+          </Stack>
+          <CircularProgress />
+          <Typography sx={{ fontWeight: 800, color: 'text.primary' }}>
+            Preparing the next Cane Pulse view
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Pulling together maps, forms, and field data for the next page.
+          </Typography>
+        </Stack>
+      </Paper>
     </Box>
   )
 }

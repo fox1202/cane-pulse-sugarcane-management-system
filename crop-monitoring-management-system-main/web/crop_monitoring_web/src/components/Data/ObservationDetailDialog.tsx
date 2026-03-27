@@ -285,7 +285,7 @@ export const ObservationDetailDialog = ({
     ].filter((item) => hasValue(item.value))
 
     const fieldItems = [
-        { label: 'Field Name', value: displayFieldName },
+        { label: 'Trials', value: displayFieldName },
         { label: 'Selected Field', value: entryForm?.selected_field },
         { label: 'Block', value: displayBlockId },
         { label: 'Recorded', value: formatDateTime(displayRecordedAt) },

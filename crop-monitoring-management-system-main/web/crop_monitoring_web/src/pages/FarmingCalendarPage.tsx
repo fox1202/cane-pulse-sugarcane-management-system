@@ -38,6 +38,8 @@ const PANEL = 'rgba(255,255,255,0.9)'
 const PANEL_SOFT = 'rgba(255,255,255,0.72)'
 const TEXT_DIM = 'rgba(35,64,52,0.56)'
 const TEXT_MID = 'rgba(35,64,52,0.76)'
+const CALENDAR_SECTION_ID = 'farming-calendar-month-focus'
+const TASK_SECTION_ID = 'farming-calendar-task-panels'
 
 type TemplateTask = FarmingCalendarTemplate['tasks'][number]
 
@@ -218,10 +220,14 @@ function MonthRibbon({
     months,
     tasksByMonth,
     busiestMonth,
+    activeMonth,
+    onViewTasks,
 }: {
     months: number[]
     tasksByMonth: Map<number, TemplateTask[]>
     busiestMonth: number | null
+    activeMonth: number | null
+    onViewTasks: (month: number) => void
 }) {
     return (
         <Box
@@ -251,10 +257,26 @@ function MonthRibbon({
                         gap: 1.2,
                     }}
                 >
+                    {months.length === 0 && (
+                        <Box
+                            sx={{
+                                gridColumn: '1 / -1',
+                                p: 2,
+                                borderRadius: '20px',
+                                border: '1px dashed rgba(86,184,112,0.24)',
+                                background: 'rgba(255,255,255,0.72)',
+                            }}
+                        >
+                            <Typography sx={{ fontSize: '0.94rem', color: TEXT_MID, fontWeight: 700 }}>
+                                No scheduled tasks are available for this template yet.
+                            </Typography>
+                        </Box>
+                    )}
                     {months.map((month) => {
                         const activityCount = tasksByMonth.get(month)?.length ?? 0
                         const palette = getMonthPalette(month)
                         const isPeak = month === busiestMonth && activityCount > 0
+                        const isActive = month === activeMonth
 
                         return (
                             <Box
@@ -262,10 +284,14 @@ function MonthRibbon({
                                 sx={{
                                     p: 1.45,
                                     borderRadius: '20px',
-                                    border: `1px solid ${palette.chipBorder}`,
+                                    border: `1px solid ${isActive ? palette.dot : palette.chipBorder}`,
                                     background: isPeak
                                         ? `${palette.wash}, rgba(255,255,255,0.94)`
                                         : 'rgba(255,255,255,0.74)',
+                                    boxShadow: isActive
+                                        ? `0 18px 36px ${palette.chipBg}`
+                                        : 'none',
+                                    transition: 'all 0.2s ease',
                                 }}
                             >
                                 <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.65 }}>
@@ -280,12 +306,206 @@ function MonthRibbon({
                                         {activityCount} task{activityCount === 1 ? '' : 's'}
                                     </Typography>
                                 </Stack>
+                                <Button
+                                    fullWidth
+                                    size="small"
+                                    variant={isActive ? 'contained' : 'outlined'}
+                                    onClick={() => onViewTasks(month)}
+                                    sx={{
+                                        mt: 1.2,
+                                        borderRadius: '999px',
+                                        textTransform: 'none',
+                                        fontWeight: 800,
+                                        fontSize: '0.76rem',
+                                        py: 0.55,
+                                        color: isActive ? '#fff' : palette.chipColor,
+                                        bgcolor: isActive ? palette.dot : 'rgba(255,255,255,0.64)',
+                                        borderColor: isActive ? palette.dot : palette.chipBorder,
+                                        boxShadow: 'none',
+                                        '&:hover': {
+                                            borderColor: palette.dot,
+                                            bgcolor: isActive ? palette.chipColor : palette.chipBg,
+                                            boxShadow: 'none',
+                                        },
+                                    }}
+                                >
+                                    {isActive ? 'Calendar open' : 'Open calendar'}
+                                </Button>
                             </Box>
                         )
                     })}
                 </Box>
             </Box>
         </Box>
+    )
+}
+
+function CalendarFocusPanel({
+    month,
+    items,
+    sourceSheet,
+    referenceLabel,
+    notesCount,
+    onClearSelection,
+}: {
+    month: number | null
+    items: TemplateTask[]
+    sourceSheet: string
+    referenceLabel: string
+    notesCount: number
+    onClearSelection: () => void
+}) {
+    const palette = month == null ? null : getMonthPalette(month)
+    const weekLabels = Array.from(new Set(items.map((item) => item.weekLabel)))
+
+    return (
+        <Paper
+            id={CALENDAR_SECTION_ID}
+            sx={{
+                p: { xs: 2.2, md: 2.6 },
+                borderRadius: '30px',
+                border: month == null
+                    ? '1px solid rgba(244,162,140,0.16)'
+                    : `1px solid ${palette?.chipBorder}`,
+                bgcolor: month == null
+                    ? 'rgba(255,248,242,0.94)'
+                    : 'rgba(255,255,255,0.94)',
+                background: month == null
+                    ? 'rgba(255,248,242,0.94)'
+                    : `linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.88) 100%), ${palette?.wash}`,
+                boxShadow: '0 24px 60px rgba(35,64,52,0.06)',
+                height: '100%',
+                position: { xl: 'sticky' },
+                top: { xl: 24 },
+            }}
+        >
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.1 }}>
+                <EventNoteRounded sx={{ color: month == null ? PEACH_DARK : palette?.chipColor }} />
+                <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800 }}>
+                    Calendar Focus
+                </Typography>
+            </Stack>
+
+            {month == null ? (
+                <>
+                    <Typography sx={{ fontSize: '1.16rem', fontWeight: 900, color: FOREST, mb: 0.7 }}>
+                        Select a month to open the calendar
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.94rem', color: TEXT_MID, lineHeight: 1.74, mb: 1.8 }}>
+                        Choose a month from Season Rhythm and this calendar panel will show the exact work scheduled for that month.
+                    </Typography>
+                </>
+            ) : (
+                <>
+                    <Stack direction="row" justifyContent="space-between" spacing={1.2} alignItems="flex-start" sx={{ mb: 1.2 }}>
+                        <Box>
+                            <Typography sx={{ fontSize: '1.16rem', fontWeight: 900, color: FOREST, mb: 0.55 }}>
+                                Month {month} calendar
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.94rem', color: TEXT_MID, lineHeight: 1.72 }}>
+                                {items.length} scheduled task{items.length === 1 ? '' : 's'} linked to this month.
+                            </Typography>
+                        </Box>
+                        <Chip
+                            size="small"
+                            label={`${items.length} task${items.length === 1 ? '' : 's'}`}
+                            sx={{
+                                bgcolor: palette?.chipBg,
+                                color: palette?.chipColor,
+                                border: `1px solid ${palette?.chipBorder}`,
+                                fontWeight: 800,
+                            }}
+                        />
+                    </Stack>
+
+                    {weekLabels.length > 0 && (
+                        <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
+                            {weekLabels.map((label) => (
+                                <Chip
+                                    key={label}
+                                    size="small"
+                                    label={label}
+                                    sx={{
+                                        bgcolor: 'rgba(255,255,255,0.72)',
+                                        color: palette?.chipColor,
+                                        border: `1px solid ${palette?.chipBorder}`,
+                                        fontWeight: 800,
+                                    }}
+                                />
+                            ))}
+                        </Stack>
+                    )}
+
+                    <Stack spacing={1}>
+                        {items.map((item) => (
+                            <Box
+                                key={`${month}-${item.weekLabel}-${item.activity}`}
+                                sx={{
+                                    p: 1.35,
+                                    borderRadius: '18px',
+                                    border: `1px solid ${palette?.chipBorder}`,
+                                    bgcolor: 'rgba(255,255,255,0.78)',
+                                }}
+                            >
+                                <Typography sx={{ fontSize: '0.72rem', color: palette?.chipColor, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
+                                    {item.weekLabel}
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.92rem', color: TEXT_MID, lineHeight: 1.65 }}>
+                                    {item.activity}
+                                </Typography>
+                            </Box>
+                        ))}
+                    </Stack>
+
+                    <Button
+                        variant="outlined"
+                        onClick={onClearSelection}
+                        sx={{
+                            mt: 1.6,
+                            borderRadius: '999px',
+                            textTransform: 'none',
+                            fontWeight: 800,
+                            borderColor: palette?.chipBorder,
+                            color: palette?.chipColor,
+                            bgcolor: 'rgba(255,255,255,0.72)',
+                            '&:hover': {
+                                borderColor: palette?.dot,
+                                bgcolor: palette?.chipBg,
+                            },
+                        }}
+                    >
+                        Show all months again
+                    </Button>
+                </>
+            )}
+
+            <Stack spacing={1.1} sx={{ mt: 1.8 }}>
+                <Box sx={{ p: 1.4, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(244,162,140,0.12)' }}>
+                    <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
+                        Sheet
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.98rem', color: FOREST, fontWeight: 800 }}>
+                        {sourceSheet}
+                    </Typography>
+                </Box>
+                <Box sx={{ p: 1.4, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(244,162,140,0.12)' }}>
+                    <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
+                        Workbook Anchor
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.98rem', color: FOREST, fontWeight: 800 }}>
+                        {referenceLabel}
+                    </Typography>
+                </Box>
+                <Box sx={{ p: 1.4, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(244,162,140,0.12)' }}>
+                    <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
+                        Guidance Notes
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.98rem', color: FOREST, fontWeight: 800 }}>
+                        {notesCount} notes included
+                    </Typography>
+                </Box>
+            </Stack>
+        </Paper>
     )
 }
 
@@ -438,6 +658,7 @@ function MonthPanel({
 
 export function FarmingCalendarPage() {
     const [selectedTemplateId, setSelectedTemplateId] = useState<FarmingCalendarTemplate['id']>('plant')
+    const [selectedTaskMonth, setSelectedTaskMonth] = useState<number | null>(null)
 
     const selectedTemplate = useMemo(
         () => FARMING_CALENDAR_TEMPLATES.find((template) => template.id === selectedTemplateId) ?? FARMING_CALENDAR_TEMPLATES[0],
@@ -469,6 +690,21 @@ export function FarmingCalendarPage() {
         [months, tasksByMonth]
     )
 
+    const activeTaskMonth = useMemo(
+        () => (selectedTaskMonth != null && monthsWithTasks.includes(selectedTaskMonth) ? selectedTaskMonth : null),
+        [selectedTaskMonth, monthsWithTasks]
+    )
+
+    const visibleTaskMonths = useMemo(
+        () => (activeTaskMonth == null ? monthsWithTasks : [activeTaskMonth]),
+        [activeTaskMonth, monthsWithTasks]
+    )
+
+    const selectedCalendarItems = useMemo(
+        () => (activeTaskMonth == null ? [] : tasksByMonth.get(activeTaskMonth) ?? []),
+        [activeTaskMonth, tasksByMonth]
+    )
+
     const busiestMonth = useMemo(() => {
         let result: number | null = null
         let highestCount = 0
@@ -484,7 +720,20 @@ export function FarmingCalendarPage() {
         return result
     }, [months, tasksByMonth])
 
-    const busiestMonthCount = busiestMonth == null ? 0 : (tasksByMonth.get(busiestMonth)?.length ?? 0)
+    const handleViewMonthTasks = (month: number) => {
+        setSelectedTaskMonth(month)
+        if (typeof window === 'undefined') return
+        window.requestAnimationFrame(() => {
+            document.getElementById(CALENDAR_SECTION_ID)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            })
+        })
+    }
+
+    const handleShowAllTaskMonths = () => {
+        setSelectedTaskMonth(null)
+    }
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: CREAM, position: 'relative' }}>
@@ -661,75 +910,96 @@ export function FarmingCalendarPage() {
                             </Box>
                         </Paper>
 
-                        <MonthRibbon months={months} tasksByMonth={tasksByMonth} busiestMonth={busiestMonth} />
+                        <MonthRibbon
+                            months={monthsWithTasks}
+                            tasksByMonth={tasksByMonth}
+                            busiestMonth={busiestMonth}
+                            activeMonth={activeTaskMonth}
+                            onViewTasks={handleViewMonthTasks}
+                        />
                     </Grid>
 
                     <Grid size={{ xs: 12, xl: 3.5 }}>
-                        <Paper
-                            sx={{
-                                p: { xs: 2.2, md: 2.6 },
-                                borderRadius: '30px',
-                                border: '1px solid rgba(244,162,140,0.16)',
-                                bgcolor: 'rgba(255,248,242,0.94)',
-                                boxShadow: '0 24px 60px rgba(35,64,52,0.06)',
-                                height: '100%',
-                            }}
-                        >
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.1 }}>
-                                <EventNoteRounded sx={{ color: PEACH_DARK }} />
-                                <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800 }}>
-                                    Planning Snapshot
-                                </Typography>
-                            </Stack>
-                            <Typography sx={{ fontSize: '1.16rem', fontWeight: 900, color: FOREST, mb: 0.7 }}>
-                                Month {selectedTemplate.monthRange[0]} to Month {selectedTemplate.monthRange[1]}
-                            </Typography>
-                            <Typography sx={{ fontSize: '0.94rem', color: TEXT_MID, lineHeight: 1.74, mb: 1.6 }}>
-                                The densest activity window is {busiestMonth == null ? 'not defined' : `Month ${busiestMonth}`} with {busiestMonthCount} scheduled task{busiestMonthCount === 1 ? '' : 's'}.
-                            </Typography>
-
-                            <Stack spacing={1.1}>
-                                <Box sx={{ p: 1.4, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(244,162,140,0.12)' }}>
-                                    <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
-                                        Sheet
-                                    </Typography>
-                                    <Typography sx={{ fontSize: '0.98rem', color: FOREST, fontWeight: 800 }}>
-                                        {selectedTemplate.sourceSheet}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ p: 1.4, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(244,162,140,0.12)' }}>
-                                    <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
-                                        Workbook Anchor
-                                    </Typography>
-                                    <Typography sx={{ fontSize: '0.98rem', color: FOREST, fontWeight: 800 }}>
-                                        {selectedTemplate.referenceLabel}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ p: 1.4, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(244,162,140,0.12)' }}>
-                                    <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
-                                        Guidance Notes
-                                    </Typography>
-                                    <Typography sx={{ fontSize: '0.98rem', color: FOREST, fontWeight: 800 }}>
-                                        {selectedTemplate.notes.length} notes included
-                                    </Typography>
-                                </Box>
-                            </Stack>
-                        </Paper>
+                        <CalendarFocusPanel
+                            month={activeTaskMonth}
+                            items={selectedCalendarItems}
+                            sourceSheet={selectedTemplate.sourceSheet}
+                            referenceLabel={selectedTemplate.referenceLabel}
+                            notesCount={selectedTemplate.notes.length}
+                            onClearSelection={handleShowAllTaskMonths}
+                        />
                     </Grid>
                 </Grid>
 
                 <Grid container spacing={3}>
                     <Grid size={{ xs: 12, xl: 8.5 }}>
-                        <Grid container spacing={2.2}>
-                            {months.map((month, index) => (
-                                <MonthPanel
-                                    key={month}
-                                    month={month}
-                                    items={tasksByMonth.get(month) ?? []}
-                                    delay={0.035 * index}
-                                />
-                            ))}
-                        </Grid>
+                        <Box id={TASK_SECTION_ID}>
+                            <Stack
+                                direction={{ xs: 'column', sm: 'row' }}
+                                spacing={1.4}
+                                alignItems={{ xs: 'stretch', sm: 'center' }}
+                                justifyContent="space-between"
+                                sx={{ mb: 1.8 }}
+                            >
+                                <Box>
+                                    <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
+                                        Task Windows
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '0.98rem', color: TEXT_MID, lineHeight: 1.7 }}>
+                                        {activeTaskMonth == null
+                                            ? 'Use the buttons above to jump to a month and review the tasks that need to be done.'
+                                            : `Showing the scheduled tasks for Month ${activeTaskMonth}.`}
+                                    </Typography>
+                                </Box>
+                                {activeTaskMonth != null && (
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handleShowAllTaskMonths}
+                                        sx={{
+                                            alignSelf: { xs: 'flex-start', sm: 'center' },
+                                            borderRadius: '999px',
+                                            textTransform: 'none',
+                                            fontWeight: 800,
+                                            borderColor: MINT_BORDER,
+                                            color: MINT_DARK,
+                                            bgcolor: 'rgba(255,255,255,0.72)',
+                                            '&:hover': {
+                                                borderColor: MINT,
+                                                bgcolor: MINT_PALE,
+                                            },
+                                        }}
+                                    >
+                                        Show all months
+                                    </Button>
+                                )}
+                            </Stack>
+
+                            {visibleTaskMonths.length > 0 ? (
+                                <Grid container spacing={2.2}>
+                                    {visibleTaskMonths.map((month, index) => (
+                                        <MonthPanel
+                                            key={month}
+                                            month={month}
+                                            items={tasksByMonth.get(month) ?? []}
+                                            delay={0.035 * index}
+                                        />
+                                    ))}
+                                </Grid>
+                            ) : (
+                                <Paper
+                                    sx={{
+                                        p: 2.2,
+                                        borderRadius: '24px',
+                                        border: '1px dashed rgba(86,184,112,0.22)',
+                                        bgcolor: 'rgba(255,255,255,0.72)',
+                                    }}
+                                >
+                                    <Typography sx={{ fontSize: '0.95rem', color: TEXT_MID, lineHeight: 1.7 }}>
+                                        No scheduled tasks are available for this template yet.
+                                    </Typography>
+                                </Paper>
+                            )}
+                        </Box>
                     </Grid>
 
                     <Grid size={{ xs: 12, xl: 3.5 }}>

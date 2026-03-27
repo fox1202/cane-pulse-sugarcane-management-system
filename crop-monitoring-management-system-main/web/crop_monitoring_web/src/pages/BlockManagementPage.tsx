@@ -91,7 +91,7 @@ function SectionLabel({ children, icon }: { children: React.ReactNode; icon?: Re
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 2.5 }}>
             {icon && <Box sx={{ color: AMBER_DIM, display: 'flex', fontSize: 15 }}>{icon}</Box>}
             <Box sx={{ width: 20, height: 1.5, bgcolor: AMBER, borderRadius: 1, opacity: 0.6 }} />
-            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', color: AMBER_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase' }}>
+            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', color: AMBER_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase' }}>
                 {children}
             </Typography>
         </Box>
@@ -104,7 +104,7 @@ function StyledInput({ label, value, onChange, placeholder }: {
     const [focused, setFocused] = useState(false)
     return (
         <Box sx={{ mb: 3.5 }}>
-            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', color: focused ? AMBER : TEXT_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase', mb: 1, transition: 'color 0.2s' }}>
+            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', color: focused ? AMBER : TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', mb: 1, transition: 'color 0.2s' }}>
                 {label}
             </Typography>
             <Box sx={{
@@ -125,9 +125,9 @@ function StyledInput({ label, value, onChange, placeholder }: {
                     onBlur={() => setFocused(false)}
                     sx={{
                         flex: 1, border: 'none', outline: 'none', bgcolor: 'transparent',
-                        color: 'white', fontSize: '0.88rem', fontFamily: '"Space Mono", monospace',
+                        color: 'white', fontSize: '0.88rem', fontFamily: '"Times New Roman", Times, serif',
                         px: 2, py: 1.8, letterSpacing: '0.08em',
-                        '&::placeholder': { color: TEXT_DIM, fontSize: '0.78rem', fontFamily: '"Space Mono", monospace' },
+                        '&::placeholder': { color: TEXT_DIM, fontSize: '0.78rem', fontFamily: '"Times New Roman", Times, serif' },
                     }}
                 />
             </Box>
@@ -143,7 +143,7 @@ function DropZone({ file, isLoading, onChange }: {
 
     return (
         <Box sx={{ mb: 3.5 }}>
-            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase', mb: 1 }}>
+            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', mb: 1 }}>
                 Geospatial Source (.ZIP / .SHP)
             </Typography>
             <input type="file" accept=".zip,.shp" id="shapefile-upload" hidden onChange={onChange} />
@@ -164,27 +164,27 @@ function DropZone({ file, isLoading, onChange }: {
                     {isLoading ? (
                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
                             <CircularProgress size={28} sx={{ color: AMBER }} thickness={2.5} />
-                            <Typography sx={{ fontSize: '0.65rem', color: AMBER_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.1em' }}>
+                            <Typography sx={{ fontSize: '0.65rem', color: AMBER_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.1em' }}>
                                 PARSING SHAPEFILE…
                             </Typography>
                         </Box>
                     ) : file ? (
                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                             <FolderZip sx={{ fontSize: 30, color: TEAL }} />
-                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: TEAL, fontFamily: '"Space Mono", monospace', textAlign: 'center', letterSpacing: '0.04em' }}>
+                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: TEAL, fontFamily: '"Times New Roman", Times, serif', textAlign: 'center', letterSpacing: '0.04em' }}>
                                 {file.name}
                             </Typography>
-                            <Typography sx={{ fontSize: '0.58rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace' }}>
+                            <Typography sx={{ fontSize: '0.58rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif' }}>
                                 {(file.size / 1024).toFixed(1)} KB · Click to replace
                             </Typography>
                         </Box>
                     ) : (
                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                             <CloudUpload sx={{ fontSize: 30, color: TEXT_DIM }} />
-                            <Typography sx={{ fontSize: '0.72rem', color: TEXT_MID, fontFamily: '"Space Mono", monospace', letterSpacing: '0.06em' }}>
+                            <Typography sx={{ fontSize: '0.72rem', color: TEXT_MID, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.06em' }}>
                                 Drop shapefile here
                             </Typography>
-                            <Typography sx={{ fontSize: '0.58rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace' }}>
+                            <Typography sx={{ fontSize: '0.58rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif' }}>
                                 .zip bundle or .shp file accepted
                             </Typography>
                         </Box>
@@ -220,7 +220,7 @@ function StatusBanner({ status }: { status: { type: 'success' | 'error' | 'info'
                         <Box sx={{ color: config[status.type].color, mt: 0.15, flexShrink: 0 }}>
                             {config[status.type].icon}
                         </Box>
-                        <Typography sx={{ fontSize: '0.72rem', color: config[status.type].color, fontFamily: '"Space Mono", monospace', lineHeight: 1.6 }}>
+                        <Typography sx={{ fontSize: '0.72rem', color: config[status.type].color, fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.6 }}>
                             {status.message}
                         </Typography>
                     </Box>
@@ -234,10 +234,10 @@ function StatusBanner({ status }: { status: { type: 'success' | 'error' | 'info'
 function FeaturePill({ label, value, color = AMBER }: { label: string; value: string | number; color?: string }) {
     return (
         <Box sx={{ textAlign: 'center', px: 2, py: 1.5, borderRadius: '10px', bgcolor: alpha(color, 0.06), border: `1px solid ${alpha(color, 0.18)}` }}>
-            <Typography sx={{ fontSize: '1.1rem', fontWeight: 800, color, fontFamily: '"Space Mono", monospace', lineHeight: 1, mb: 0.4 }}>
+            <Typography sx={{ fontSize: '1.1rem', fontWeight: 800, color, fontFamily: '"Times New Roman", Times, serif', lineHeight: 1, mb: 0.4 }}>
                 {value}
             </Typography>
-            <Typography sx={{ fontSize: '0.55rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            <Typography sx={{ fontSize: '0.55rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                 {label}
             </Typography>
         </Box>
@@ -267,10 +267,10 @@ function MapEmptyState() {
                 <MapOutlined sx={{ fontSize: 36, color: AMBER_DIM, zIndex: 1 }} />
             </Box>
             <Box sx={{ textAlign: 'center' }}>
-                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: TEXT_MID, fontFamily: '"Syne", sans-serif', mb: 0.5 }}>
+                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: TEXT_MID, fontFamily: '"Times New Roman", Times, serif', mb: 0.5 }}>
                     Boundary Preview Pending
                 </Typography>
-                <Typography sx={{ fontSize: '0.7rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', lineHeight: 1.7, maxWidth: 280 }}>
+                <Typography sx={{ fontSize: '0.7rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.7, maxWidth: 280 }}>
                     Upload a zipped shapefile to render<br />sector boundaries on the live map
                 </Typography>
             </Box>
@@ -367,7 +367,7 @@ export function BlockManagementPage() {
                     <Box sx={{ mb: 6 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
                             <Box sx={{ width: 28, height: 1.5, bgcolor: AMBER, borderRadius: 1 }} />
-                            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.2em', color: AMBER_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase' }}>
+                            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.2em', color: AMBER_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase' }}>
                                 GIS Ingestion Engine
                             </Typography>
                         </Box>
@@ -375,7 +375,7 @@ export function BlockManagementPage() {
                             fontSize: 'clamp(2rem, 4vw, 3rem)',
                             fontWeight: 800,
                             letterSpacing: '-0.03em',
-                            fontFamily: '"Syne", sans-serif',
+                            fontFamily: '"Times New Roman", Times, serif',
                             lineHeight: 1.05,
                             color: 'white',
                             mb: 0.8,
@@ -435,7 +435,7 @@ export function BlockManagementPage() {
                                         cursor: (!file || !blockId || isSaving || isLoading) ? 'not-allowed' : 'pointer',
                                         bgcolor: (!file || !blockId || isSaving || isLoading) ? 'rgba(255,255,255,0.05)' : AMBER,
                                         color: (!file || !blockId || isSaving || isLoading) ? TEXT_DIM : INK,
-                                        fontFamily: '"Space Mono", monospace',
+                                        fontFamily: '"Times New Roman", Times, serif',
                                         fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em',
                                         boxShadow: (!file || !blockId || isSaving || isLoading) ? 'none' : `0 0 40px ${AMBER_DIM}, 0 4px 20px rgba(0,0,0,0.5)`,
                                         transition: 'all 0.25s ease',
@@ -471,7 +471,7 @@ export function BlockManagementPage() {
                                         ].map(({ icon, text }) => (
                                             <Box key={text} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.2, borderRadius: '8px', bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                 <Box sx={{ color: AMBER_DIM, display: 'flex', flexShrink: 0 }}>{icon}</Box>
-                                                <Typography sx={{ fontSize: '0.68rem', color: TEXT_MID, fontFamily: '"Space Mono", monospace', lineHeight: 1.5 }}>
+                                                <Typography sx={{ fontSize: '0.68rem', color: TEXT_MID, fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.5 }}>
                                                     {text}
                                                 </Typography>
                                             </Box>
@@ -507,7 +507,7 @@ export function BlockManagementPage() {
                                                 animation: geoJson ? 'mapPulse 2s ease-in-out infinite' : 'none',
                                                 '@keyframes mapPulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.4 } },
                                             }} />
-                                            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em', color: geoJson ? TEAL : TEXT_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase' }}>
+                                            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em', color: geoJson ? TEAL : TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase' }}>
                                                 {geoJson ? 'Boundary Active' : 'Awaiting Input'}
                                             </Typography>
                                         </Box>
@@ -593,14 +593,14 @@ export function BlockManagementPage() {
                                                         borderRadius: '10px 10px 0 0',
                                                     },
                                                 }}>
-                                                    <Typography sx={{ fontSize: '0.55rem', color: AMBER_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.14em', mb: 0.3 }}>
+                                                    <Typography sx={{ fontSize: '0.55rem', color: AMBER_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.14em', mb: 0.3 }}>
                                                         SPATIAL REFERENCE
                                                     </Typography>
-                                                    <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'white', fontFamily: '"Space Mono", monospace', letterSpacing: '0.06em' }}>
+                                                    <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'white', fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.06em' }}>
                                                         EPSG:4326 · WGS 84
                                                     </Typography>
                                                     <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                                                        <Typography sx={{ fontSize: '0.62rem', color: TEAL, fontFamily: '"Space Mono", monospace', fontWeight: 700 }}>
+                                                        <Typography sx={{ fontSize: '0.62rem', color: TEAL, fontFamily: '"Times New Roman", Times, serif', fontWeight: 700 }}>
                                                             {featureCount} sector{featureCount !== 1 ? 's' : ''} loaded
                                                         </Typography>
                                                     </Box>
@@ -627,7 +627,7 @@ export function BlockManagementPage() {
 
             {/* Leaflet + font overrides */}
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Mono:wght@400;700&display=swap');
+                
 
                 .leaflet-control-zoom {
                     border: 1px solid ${AMBER_BDR} !important;

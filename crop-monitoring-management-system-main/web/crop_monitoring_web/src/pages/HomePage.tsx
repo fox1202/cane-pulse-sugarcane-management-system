@@ -130,7 +130,7 @@ function StatusBadge({ text, tone = 'mint' }: { text: string; tone?: 'mint' | 'p
                     fontWeight: 700,
                     letterSpacing: '0.14em',
                     color: palette.text,
-                    fontFamily: '"Space Mono", monospace',
+                    fontFamily: '"Times New Roman", Times, serif',
                     textTransform: 'uppercase',
                 }}
             >
@@ -504,7 +504,7 @@ function OverviewInsightCard({
                             letterSpacing: '0.16em',
                             color: TEXT_DIM,
                             textTransform: 'uppercase',
-                            fontFamily: '"Space Mono", monospace',
+                            fontFamily: '"Times New Roman", Times, serif',
                             mb: 1.3,
                         }}
                     >
@@ -518,7 +518,7 @@ function OverviewInsightCard({
                             fontWeight: 800,
                             color: 'text.primary',
                             letterSpacing: '-0.02em',
-                            fontFamily: '"Syne", sans-serif',
+                            fontFamily: '"Times New Roman", Times, serif',
                             mb: 2.2,
                         }}
                     >
@@ -695,10 +695,10 @@ function AreaPieChart({
                     }}
                 >
                     <Box sx={{ textAlign: 'center', px: 2 }}>
-                        <Typography sx={{ fontSize: '2rem', fontWeight: 800, color: 'text.primary', fontFamily: '"Syne", sans-serif', lineHeight: 1 }}>
+                        <Typography sx={{ fontSize: '2rem', fontWeight: 800, color: 'text.primary', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1 }}>
                             {formatAreaHa(totalAreaHa)}
                         </Typography>
-                        <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.16em', textTransform: 'uppercase', mt: 0.6, fontWeight: 700 }}>
+                        <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.16em', textTransform: 'uppercase', mt: 0.6, fontWeight: 700 }}>
                             Total mapped area
                         </Typography>
                     </Box>
@@ -727,7 +727,7 @@ function AreaPieChart({
                             sx={{
                                 fontSize: '0.68rem',
                                 color: TEXT_DIM,
-                                fontFamily: '"Space Mono", monospace',
+                                fontFamily: '"Times New Roman", Times, serif',
                                 letterSpacing: '0.12em',
                                 textTransform: 'uppercase',
                                 mb: 0.45,
@@ -735,7 +735,7 @@ function AreaPieChart({
                         >
                             {entry.label}
                         </Typography>
-                        <Typography sx={{ fontSize: '1.1rem', fontWeight: 800, color: 'text.primary', fontFamily: '"Syne", sans-serif', lineHeight: 1.1 }}>
+                        <Typography sx={{ fontSize: '1.1rem', fontWeight: 800, color: 'text.primary', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.1 }}>
                             {entry.fieldCount}
                         </Typography>
                         <Typography sx={{ fontSize: '0.78rem', color: TEXT_MID, mt: 0.2 }}>
@@ -865,7 +865,7 @@ function ModuleCard({
                                 sx={{
                                     fontSize: '0.62rem',
                                     color: TEXT_DIM,
-                                    fontFamily: '"Space Mono", monospace',
+                                    fontFamily: '"Times New Roman", Times, serif',
                                     letterSpacing: '0.12em',
                                     textTransform: 'uppercase',
                                 }}
@@ -881,7 +881,7 @@ function ModuleCard({
                             fontWeight: 800,
                             color: 'text.primary',
                             letterSpacing: '-0.02em',
-                            fontFamily: '"Syne", sans-serif',
+                            fontFamily: '"Times New Roman", Times, serif',
                             mb: 1,
                         }}
                     >
@@ -901,7 +901,7 @@ function ModuleCard({
                             fontWeight: 700,
                             letterSpacing: '0.08em',
                             textTransform: 'uppercase',
-                            fontFamily: '"Space Mono", monospace',
+                            fontFamily: '"Times New Roman", Times, serif',
                         }}
                     >
                         Open module
@@ -978,7 +978,7 @@ function ProtocolStep({ step, index, inView }: { step: string; index: number; in
                         flexShrink: 0,
                     }}
                 >
-                    <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: PEACH_DARK, fontFamily: '"Space Mono", monospace' }}>
+                    <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: PEACH_DARK, fontFamily: '"Times New Roman", Times, serif' }}>
                         {String(index + 1).padStart(2, '0')}
                     </Typography>
                 </Box>
@@ -1289,18 +1289,19 @@ export function HomePage() {
     const protocolInView = useInView(protocolRef, { once: true, margin: '-80px' })
 
     const steps = [
-        'Initialize GPS positioning for precise field location.',
-        'Validate field identification using section, block, and field references.',
-        'Verify crop type and current growth stage before continuing.',
-        'Capture stress notes and canopy-cover observations with supporting context.',
-        'Record photo evidence for later review and comparison.',
-        'Add soil and irrigation details where they are available.',
-        'Note pest and disease pressure indicators from the site visit.',
-        'Save and sync the final report back to the central dashboard.',
+        'Select a trial from the registry or draw a new trial boundary, then confirm block and area details.',
+        'Fill in irrigation, water source, TAM, soil type, pH, and field remarks in Field Information.',
+        'Add trial number, trial name, contact person, and the recorded date in Trial Information.',
+        'Set crop type, crop class, planting date, previous cutting date, and expected harvest date.',
+        'Capture residue type, management method, and residue remarks for the current field cycle.',
+        'Record fertilizer type, nutrient application date, application rate, and foliar sampling date.',
+        'Add weed application details together with pest and disease remarks from the current visit.',
+        'Complete harvest date, yield, and quality remarks, then save or edit the form before submission.',
     ]
+    const totalSteps = steps.length
 
     return (
-        <Box sx={{ bgcolor: CREAM, minHeight: '100vh', position: 'relative', fontFamily: '"Nunito", sans-serif' }}>
+        <Box sx={{ bgcolor: CREAM, minHeight: '100vh', position: 'relative', fontFamily: '"Times New Roman", Times, serif' }}>
             <Box
                 sx={{
                     position: 'fixed',
@@ -1354,7 +1355,7 @@ export function HomePage() {
                                     <Grid container spacing={1.4} sx={{ mb: 2.2 }}>
                                         <Grid size={{ xs: 12, sm: 6 }}>
                                             <Box sx={{ p: 1.6, borderRadius: '18px', border: '1px solid rgba(86,184,112,0.16)', bgcolor: 'rgba(255,255,255,0.74)', height: '100%' }}>
-                                                <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.6 }}>
+                                                <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.6 }}>
                                                     Closest calendar task
                                                 </Typography>
                                                 {nextScheduledTask ? (
@@ -1381,7 +1382,7 @@ export function HomePage() {
                                         </Grid>
                                         <Grid size={{ xs: 12, sm: 6 }}>
                                             <Box sx={{ p: 1.6, borderRadius: '18px', border: '1px solid rgba(86,184,112,0.16)', bgcolor: 'rgba(255,255,255,0.74)', height: '100%' }}>
-                                                <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.6 }}>
+                                                <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.6 }}>
                                                     Next nutrient warning
                                                 </Typography>
                                                 {nextNutrientTask ? (
@@ -1408,7 +1409,7 @@ export function HomePage() {
                                         </Grid>
                                     </Grid>
 
-                                    <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 1 }}>
+                                    <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 1 }}>
                                         Upcoming tasks
                                     </Typography>
                                     {upcomingTasksPreview.length > 0 ? (
@@ -1485,12 +1486,12 @@ export function HomePage() {
                                         animate={protocolInView ? { opacity: 1, y: 0 } : {}}
                                         transition={{ duration: 0.7 }}
                                     >
-                                        <StatusBadge text="Field flow" />
+                                        <StatusBadge text="Web form flow" />
                                         <Typography
                                             sx={{
                                                 fontSize: 'clamp(1.7rem, 3vw, 2.4rem)',
                                                 fontWeight: 800,
-                                                fontFamily: '"Syne", sans-serif',
+                                                fontFamily: '"Times New Roman", Times, serif',
                                                 letterSpacing: '-0.03em',
                                                 color: 'text.primary',
                                                 lineHeight: 1.12,
@@ -1504,16 +1505,16 @@ export function HomePage() {
                                             </Box>
                                         </Typography>
                                         <Typography sx={{ fontSize: '0.92rem', color: TEXT_MID, lineHeight: 1.8, mb: 3.2 }}>
-                                            The workflow stays strict enough for clean agricultural data while presenting each stage in a friendlier, easier-to-scan way.
+                                            This checklist now mirrors the current web intake form so each section follows the same order users see while capturing live field records.
                                         </Typography>
 
                                         <Box sx={{ mb: 1 }}>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
-                                                <Typography sx={{ fontSize: '0.62rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                                                <Typography sx={{ fontSize: '0.62rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                                                     Steps ready
                                                 </Typography>
-                                                <Typography sx={{ fontSize: '0.62rem', color: MINT_DARK, fontFamily: '"Space Mono", monospace' }}>
-                                                    8 / 8
+                                                <Typography sx={{ fontSize: '0.62rem', color: MINT_DARK, fontFamily: '"Times New Roman", Times, serif' }}>
+                                                    {totalSteps} / {totalSteps}
                                                 </Typography>
                                             </Box>
                                             <Box sx={{ height: 8, borderRadius: 99, bgcolor: 'rgba(86,184,112,0.08)', overflow: 'hidden' }}>

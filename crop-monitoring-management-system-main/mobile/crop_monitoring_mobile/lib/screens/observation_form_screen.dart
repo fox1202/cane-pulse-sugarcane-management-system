@@ -2487,7 +2487,8 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
         ),
       ),
       body: BotanicalBackground(
-        showLeafTexture: false,
+        textureOpacity: 0.1,
+        textureAlignment: Alignment.topRight,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -3232,82 +3233,129 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.white.withValues(alpha: 0.95),
-              AppColors.softCream.withValues(alpha: 0.90),
+              Colors.white.withValues(alpha: 0.88),
+              AppColors.softCream.withValues(alpha: 0.76),
             ],
           ),
           borderRadius: BorderRadius.circular(30),
           border: Border.all(color: Colors.white),
           boxShadow: AppTheme.softShadow(AppColors.lightGreen),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.coolGradient.first.withValues(alpha: 0.62),
-                    Colors.white.withValues(alpha: 0.18),
-                  ],
-                ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: 0.1,
+                    child: Align(
+                      alignment: Alignment.topRight,
+                      child: Transform.translate(
+                        offset: const Offset(42, -24),
+                        child: const Image(
+                          image: AssetImage('assets/images/tropical_leaves.png'),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              child: Row(
+              Positioned(
+                right: -38,
+                top: -18,
+                child: IgnorePointer(
+                  child: Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.sageGreen.withValues(alpha: 0.55),
+                          AppColors.sageGreen.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 46,
-                    height: 46,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: AppColors.coolGradient,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.coolGradient.first.withValues(alpha: 0.58),
+                          Colors.white.withValues(alpha: 0.08),
+                        ],
                       ),
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: AppTheme.softShadow(AppColors.dewBlue),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(30),
+                      ),
                     ),
-                    child: Icon(icon, color: AppColors.forestGreen, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textDark,
-                            letterSpacing: -0.4,
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: AppColors.coolGradient,
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: AppTheme.softShadow(AppColors.dewBlue),
+                          ),
+                          child: Icon(
+                            icon,
+                            color: AppColors.forestGreen,
+                            size: 22,
                           ),
                         ),
-                        if (description.trim().isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            description,
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              height: 1.45,
-                              color: AppColors.textGray,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.textDark,
+                                  letterSpacing: -0.4,
+                                ),
+                              ),
+                              if (description.trim().isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  description,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    height: 1.45,
+                                    color: AppColors.textGray,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: Column(children: children),
+                  ),
                 ],
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Column(children: children),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -3512,6 +3560,9 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
                 key: ValueKey(currentValue ?? 'no-field-label-selected'),
                 initialValue: currentValue,
                 isExpanded: true,
+                borderRadius: BorderRadius.circular(24),
+                dropdownColor: const Color(0xFFF7FBF1),
+                menuMaxHeight: 360,
                 hint: Text(
                   'Select $label',
                   style: const TextStyle(
@@ -3613,6 +3664,9 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
                 key: ValueKey('field_id_$safeCurrentValue'),
                 initialValue: safeCurrentValue,
                 isExpanded: true,
+                borderRadius: BorderRadius.circular(24),
+                dropdownColor: const Color(0xFFF7FBF1),
+                menuMaxHeight: 360,
                 hint: Text(
                   'Select $label',
                   style: const TextStyle(
@@ -3684,6 +3738,9 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
                 key: ValueKey('${label}_$selectedValue'),
                 initialValue: selectedValue,
                 isExpanded: true,
+                borderRadius: BorderRadius.circular(24),
+                dropdownColor: const Color(0xFFF7FBF1),
+                menuMaxHeight: 360,
                 hint: Text(
                   'Select $label',
                   style: const TextStyle(

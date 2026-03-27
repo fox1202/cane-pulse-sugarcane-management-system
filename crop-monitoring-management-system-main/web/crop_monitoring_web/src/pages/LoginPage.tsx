@@ -9,6 +9,10 @@ import {
     ButtonBase,
 } from '@mui/material'
 import {
+    AgricultureRounded,
+    AutoAwesomeRounded,
+    GrassRounded,
+    ShieldRounded,
     Visibility,
     VisibilityOff,
     ArrowForward,
@@ -89,17 +93,35 @@ const LOGIN_SCENES: LoginScene[] = [
 ]
 
 const LOGIN_HIGHLIGHTS = [
-    { label: 'Field records', value: 'Observation rows and synced submissions in one place' },
-    { label: 'Map view', value: 'Mapped fields, boundaries, and coverage ready' },
-    { label: 'Field statistics', value: 'Area and growth stage summaries available' },
+    {
+        label: 'Field records',
+        value: 'Observation rows and synced submissions in one place',
+        icon: <GrassRounded sx={{ fontSize: 16 }} />,
+        tint: 'rgba(107,196,134,0.16)',
+    },
+    {
+        label: 'Map view',
+        value: 'Mapped fields, boundaries, and coverage ready',
+        icon: <AgricultureRounded sx={{ fontSize: 16 }} />,
+        tint: 'rgba(103,185,201,0.18)',
+    },
+    {
+        label: 'Field statistics',
+        value: 'Area and growth stage summaries available',
+        icon: <AutoAwesomeRounded sx={{ fontSize: 16 }} />,
+        tint: 'rgba(234,143,115,0.18)',
+    },
 ]
 
-function AuthMiniBadge({ label }: { label: string }) {
+function AuthMiniBadge({ label, icon }: { label: string; icon?: React.ReactNode }) {
     return (
         <Box
             sx={{
                 px: 1.2,
                 py: 0.75,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.8,
                 borderRadius: '999px',
                 border: '1px solid rgba(27,94,32,0.12)',
                 bgcolor: 'rgba(255,255,255,0.66)',
@@ -107,6 +129,11 @@ function AuthMiniBadge({ label }: { label: string }) {
                 boxShadow: '0 10px 20px rgba(35,64,52,0.05)',
             }}
         >
+            {icon && (
+                <Box sx={{ display: 'flex', alignItems: 'center', color: GOLD }}>
+                    {icon}
+                </Box>
+            )}
             <Typography
                 sx={{
                     fontSize: '0.56rem',
@@ -114,12 +141,63 @@ function AuthMiniBadge({ label }: { label: string }) {
                     letterSpacing: '0.12em',
                     textTransform: 'uppercase',
                     color: GOLD,
-                    fontFamily: '"Space Mono", monospace',
+                    fontFamily: '"Times New Roman", Times, serif',
                     whiteSpace: 'nowrap',
                 }}
             >
                 {label}
             </Typography>
+        </Box>
+    )
+}
+
+function FloatingLoginIcon({
+    icon,
+    top,
+    left,
+    right,
+    bottom,
+    size,
+    tint,
+    duration = 12,
+}: {
+    icon: React.ReactNode
+    top?: number | string
+    left?: number | string
+    right?: number | string
+    bottom?: number | string
+    size: number
+    tint: string
+    duration?: number
+}) {
+    return (
+        <Box
+            component={motion.div}
+            animate={{ y: [0, -10, 0], x: [0, 6, 0], opacity: [0.18, 0.3, 0.18] }}
+            transition={{ duration, repeat: Infinity, ease: 'easeInOut' }}
+            sx={{
+                position: 'absolute',
+                top,
+                left,
+                right,
+                bottom,
+                width: size,
+                height: size,
+                borderRadius: '50%',
+                display: { xs: 'none', md: 'flex' },
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: `radial-gradient(circle, ${tint} 0%, transparent 72%)`,
+                color: tint,
+                pointerEvents: 'none',
+                zIndex: 0,
+                '& svg': {
+                    fontSize: size * 0.32,
+                    opacity: 0.42,
+                },
+            }}
+        >
+            {icon}
         </Box>
     )
 }
@@ -172,7 +250,7 @@ function SceneThumbnail({
                         fontSize: '0.68rem',
                         fontWeight: 700,
                         color: '#234034',
-                        fontFamily: '"Syne", sans-serif',
+                        fontFamily: '"Times New Roman", Times, serif',
                         lineHeight: 1.2,
                     }}
                 >
@@ -182,7 +260,7 @@ function SceneThumbnail({
                     sx={{
                         fontSize: '0.54rem',
                         color: 'rgba(35,64,52,0.58)',
-                        fontFamily: '"Space Mono", monospace',
+                        fontFamily: '"Times New Roman", Times, serif',
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
                         mt: 0.45,
@@ -227,7 +305,7 @@ function FieldInput({
                         fontWeight: 700,
                         letterSpacing: '0.16em',
                         color: focused ? GOLD : TEXT_DIM,
-                        fontFamily: '"Space Mono", monospace',
+                        fontFamily: '"Times New Roman", Times, serif',
                         textTransform: 'uppercase',
                         mb: 1,
                         transition: 'color 0.2s',
@@ -274,7 +352,7 @@ function FieldInput({
                             bgcolor: 'transparent',
                             color: 'text.primary',
                             fontSize: '0.92rem',
-                            fontFamily: '"Space Mono", monospace',
+                            fontFamily: '"Times New Roman", Times, serif',
                             px: 2,
                             py: 1.65,
                             '&::placeholder': { color: TEXT_DIM, fontSize: '0.82rem' },
@@ -352,7 +430,7 @@ export function LoginPage() {
                 width: '100%',
                 bgcolor: DEEP,
                 overflow: 'hidden',
-                fontFamily: '"Space Mono", monospace',
+                fontFamily: '"Times New Roman", Times, serif',
                 background: `
                     radial-gradient(circle at 8% 8%, rgba(166,226,184,0.24) 0%, transparent 26%),
                     radial-gradient(circle at 90% 12%, rgba(244,162,140,0.18) 0%, transparent 24%),
@@ -364,6 +442,30 @@ export function LoginPage() {
             }}
         >
             <Box sx={{ maxWidth: 1380, mx: 'auto', position: 'relative' }}>
+                <FloatingLoginIcon
+                    icon={<AgricultureRounded />}
+                    top={-42}
+                    right={24}
+                    size={180}
+                    tint="rgba(107,196,134,0.28)"
+                    duration={14}
+                />
+                <FloatingLoginIcon
+                    icon={<AutoAwesomeRounded />}
+                    bottom={42}
+                    left={-34}
+                    size={160}
+                    tint="rgba(103,185,201,0.24)"
+                    duration={13}
+                />
+                <FloatingLoginIcon
+                    icon={<ShieldRounded />}
+                    top={220}
+                    right={-18}
+                    size={136}
+                    tint="rgba(234,143,115,0.22)"
+                    duration={16}
+                />
                 <Box
                     sx={{
                         position: 'absolute',
@@ -426,7 +528,7 @@ export function LoginPage() {
                                                 fontWeight: 700,
                                                 color: '#234034',
                                                 letterSpacing: '0.12em',
-                                                fontFamily: '"Space Mono", monospace',
+                                                fontFamily: '"Times New Roman", Times, serif',
                                                 lineHeight: 1.2,
                                             }}
                                         >
@@ -437,7 +539,7 @@ export function LoginPage() {
                                                 fontSize: '0.56rem',
                                                 color: 'rgba(35,64,52,0.58)',
                                                 letterSpacing: '0.14em',
-                                                fontFamily: '"Space Mono", monospace',
+                                                fontFamily: '"Times New Roman", Times, serif',
                                             }}
                                         >
                                             {BRAND_SYSTEM_TAGLINE}
@@ -509,8 +611,14 @@ export function LoginPage() {
                                         flexWrap: 'wrap',
                                     }}
                                 >
-                                    <AuthMiniBadge label={activeScene.eyebrow} />
-                                    <AuthMiniBadge label="Auto rotating" />
+                                    <AuthMiniBadge
+                                        label={activeScene.eyebrow}
+                                        icon={<GrassRounded sx={{ fontSize: 14 }} />}
+                                    />
+                                    <AuthMiniBadge
+                                        label="Auto rotating"
+                                        icon={<AutoAwesomeRounded sx={{ fontSize: 14 }} />}
+                                    />
                                 </Box>
 
                                 <Box
@@ -549,7 +657,7 @@ export function LoginPage() {
                                             letterSpacing: '0.12em',
                                             textTransform: 'uppercase',
                                             color: 'rgba(35,64,52,0.6)',
-                                            fontFamily: '"Space Mono", monospace',
+                                            fontFamily: '"Times New Roman", Times, serif',
                                             mb: 0.45,
                                         }}
                                     >
@@ -560,7 +668,7 @@ export function LoginPage() {
                                             fontSize: '0.82rem',
                                             fontWeight: 700,
                                             color: '#234034',
-                                            fontFamily: '"Syne", sans-serif',
+                                            fontFamily: '"Times New Roman", Times, serif',
                                             lineHeight: 1.1,
                                         }}
                                     >
@@ -579,6 +687,25 @@ export function LoginPage() {
                                         boxShadow: '0 18px 34px rgba(35,64,52,0.14)',
                                     }}
                                 >
+                                    <Box
+                                        sx={{
+                                            position: 'absolute',
+                                            top: { xs: 12, md: 18 },
+                                            right: { xs: 14, md: 20 },
+                                            width: 52,
+                                            height: 52,
+                                            borderRadius: '18px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            bgcolor: 'rgba(255,255,255,0.54)',
+                                            border: '1px solid rgba(255,255,255,0.62)',
+                                            color: GOLD,
+                                            boxShadow: '0 16px 32px rgba(35,64,52,0.1)',
+                                        }}
+                                    >
+                                        <AgricultureRounded sx={{ fontSize: 24 }} />
+                                    </Box>
                                     <AnimatePresence mode="wait">
                                         <motion.div
                                             key={`${activeScene.label}-copy`}
@@ -594,7 +721,7 @@ export function LoginPage() {
                                                     letterSpacing: '0.18em',
                                                     textTransform: 'uppercase',
                                                     color: '#2f7f4f',
-                                                    fontFamily: '"Space Mono", monospace',
+                                                    fontFamily: '"Times New Roman", Times, serif',
                                                     mb: 1.1,
                                                 }}
                                             >
@@ -607,7 +734,7 @@ export function LoginPage() {
                                                     lineHeight: 1.02,
                                                     letterSpacing: '-0.045em',
                                                     color: '#234034',
-                                                    fontFamily: '"Syne", serif',
+                                                    fontFamily: '"Times New Roman", Times, serif',
                                                     mb: 1,
                                                 }}
                                             >
@@ -671,22 +798,39 @@ export function LoginPage() {
                                 gap: 1.2,
                             }}
                         >
-                            {LOGIN_HIGHLIGHTS.map(({ label, value }) => (
+                            {LOGIN_HIGHLIGHTS.map(({ label, value, icon, tint }) => (
                                 <Box
                                     key={label}
                                     sx={{
                                         p: 1.4,
                                         borderRadius: '20px',
+                                        position: 'relative',
+                                        overflow: 'hidden',
                                         border: '1px solid rgba(27,94,32,0.08)',
                                         bgcolor: 'rgba(255,255,255,0.54)',
                                         boxShadow: '0 14px 26px rgba(35,64,52,0.05)',
                                     }}
                                 >
+                                    <Box
+                                        sx={{
+                                            width: 34,
+                                            height: 34,
+                                            mb: 1,
+                                            borderRadius: '12px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            bgcolor: tint,
+                                            color: GOLD,
+                                        }}
+                                    >
+                                        {icon}
+                                    </Box>
                                     <Typography
                                         sx={{
                                             fontSize: '0.58rem',
                                             color: GOLD,
-                                            fontFamily: '"Space Mono", monospace',
+                                            fontFamily: '"Times New Roman", Times, serif',
                                             letterSpacing: '0.12em',
                                             textTransform: 'uppercase',
                                             mb: 0.55,
@@ -730,9 +874,18 @@ export function LoginPage() {
 
                         <Box sx={{ position: 'relative', zIndex: 1 }}>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2.6 }}>
-                                <AuthMiniBadge label="Secure sign-in" />
-                                <AuthMiniBadge label="Field-ready" />
-                                <AuthMiniBadge label="Sugarcane maps" />
+                                <AuthMiniBadge
+                                    label="Secure sign-in"
+                                    icon={<ShieldRounded sx={{ fontSize: 14 }} />}
+                                />
+                                <AuthMiniBadge
+                                    label="Field-ready"
+                                    icon={<GrassRounded sx={{ fontSize: 14 }} />}
+                                />
+                                <AuthMiniBadge
+                                    label="Sugarcane maps"
+                                    icon={<AgricultureRounded sx={{ fontSize: 14 }} />}
+                                />
                             </Box>
 
                             <motion.div
@@ -747,7 +900,7 @@ export function LoginPage() {
                                             sx={{
                                                 fontSize: '0.58rem',
                                                 color: GOLD_DIM,
-                                                fontFamily: '"Space Mono", monospace',
+                                                fontFamily: '"Times New Roman", Times, serif',
                                                 letterSpacing: '0.18em',
                                             }}
                                         >
@@ -760,7 +913,7 @@ export function LoginPage() {
                                             fontWeight: 800,
                                             color: '#234034',
                                             letterSpacing: '-0.04em',
-                                            fontFamily: '"Syne", sans-serif',
+                                            fontFamily: '"Times New Roman", Times, serif',
                                             lineHeight: 0.98,
                                             mb: 1.2,
                                         }}
@@ -776,10 +929,76 @@ export function LoginPage() {
                                             color: 'rgba(35,64,52,0.72)',
                                             lineHeight: 1.8,
                                             maxWidth: 420,
+                                            mb: 2.2,
                                         }}
                                     >
                                         Your sugarcane field management system is ready for field records, entry forms, map boundaries, and field statistics.
                                     </Typography>
+
+                                    <Box
+                                        sx={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                                            gap: 1,
+                                            maxWidth: 400,
+                                        }}
+                                    >
+                                        {[
+                                            {
+                                                label: 'Live maps',
+                                                detail: 'Boundaries and trial blocks',
+                                                icon: <AgricultureRounded sx={{ fontSize: 16 }} />,
+                                                tint: 'rgba(107,196,134,0.14)',
+                                            },
+                                            {
+                                                label: 'Protected',
+                                                detail: 'Role-based operator access',
+                                                icon: <ShieldRounded sx={{ fontSize: 16 }} />,
+                                                tint: 'rgba(234,143,115,0.14)',
+                                            },
+                                        ].map(({ label, detail, icon, tint }) => (
+                                            <Box
+                                                key={label}
+                                                sx={{
+                                                    p: 1.15,
+                                                    borderRadius: '18px',
+                                                    border: '1px solid rgba(27,94,32,0.08)',
+                                                    bgcolor: 'rgba(255,255,255,0.52)',
+                                                    boxShadow: '0 14px 26px rgba(35,64,52,0.05)',
+                                                }}
+                                            >
+                                                <Box
+                                                    sx={{
+                                                        width: 34,
+                                                        height: 34,
+                                                        mb: 0.9,
+                                                        borderRadius: '12px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        bgcolor: tint,
+                                                        color: GOLD,
+                                                    }}
+                                                >
+                                                    {icon}
+                                                </Box>
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: '0.66rem',
+                                                        fontWeight: 800,
+                                                        color: '#234034',
+                                                        fontFamily: '"Times New Roman", Times, serif',
+                                                        mb: 0.2,
+                                                    }}
+                                                >
+                                                    {label}
+                                                </Typography>
+                                                <Typography sx={{ fontSize: '0.7rem', color: 'rgba(35,64,52,0.64)', lineHeight: 1.45 }}>
+                                                    {detail}
+                                                </Typography>
+                                            </Box>
+                                        ))}
+                                    </Box>
                                 </Box>
                             </motion.div>
 
@@ -809,7 +1028,7 @@ export function LoginPage() {
                                                     sx={{
                                                         fontSize: '0.72rem',
                                                         color: '#1b5e20',
-                                                        fontFamily: '"Space Mono", monospace',
+                                                        fontFamily: '"Times New Roman", Times, serif',
                                                         lineHeight: 1.7,
                                                     }}
                                                 >
@@ -830,7 +1049,7 @@ export function LoginPage() {
                                                                 bgcolor: 'rgba(255,255,255,0.72)',
                                                                 color: GOLD,
                                                                 cursor: resendLoading || !email.trim() ? 'not-allowed' : 'pointer',
-                                                                fontFamily: '"Space Mono", monospace',
+                                                                fontFamily: '"Times New Roman", Times, serif',
                                                                 fontSize: '0.63rem',
                                                                 fontWeight: 700,
                                                                 letterSpacing: '0.08em',
@@ -877,7 +1096,7 @@ export function LoginPage() {
                                                 sx={{
                                                     fontSize: '0.72rem',
                                                     color: 'rgba(35,64,52,0.78)',
-                                                    fontFamily: '"Space Mono", monospace',
+                                                    fontFamily: '"Times New Roman", Times, serif',
                                                     lineHeight: 1.7,
                                                 }}
                                             >
@@ -923,7 +1142,7 @@ export function LoginPage() {
                                             sx={{
                                                 fontSize: '0.65rem',
                                                 color: TEXT_DIM,
-                                                fontFamily: '"Space Mono", monospace',
+                                                fontFamily: '"Times New Roman", Times, serif',
                                                 letterSpacing: '0.06em',
                                                 textDecoration: 'none',
                                                 '&:hover': { color: GOLD },
@@ -957,7 +1176,7 @@ export function LoginPage() {
                                             cursor: loading ? 'not-allowed' : 'pointer',
                                             background: 'linear-gradient(135deg, #1b5e20 0%, #4aaf67 100%)',
                                             color: '#f9fff9',
-                                            fontFamily: '"Space Mono", monospace',
+                                            fontFamily: '"Times New Roman", Times, serif',
                                             fontSize: '0.78rem',
                                             fontWeight: 700,
                                             letterSpacing: '0.12em',
@@ -1007,7 +1226,7 @@ export function LoginPage() {
                                         sx={{
                                             fontSize: '0.65rem',
                                             color: TEXT_DIM,
-                                            fontFamily: '"Space Mono", monospace',
+                                            fontFamily: '"Times New Roman", Times, serif',
                                             letterSpacing: '0.06em',
                                         }}
                                     >
@@ -1056,7 +1275,7 @@ export function LoginPage() {
                                                 sx={{
                                                     fontSize: '0.58rem',
                                                     color: GOLD,
-                                                    fontFamily: '"Space Mono", monospace',
+                                                    fontFamily: '"Times New Roman", Times, serif',
                                                     letterSpacing: '0.1em',
                                                     textTransform: 'uppercase',
                                                     mb: 0.5,

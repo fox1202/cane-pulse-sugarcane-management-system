@@ -123,8 +123,8 @@ const BREAK_CROP_CLASS_FALLBACKS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velv
 const FALLOW_CROP_CLASS_FALLBACKS = ['None']
 
 /** Shared font shorthand — avoids repeating the string 60+ times */
-const MONO: React.CSSProperties['fontFamily'] = '"Space Mono", monospace'
-const DISPLAY: React.CSSProperties['fontFamily'] = '"Syne", sans-serif'
+const MONO: React.CSSProperties['fontFamily'] = '"Times New Roman", Times, serif'
+const DISPLAY: React.CSSProperties['fontFamily'] = '"Times New Roman", Times, serif'
 
 const USE_HARDCODED_FIELD_SHAPEFILE = false
 
@@ -2047,7 +2047,7 @@ export function MapViewPage() {
 
             {/* Leaflet global styles */}
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Mono:wght@400;700&display=swap');
+                
 
                 .hud-popup .leaflet-popup-content-wrapper {
                     background: ${POPUP_BG} !important;

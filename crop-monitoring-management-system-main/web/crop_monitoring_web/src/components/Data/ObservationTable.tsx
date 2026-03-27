@@ -90,7 +90,7 @@ interface ObservationColumn {
 
 const OBSERVATION_COLUMNS: ObservationColumn[] = [
     { key: 'dateRecorded', label: 'Date Recorded', minWidth: 150 },
-    { key: 'fieldId', label: 'Field ID', minWidth: 170 },
+    { key: 'fieldId', label: 'Trials', minWidth: 170 },
     { key: 'blockId', label: 'Block ID', minWidth: 140 },
     { key: 'area', label: 'Area (ha)', minWidth: 110 },
     { key: 'irrigationType', label: 'Irrigation Type', minWidth: 150 },

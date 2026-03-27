@@ -95,7 +95,7 @@ export function MapCenterObject({
                                 lineHeight: 1,
                                 letterSpacing: '0.16em',
                                 textTransform: 'uppercase',
-                                fontFamily: '"Space Mono", monospace',
+                                fontFamily: '"Times New Roman", Times, serif',
                                 fontWeight: 700,
                                 color,
                             }}

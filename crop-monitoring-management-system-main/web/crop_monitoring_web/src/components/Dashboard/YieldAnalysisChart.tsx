@@ -143,8 +143,8 @@ const PALETTE = [
   '#7ec9ab',
 ]
 
-const DISPLAY = '"Syne", sans-serif'
-const MONO = '"Space Mono", monospace'
+const DISPLAY = '"Times New Roman", Times, serif'
+const MONO = '"Times New Roman", Times, serif'
 
 function ChartShell({
   title,
@@ -207,7 +207,7 @@ function ChartShell({
           {title}
         </Typography>
         {subtitle && (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.7, mb: 1.8, fontFamily: '"Nunito", sans-serif' }}>
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.7, mb: 1.8, fontFamily: '"Times New Roman", Times, serif' }}>
             {subtitle}
           </Typography>
         )}
@@ -270,7 +270,7 @@ function InsightCard({
       >
         {title}
       </Typography>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.7, fontFamily: '"Nunito", sans-serif' }}>
+      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.7, fontFamily: '"Times New Roman", Times, serif' }}>
         {body}
       </Typography>
     </Paper>
@@ -388,7 +388,7 @@ function MetricGroupCard({
         </Box>
 
         {helper && (
-          <Typography sx={{ mt: 1.1, fontSize: 12, color: 'text.secondary', lineHeight: 1.5, fontFamily: '"Nunito", sans-serif' }}>
+          <Typography sx={{ mt: 1.1, fontSize: 12, color: 'text.secondary', lineHeight: 1.5, fontFamily: '"Times New Roman", Times, serif' }}>
             {helper}
           </Typography>
         )}

@@ -396,7 +396,7 @@ export default function SupabaseConnectionTest() {
                             <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 200 }}>
                                 {env.key}
                             </Typography>
-                            <Typography variant="caption" sx={{ fontFamily: 'monospace', flex: 1 }}>
+                            <Typography variant="caption" sx={{ fontFamily: '"Times New Roman", Times, serif', flex: 1 }}>
                                 {env.value || '(empty)'}
                             </Typography>
                         </Box>
@@ -433,7 +433,7 @@ export default function SupabaseConnectionTest() {
                                     {test.message}
                                 </Typography>
                                 {test.details != null && (
-                                    <Box sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.05)', borderRadius: 1, fontFamily: 'monospace', fontSize: '0.75rem', maxHeight: 200, overflow: 'auto' }}>
+                                    <Box sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.05)', borderRadius: 1, fontFamily: '"Times New Roman", Times, serif', fontSize: '0.75rem', maxHeight: 200, overflow: 'auto' }}>
                                         <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                             {typeof test.details === 'string' ? test.details : JSON.stringify(test.details, null, 2)}
                                         </pre>
@@ -474,7 +474,7 @@ export default function SupabaseConnectionTest() {
                                             <ErrorOutline sx={{ color: 'error.main', opacity: 0.5 }} />
                                         )}
                                     </TableCell>
-                                    <TableCell sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
+                                    <TableCell sx={{ fontFamily: '"Times New Roman", Times, serif', fontWeight: 500 }}>
                                         {table.name}
                                     </TableCell>
                                     <TableCell align="right">
@@ -488,7 +488,7 @@ export default function SupabaseConnectionTest() {
                                     </TableCell>
                                     <TableCell>
                                         {table.error ? (
-                                            <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'error.main' }}>
+                                            <Typography variant="caption" sx={{ fontFamily: '"Times New Roman", Times, serif', color: 'error.main' }}>
                                                 {table.error}
                                             </Typography>
                                         ) : (

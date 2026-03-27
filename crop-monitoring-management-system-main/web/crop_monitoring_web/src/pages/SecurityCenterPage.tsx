@@ -89,7 +89,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 0 }}>
             <Box sx={{ width: 20, height: 1.5, bgcolor: VIOLET, borderRadius: 1, opacity: 0.6 }} />
-            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.1em', color: VIOLET_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase' }}>
+            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.1em', color: VIOLET_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase' }}>
                 {children}
             </Typography>
         </Box>
@@ -107,7 +107,7 @@ function RoleBadge({ role }: { role: string }) {
     return (
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.7, px: 1.2, py: 0.4, borderRadius: '6px', bgcolor: c.bg, border: `1px solid ${c.border}` }}>
             <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: c.color, flexShrink: 0 }} />
-            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: c.color, fontFamily: '"Space Mono", monospace', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: c.color, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                 {role}
             </Typography>
         </Box>
@@ -125,7 +125,7 @@ function StatusBadge({ status }: { status: string }) {
     return (
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.7, px: 1.2, py: 0.4, borderRadius: '6px', bgcolor: c.bg, border: `1px solid ${c.border}` }}>
             <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: c.color, boxShadow: `0 0 5px ${c.color}`, flexShrink: 0 }} />
-            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: c.color, fontFamily: '"Space Mono", monospace', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: c.color, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                 {status}
             </Typography>
         </Box>
@@ -143,7 +143,7 @@ function UserAvatar({ user, size = 36 }: { user: Profile; size?: number }) {
             bgcolor: `${colors[idx]}18`, border: `1px solid ${colors[idx]}30`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: colors[idx], fontWeight: 700, fontSize: size * 0.33,
-            fontFamily: '"Space Mono", monospace',
+            fontFamily: '"Times New Roman", Times, serif',
         }}>
             {initials}
         </Box>
@@ -160,10 +160,10 @@ function StatCard({ title, count, icon, color, loading }: { title: string; count
                 </Box>
                 <PulseDot color={color} size={6} />
             </Box>
-            <Typography sx={{ fontSize: loading ? '2rem' : '2.8rem', fontWeight: 800, color: 'white', fontFamily: '"Space Mono", monospace', lineHeight: 1, mb: 0.5 }}>
+            <Typography sx={{ fontSize: loading ? '2rem' : '2.8rem', fontWeight: 800, color: 'white', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1, mb: 0.5 }}>
                 {loading ? '—' : count}
             </Typography>
-            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.08em', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase' }}>
+            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.08em', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase' }}>
                 {title}
             </Typography>
         </GlassPanel>
@@ -183,7 +183,7 @@ function DataTable({ headers, children, empty }: { headers: string[]; children: 
                 bgcolor: 'rgba(0,0,0,0.25)',
             }}>
                 {headers.map(h => (
-                    <Typography key={h} sx={{ fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.08em', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase' }}>
+                    <Typography key={h} sx={{ fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.08em', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase' }}>
                         {h}
                     </Typography>
                 ))}
@@ -233,12 +233,12 @@ function TabBar({ tabs, active, onChange }: { tabs: { label: string; icon: React
                     <Box sx={{ color: active === i ? VIOLET : TEXT_DIM, display: 'flex', fontSize: 17, transition: 'color 0.2s' }}>
                         {tab.icon}
                     </Box>
-                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.06em', color: active === i ? TEXT_ON : TEXT_DIM, fontFamily: '"Space Mono", monospace', whiteSpace: 'nowrap', transition: 'color 0.2s' }}>
+                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.06em', color: active === i ? TEXT_ON : TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap', transition: 'color 0.2s' }}>
                         {tab.label}
                     </Typography>
                     {tab.badge != null && tab.badge > 0 && (
                         <Box sx={{ px: 0.9, py: 0.1, borderRadius: '5px', bgcolor: RED_ERR, minWidth: 20, textAlign: 'center' }}>
-                            <Typography sx={{ fontSize: '0.55rem', fontWeight: 800, color: 'white', fontFamily: '"Space Mono", monospace', lineHeight: 1.6 }}>
+                            <Typography sx={{ fontSize: '0.55rem', fontWeight: 800, color: 'white', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.6 }}>
                                 {tab.badge}
                             </Typography>
                         </Box>
@@ -260,7 +260,7 @@ function ActionBtn({ label, color, outline = false, onClick, disabled }: { label
                 px: 2, py: 0.8, borderRadius: '7px', border: `1px solid ${color}44`,
                 bgcolor: outline ? 'transparent' : `${color}12`,
                 color: disabled ? TEXT_DIM : color,
-                fontFamily: '"Space Mono", monospace', fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.08em',
+                fontFamily: '"Times New Roman", Times, serif', fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.08em',
                 cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
                 transition: 'all 0.2s ease',
                 '&:hover:not(:disabled)': { bgcolor: `${color}20`, borderColor: `${color}66` },
@@ -293,10 +293,10 @@ function ConfirmDialog({ open, type, user, onClose, onConfirm }: {
                         {isApprove ? <VerifiedUser sx={{ fontSize: 22 }} /> : <WarningAmberOutlined sx={{ fontSize: 22 }} />}
                     </Box>
                     <Box>
-                        <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: TEXT_ON, fontFamily: '"Syne", sans-serif' }}>
+                        <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: TEXT_ON, fontFamily: '"Times New Roman", Times, serif' }}>
                             {isApprove ? 'Approve Access Request' : 'Reject Access Request'}
                         </Typography>
-                        <Typography sx={{ fontSize: '0.85rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', mt: 0.2 }}>
+                        <Typography sx={{ fontSize: '0.85rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', mt: 0.2 }}>
                             This action will trigger an email notification
                         </Typography>
                     </Box>
@@ -308,10 +308,10 @@ function ConfirmDialog({ open, type, user, onClose, onConfirm }: {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <UserAvatar user={user} size={40} />
                             <Box>
-                                <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: TEXT_ON, fontFamily: '"Syne", sans-serif' }}>
+                                <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: TEXT_ON, fontFamily: '"Times New Roman", Times, serif' }}>
                                     {user.first_name} {user.last_name}
                                 </Typography>
-                                <Typography sx={{ fontSize: '0.82rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', mt: 0.2 }}>
+                                <Typography sx={{ fontSize: '0.82rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', mt: 0.2 }}>
                                     {user.email}
                                 </Typography>
                             </Box>
@@ -323,7 +323,7 @@ function ConfirmDialog({ open, type, user, onClose, onConfirm }: {
                 )}
 
                 {/* Confirm text */}
-                <Typography sx={{ fontSize: '0.9rem', color: TEXT_MID, fontFamily: '"Space Mono", monospace', lineHeight: 1.8, mb: 3 }}>
+                <Typography sx={{ fontSize: '0.9rem', color: TEXT_MID, fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.8, mb: 3 }}>
                     {isApprove
                         ? 'Granting access will allow this operator to sign in and contribute field data.'
                         : 'Rejecting this request will deny system access and notify the applicant.'}
@@ -338,7 +338,7 @@ function ConfirmDialog({ open, type, user, onClose, onConfirm }: {
                         sx={{
                             px: 3, py: 1.2, borderRadius: '10px', border: 'none',
                             bgcolor: accent, color: DEEP, cursor: 'pointer',
-                            fontFamily: '"Space Mono", monospace', fontSize: '0.88rem', fontWeight: 800, letterSpacing: '0.1em',
+                            fontFamily: '"Times New Roman", Times, serif', fontSize: '0.88rem', fontWeight: 800, letterSpacing: '0.1em',
                             boxShadow: `0 0 28px ${accent}50`,
                             transition: 'all 0.2s ease',
                             '&:hover': { transform: 'translateY(-1px)', boxShadow: `0 0 40px ${accent}70` },
@@ -358,8 +358,8 @@ function EmptyState({ icon, title, body }: { icon: React.ReactNode; title: strin
         <Box sx={{ py: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <Box sx={{ color: TEXT_DIM, opacity: 0.5, display: 'flex' }}>{icon}</Box>
             <Box sx={{ textAlign: 'center' }}>
-                <Typography sx={{ fontSize: '0.92rem', fontWeight: 700, color: TEXT_MID, fontFamily: '"Syne", sans-serif', mb: 0.5 }}>{title}</Typography>
-                <Typography sx={{ fontSize: '0.88rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace' }}>{body}</Typography>
+                <Typography sx={{ fontSize: '0.92rem', fontWeight: 700, color: TEXT_MID, fontFamily: '"Times New Roman", Times, serif', mb: 0.5 }}>{title}</Typography>
+                <Typography sx={{ fontSize: '0.88rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif' }}>{body}</Typography>
             </Box>
         </Box>
     )
@@ -431,7 +431,7 @@ export function SecurityCenterPage() {
     ]
 
     return (
-        <Box sx={{ bgcolor: DEEP, minHeight: '100vh', py: 5, position: 'relative', fontFamily: '"Space Mono", monospace' }}>
+        <Box sx={{ bgcolor: DEEP, minHeight: '100vh', py: 5, position: 'relative', fontFamily: '"Times New Roman", Times, serif' }}>
             {/* Ambient glow */}
             <Box sx={{
                 position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
@@ -449,11 +449,11 @@ export function SecurityCenterPage() {
                         <Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.2 }}>
                                 <Box sx={{ width: 28, height: 1.5, bgcolor: VIOLET, borderRadius: 1 }} />
-                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.1em', color: VIOLET_DIM, fontFamily: '"Space Mono", monospace', textTransform: 'uppercase' }}>
+                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.1em', color: VIOLET_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase' }}>
                                     Access Control System
                                 </Typography>
                             </Box>
-                            <Typography sx={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', fontWeight: 800, letterSpacing: '-0.03em', fontFamily: '"Syne", sans-serif', color: 'white', lineHeight: 1.05, mb: 0.8 }}>
+                            <Typography sx={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', fontWeight: 800, letterSpacing: '-0.03em', fontFamily: '"Times New Roman", Times, serif', color: 'white', lineHeight: 1.05, mb: 0.8 }}>
                                 Security{' '}
                                 <Box component="span" sx={{ color: VIOLET, textShadow: `0 0 40px ${VIOLET_DIM}` }}>Center</Box>
                             </Typography>
@@ -472,7 +472,7 @@ export function SecurityCenterPage() {
                                     display: 'flex', alignItems: 'center', gap: 1, px: 2.5, py: 1.3,
                                     borderRadius: '10px', border: `1px solid ${VIOLET_BDR}`,
                                     bgcolor: VIOLET_PALE, color: VIOLET, cursor: loading ? 'not-allowed' : 'pointer',
-                                    fontFamily: '"Space Mono", monospace', fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.1em',
+                                    fontFamily: '"Times New Roman", Times, serif', fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.1em',
                                     transition: 'all 0.2s', opacity: loading ? 0.5 : 1,
                                     '&:hover:not(:disabled)': { bgcolor: 'rgba(27,94,32,0.12)' },
                                 }}
@@ -490,7 +490,7 @@ export function SecurityCenterPage() {
                         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2, mb: 3, borderRadius: '12px', bgcolor: RED_PALE, border: `1px solid ${RED_BDR}` }}>
                                 <WarningAmberOutlined sx={{ fontSize: 15, color: RED_ERR, flexShrink: 0 }} />
-                                <Typography sx={{ fontSize: '0.88rem', color: RED_ERR, fontFamily: '"Space Mono", monospace', flex: 1 }}>{error}</Typography>
+                                <Typography sx={{ fontSize: '0.88rem', color: RED_ERR, fontFamily: '"Times New Roman", Times, serif', flex: 1 }}>{error}</Typography>
                                 <IconButton size="small" onClick={() => setError('')} sx={{ color: RED_ERR, p: 0.3 }}><Close sx={{ fontSize: 14 }} /></IconButton>
                             </Box>
                         </motion.div>
@@ -526,12 +526,12 @@ export function SecurityCenterPage() {
                                         { label: 'Pending Reviews',   status: stats.totalPending > 0 ? `${stats.totalPending} QUEUED` : 'CLEAR', color: stats.totalPending > 0 ? AMBER : GREEN_OK },
                                     ].map(({ label, status, color }) => (
                                         <Box key={label} sx={{ flex: '1 1 180px', p: 2.5, borderRadius: '12px', bgcolor: `${color}08`, border: `1px solid ${color}18` }}>
-                                            <Typography sx={{ fontSize: '0.9rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.12em', mb: 1 }}>
+                                            <Typography sx={{ fontSize: '0.9rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.12em', mb: 1 }}>
                                                 {label}
                                             </Typography>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: color, boxShadow: `0 0 6px ${color}` }} />
-                                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color, fontFamily: '"Space Mono", monospace' }}>
+                                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color, fontFamily: '"Times New Roman", Times, serif' }}>
                                                     {status}
                                                 </Typography>
                                             </Box>
@@ -548,7 +548,7 @@ export function SecurityCenterPage() {
                             {loading ? (
                                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10, gap: 2 }}>
                                     <CircularProgress size={24} sx={{ color: VIOLET }} thickness={2.5} />
-                                    <Typography sx={{ fontSize: '0.82rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.1em' }}>LOADING REQUESTS…</Typography>
+                                    <Typography sx={{ fontSize: '0.82rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.1em' }}>LOADING REQUESTS…</Typography>
                                 </Box>
                             ) : pendingUsers.length === 0 ? (
                                 <GlassPanel>
@@ -563,10 +563,10 @@ export function SecurityCenterPage() {
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                                     <UserAvatar user={user} />
                                                     <Box>
-                                                        <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: TEXT_ON, fontFamily: '"Syne", sans-serif' }}>
+                                                        <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: TEXT_ON, fontFamily: '"Times New Roman", Times, serif' }}>
                                                             {user.first_name} {user.last_name}
                                                         </Typography>
-                                                        <Typography sx={{ fontSize: '0.9rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', mt: 0.2 }}>
+                                                        <Typography sx={{ fontSize: '0.9rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', mt: 0.2 }}>
                                                             {user.email}
                                                         </Typography>
                                                     </Box>
@@ -574,7 +574,7 @@ export function SecurityCenterPage() {
                                                 {/* Role */}
                                                 <RoleBadge role={user.role} />
                                                 {/* Date */}
-                                                <Typography sx={{ fontSize: '0.82rem', color: TEXT_MID, fontFamily: '"Space Mono", monospace' }}>
+                                                <Typography sx={{ fontSize: '0.82rem', color: TEXT_MID, fontFamily: '"Times New Roman", Times, serif' }}>
                                                     {new Date(user.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                 </Typography>
                                                 {/* Actions */}
@@ -602,7 +602,7 @@ export function SecurityCenterPage() {
                             {loading ? (
                                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10, gap: 2 }}>
                                     <CircularProgress size={24} sx={{ color: VIOLET }} thickness={2.5} />
-                                    <Typography sx={{ fontSize: '0.82rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', letterSpacing: '0.1em' }}>LOADING DIRECTORY…</Typography>
+                                    <Typography sx={{ fontSize: '0.82rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.1em' }}>LOADING DIRECTORY…</Typography>
                                 </Box>
                             ) : (
                                 <DataTable headers={['Staff Member', 'Role', 'Status', 'Joined']}>
@@ -613,10 +613,10 @@ export function SecurityCenterPage() {
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                                     <UserAvatar user={user} />
                                                     <Box>
-                                                        <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: TEXT_ON, fontFamily: '"Syne", sans-serif' }}>
+                                                        <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: TEXT_ON, fontFamily: '"Times New Roman", Times, serif' }}>
                                                             {user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.email?.split('@')[0]}
                                                         </Typography>
-                                                        <Typography sx={{ fontSize: '0.9rem', color: TEXT_DIM, fontFamily: '"Space Mono", monospace', mt: 0.2 }}>
+                                                        <Typography sx={{ fontSize: '0.9rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', mt: 0.2 }}>
                                                             {user.email}
                                                         </Typography>
                                                     </Box>
@@ -637,7 +637,7 @@ export function SecurityCenterPage() {
                                                 {/* Status */}
                                                 <StatusBadge status={user.status} />
                                                 {/* Date */}
-                                                <Typography sx={{ fontSize: '0.82rem', color: TEXT_MID, fontFamily: '"Space Mono", monospace' }}>
+                                                <Typography sx={{ fontSize: '0.82rem', color: TEXT_MID, fontFamily: '"Times New Roman", Times, serif' }}>
                                                     {new Date(user.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                 </Typography>
                                             </Box>
@@ -663,7 +663,7 @@ export function SecurityCenterPage() {
             <Snackbar open={!!successMessage} autoHideDuration={5000} onClose={() => setSuccessMessage('')} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2.5, py: 1.8, borderRadius: '12px', bgcolor: PANEL_ALT, border: `1px solid ${GREEN_BDR}`, boxShadow: `0 8px 40px rgba(0,0,0,0.6)`, backdropFilter: 'blur(16px)' }}>
                     <CheckCircle sx={{ fontSize: 16, color: GREEN_OK }} />
-                    <Typography sx={{ fontSize: '0.88rem', color: GREEN_OK, fontFamily: '"Space Mono", monospace', fontWeight: 700 }}>
+                    <Typography sx={{ fontSize: '0.88rem', color: GREEN_OK, fontFamily: '"Times New Roman", Times, serif', fontWeight: 700 }}>
                         {successMessage}
                     </Typography>
                     <IconButton size="small" onClick={() => setSuccessMessage('')} sx={{ color: TEXT_DIM, p: 0.2, ml: 1 }}><Close sx={{ fontSize: 13 }} /></IconButton>
@@ -671,7 +671,7 @@ export function SecurityCenterPage() {
             </Snackbar>
 
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Mono:wght@400;700&display=swap');
+                
             `}</style>
         </Box>
     )

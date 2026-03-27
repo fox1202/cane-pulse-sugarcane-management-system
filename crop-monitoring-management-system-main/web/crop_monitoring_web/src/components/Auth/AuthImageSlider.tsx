@@ -103,7 +103,7 @@ function MetricTile({ label }: { label: string }) {
                     letterSpacing: '0.1em',
                     textTransform: 'uppercase',
                     color: '#234034',
-                    fontFamily: '"Space Mono", monospace',
+                    fontFamily: '"Times New Roman", Times, serif',
                     whiteSpace: 'nowrap',
                 }}
             >
@@ -167,7 +167,7 @@ function SugarcanePhotoTile({ photo, index }: { photo: SugarcanePhoto; index: nu
                             letterSpacing: '0.08em',
                             textTransform: 'uppercase',
                             color: '#234034',
-                            fontFamily: '"Space Mono", monospace',
+                            fontFamily: '"Times New Roman", Times, serif',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -294,7 +294,7 @@ export function AuthImageSlider({
                                     letterSpacing: '0.16em',
                                     textTransform: 'uppercase',
                                     color: '#f8fff9',
-                                    fontFamily: '"Space Mono", monospace',
+                                    fontFamily: '"Times New Roman", Times, serif',
                                 }}
                             >
                                 Broadcast
@@ -307,7 +307,7 @@ export function AuthImageSlider({
                                 letterSpacing: '0.12em',
                                 textTransform: 'uppercase',
                                 color: 'rgba(35,64,52,0.72)',
-                                fontFamily: '"Space Mono", monospace',
+                                fontFamily: '"Times New Roman", Times, serif',
                             }}
                         >
                             Sugarcane management active
@@ -331,7 +331,7 @@ export function AuthImageSlider({
                                 letterSpacing: '0.14em',
                                 textTransform: 'uppercase',
                                 color: '#de7c64',
-                                fontFamily: '"Space Mono", monospace',
+                                fontFamily: '"Times New Roman", Times, serif',
                                 whiteSpace: 'nowrap',
                             }}
                         >
@@ -366,7 +366,7 @@ export function AuthImageSlider({
                                         letterSpacing: '0.18em',
                                         textTransform: 'uppercase',
                                         color: '#2f7f4f',
-                                        fontFamily: '"Space Mono", monospace',
+                                        fontFamily: '"Times New Roman", Times, serif',
                                         mb: 1.1,
                                     }}
                                 >
@@ -380,7 +380,7 @@ export function AuthImageSlider({
                                         lineHeight: 1.02,
                                         letterSpacing: '-0.04em',
                                         color: '#234034',
-                                        fontFamily: '"Syne", serif',
+                                        fontFamily: '"Times New Roman", Times, serif',
                                         maxWidth: isHero ? 560 : 470,
                                         mb: 1.2,
                                     }}
@@ -422,7 +422,7 @@ export function AuthImageSlider({
                                                 letterSpacing: '0.16em',
                                                 textTransform: 'uppercase',
                                                 color: 'rgba(35,64,52,0.58)',
-                                                fontFamily: '"Space Mono", monospace',
+                                                fontFamily: '"Times New Roman", Times, serif',
                                                 mb: 1.1,
                                             }}
                                         >
@@ -462,7 +462,7 @@ export function AuthImageSlider({
                                             letterSpacing: '0.14em',
                                             textTransform: 'uppercase',
                                             color: 'rgba(35,64,52,0.58)',
-                                            fontFamily: '"Space Mono", monospace',
+                                            fontFamily: '"Times New Roman", Times, serif',
                                         }}
                                     >
                                         Slide {String(index + 1).padStart(2, '0')} of {String(slides.length).padStart(2, '0')}

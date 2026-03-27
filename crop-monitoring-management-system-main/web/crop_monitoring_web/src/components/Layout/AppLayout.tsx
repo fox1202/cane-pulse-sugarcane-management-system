@@ -1,63 +1,159 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
-  Box,
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  ButtonBase,
-  Drawer,
   Alert,
+  AppBar,
   Avatar,
-  Chip,
-  Tooltip,
   Badge,
+  Box,
+  ButtonBase,
+  Chip,
+  Divider,
+  Drawer,
+  IconButton,
+  ListItemText,
   Menu,
   MenuItem,
-  Divider,
-  ListItemText,
+  Toolbar,
+  Tooltip,
+  Typography,
 } from '@mui/material'
 import {
-  Menu as MenuIcon,
+  AgricultureRounded,
+  AutoAwesomeRounded,
+  CalendarMonthRounded,
+  DescriptionRounded,
+  HomeRounded,
+  InsightsRounded,
   LogoutRounded,
+  MapRounded,
+  Menu as MenuIcon,
+  NotificationsRounded,
+  RefreshRounded,
+  ShieldRounded,
+  SpaRounded,
+  TableChartRounded,
   WifiOffRounded,
   WifiRounded,
-  NotificationsRounded,
-  MapRounded,
-  RefreshRounded,
 } from '@mui/icons-material'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { Navigation } from './Navigation'
 import { isOnline } from '@/services/offline.service'
 import { BRAND_DESCRIPTION, BRAND_NAME } from '@/branding/brand'
+import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
+import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
+import { formatDateOnlyLabel } from '@/utils/dateOnly'
+import { buildUpcomingTaskNotices, getTaskDueLabel } from '@/utils/upcomingTaskNotices'
 
-const DRAWER_WIDTH = 300
+const DRAWER_WIDTH = 308
 
-const PAGE_TITLES: Record<string, string> = {
-  '/': 'Overview',
-  '/data': BRAND_DESCRIPTION,
-  '/entry-forms': 'Entry Forms',
-  '/field-statistics': `${BRAND_NAME} ${BRAND_DESCRIPTION}`,
-  '/map': 'Map View',
-  '/security': 'Security Center',
+const PAGE_META: Record<string, { eyebrow: string; title: string; note: string; icon: React.ReactNode }> = {
+  '/': {
+    eyebrow: 'Overview',
+    title: 'Field Pulse',
+    note: 'Monitor alerts, form flow, calendar work, and mapped field activity from one place.',
+    icon: <HomeRounded fontSize="small" />,
+  },
+  '/data': {
+    eyebrow: 'Records',
+    title: 'Field Records',
+    note: 'Review observation rows, intake details, and record quality with a cleaner table workspace.',
+    icon: <TableChartRounded fontSize="small" />,
+  },
+  '/entry-forms': {
+    eyebrow: 'Workflow',
+    title: 'Entry Forms',
+    note: 'Capture web submissions, trial details, and agronomy sections in the refreshed intake flow.',
+    icon: <DescriptionRounded fontSize="small" />,
+  },
+  '/field-statistics': {
+    eyebrow: 'Analytics',
+    title: 'Field Statistics',
+    note: 'Read mapped area, crop coverage, and chart summaries with more visual breathing room.',
+    icon: <InsightsRounded fontSize="small" />,
+  },
+  '/map': {
+    eyebrow: 'Spatial',
+    title: 'Map View',
+    note: 'Inspect trial boundaries, live polygons, and field context on a clearer spatial canvas.',
+    icon: <MapRounded fontSize="small" />,
+  },
+  '/calendar': {
+    eyebrow: 'Timing',
+    title: 'Farming Calendar',
+    note: 'Follow season windows, month tasks, and calendar-linked actions from the imported workbook.',
+    icon: <CalendarMonthRounded fontSize="small" />,
+  },
+  '/monitoring': {
+    eyebrow: 'Live Feed',
+    title: 'Monitoring',
+    note: 'Track current sugarcane records, summaries, and agronomy signals as they update.',
+    icon: <AgricultureRounded fontSize="small" />,
+  },
+  '/security': {
+    eyebrow: 'Control',
+    title: 'Security Center',
+    note: 'Manage protected access, approvals, and system oversight from the admin surface.',
+    icon: <ShieldRounded fontSize="small" />,
+  },
 }
 
-const NOTIFICATIONS = [
-  {
-    title: 'Morning Sync Complete',
-    message: 'All new field reports were synced successfully.',
-    time: '3m ago',
-    path: '/data',
-  },
-  {
-    title: 'Irrigation Reminder',
-    message: 'Block B2 is due for irrigation follow-up this afternoon.',
-    time: '14m ago',
-    path: '/map',
-  },
-]
+function ShellGlyph({
+  icon,
+  top,
+  left,
+  right,
+  bottom,
+  size,
+  tint,
+  rotate = 0,
+  duration = 14,
+}: {
+  icon: React.ReactNode
+  top?: number | string
+  left?: number | string
+  right?: number | string
+  bottom?: number | string
+  size: number
+  tint: string
+  rotate?: number
+  duration?: number
+}) {
+  return (
+    <Box
+      component={motion.div}
+      animate={{ y: [0, -10, 0], x: [0, 6, 0], opacity: [0.18, 0.3, 0.18] }}
+      transition={{ duration, repeat: Infinity, ease: 'easeInOut' }}
+      sx={{
+        position: 'fixed',
+        top,
+        left,
+        right,
+        bottom,
+        width: size,
+        height: size,
+        display: { xs: 'none', md: 'flex' },
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: '50%',
+        background: `radial-gradient(circle, ${tint} 0%, transparent 70%)`,
+        color: tint,
+        filter: 'blur(0px)',
+        pointerEvents: 'none',
+        zIndex: 0,
+        transform: `rotate(${rotate}deg)`,
+        '& svg': {
+          fontSize: size * 0.34,
+          opacity: 0.34,
+        },
+      }}
+    >
+      {icon}
+    </Box>
+  )
+}
 
 export function AppLayout() {
   const location = useLocation()
@@ -67,6 +163,22 @@ export function AppLayout() {
   const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null)
   const [statusAnchor, setStatusAnchor] = useState<null | HTMLElement>(null)
   const { signOut } = useAuth()
+  const {
+    data: monitoring = [],
+    isLoading: monitoringLoading,
+    error: monitoringError,
+  } = useSugarcaneMonitoring()
+  const {
+    data: predefinedFields = [],
+    isLoading: fieldsLoading,
+    error: fieldsError,
+  } = useQuery<PredefinedField[], Error>({
+    queryKey: ['overview-predefined-fields'],
+    queryFn: fetchLivePredefinedFields,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+  })
 
   useEffect(() => {
     const handleOnline = () => setOffline(false)
@@ -79,10 +191,42 @@ export function AppLayout() {
     }
   }, [])
 
-  const pageTitle = useMemo(() => PAGE_TITLES[location.pathname] ?? BRAND_NAME, [location.pathname])
+  const pageMeta = useMemo(
+    () => PAGE_META[location.pathname] ?? {
+      eyebrow: 'Workspace',
+      title: BRAND_NAME,
+      note: BRAND_DESCRIPTION,
+      icon: <AutoAwesomeRounded fontSize="small" />,
+    },
+    [location.pathname]
+  )
+  const notificationTasks = useMemo(() => {
+    const allTasks = buildUpcomingTaskNotices(monitoring, predefinedFields)
+    const urgentTasks = allTasks.filter((task) => task.daysUntil <= 14)
+
+    if (urgentTasks.length > 0) {
+      return urgentTasks.slice(0, 6)
+    }
+
+    return allTasks.slice(0, 6)
+  }, [monitoring, predefinedFields])
+  const notificationsLoading = monitoringLoading || fieldsLoading
+  const notificationsError = monitoringError ?? fieldsError
 
   const handleDrawerToggle = () => {
     setMobileOpen((prev) => !prev)
+  }
+
+  const handleOpenNotifications = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setNotificationAnchor(event.currentTarget)
+  }
+
+  const handleLogoutClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    void handleLogout()
   }
 
   const closeNotificationMenu = () => setNotificationAnchor(null)
@@ -112,56 +256,32 @@ export function AppLayout() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
-      <Box
-        component={motion.div}
-        animate={{ y: [0, -12, 0], opacity: [0.6, 0.85, 0.6] }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-        sx={{
-          position: 'fixed',
-          top: -120,
-          right: -120,
-          width: 420,
-          height: 420,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(123,215,157,0.42) 0%, transparent 70%)',
-          filter: 'blur(24px)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
+      <ShellGlyph
+        icon={<SpaRounded />}
+        top={-80}
+        right={-70}
+        size={280}
+        tint="rgba(107,196,134,0.26)"
+        rotate={-12}
+        duration={13}
       />
-      <Box
-        component={motion.div}
-        animate={{ y: [0, 10, 0], opacity: [0.45, 0.7, 0.45] }}
-        transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
-        sx={{
-          position: 'fixed',
-          bottom: -120,
-          left: 200,
-          width: 460,
-          height: 460,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(47,159,90,0.22) 0%, transparent 72%)',
-          filter: 'blur(30px)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
+      <ShellGlyph
+        icon={<AgricultureRounded />}
+        bottom={-110}
+        left={220}
+        size={340}
+        tint="rgba(234,143,115,0.18)"
+        rotate={8}
+        duration={16}
       />
-      <Box
-        component={motion.div}
-        animate={{ x: [0, 14, 0], y: [0, -8, 0], opacity: [0.36, 0.56, 0.36] }}
-        transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-        sx={{
-          position: 'fixed',
-          top: 120,
-          left: -120,
-          width: 320,
-          height: 320,
-          borderRadius: '40%',
-          background: 'radial-gradient(circle, rgba(244,162,140,0.26) 0%, transparent 70%)',
-          filter: 'blur(28px)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
+      <ShellGlyph
+        icon={<AutoAwesomeRounded />}
+        top={150}
+        left={-60}
+        size={220}
+        tint="rgba(103,185,201,0.22)"
+        rotate={-18}
+        duration={15}
       />
 
       <AppBar
@@ -171,7 +291,7 @@ export function AppLayout() {
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
           ml: { md: `${DRAWER_WIDTH}px` },
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          px: { xs: 1, md: 1.4 },
+          px: { xs: 1, md: 1.6 },
           pt: { xs: 1.2, md: 1.5 },
           bgcolor: 'transparent',
           boxShadow: 'none',
@@ -180,21 +300,31 @@ export function AppLayout() {
       >
         <Toolbar
           sx={{
-            minHeight: '78px !important',
+            minHeight: '92px !important',
             px: { xs: 2, md: 3 },
             gap: 1.5,
-            borderRadius: '0 0 28px 28px',
-            border: '1px solid rgba(86,184,112,0.16)',
-            background: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,248,242,0.9) 100%)',
-            boxShadow: '0 18px 38px rgba(35,64,52,0.07)',
+            borderRadius: '0 0 32px 32px',
+            border: '1px solid rgba(47,127,79,0.14)',
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,248,243,0.88) 100%)',
+            boxShadow: '0 18px 42px rgba(31,52,43,0.08)',
             position: 'relative',
             overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              background: `
+                radial-gradient(circle at 92% 16%, rgba(234,143,115,0.12) 0%, transparent 18%),
+                radial-gradient(circle at 10% 90%, rgba(107,196,134,0.12) 0%, transparent 18%)
+              `,
+              pointerEvents: 'none',
+            },
             '&::after': {
               content: '""',
               position: 'absolute',
-              inset: 'auto 28px 0 28px',
+              inset: 'auto 30px 0 30px',
               height: 1,
-              background: 'linear-gradient(90deg, transparent, rgba(86,184,112,0.22), rgba(244,162,140,0.18), transparent)',
+              background: 'linear-gradient(90deg, transparent, rgba(47,127,79,0.22), rgba(234,143,115,0.16), transparent)',
             },
           }}
         >
@@ -202,19 +332,52 @@ export function AppLayout() {
             onClick={handleDrawerToggle}
             sx={{
               display: { md: 'none' },
-              border: '1px solid rgba(86,184,112,0.24)',
-              bgcolor: 'rgba(255,255,255,0.78)',
+              border: '1px solid rgba(47,127,79,0.22)',
+              bgcolor: 'rgba(255,255,255,0.8)',
               color: 'primary.dark',
-              '&:hover': { bgcolor: 'rgba(86,184,112,0.1)' },
+              '&:hover': { bgcolor: 'rgba(47,127,79,0.08)' },
             }}
           >
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography sx={{ fontFamily: 'Syne, Fredoka, sans-serif', fontWeight: 800, fontSize: { xs: 21, md: 25 }, color: 'text.primary', lineHeight: 1.1 }}>
-                {pageTitle}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.4, minWidth: 0, flex: 1 }}>
+            <Box
+              sx={{
+                width: 46,
+                height: 46,
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(47,127,79,0.12)',
+                color: 'primary.dark',
+                boxShadow: 'inset 0 0 0 1px rgba(47,127,79,0.12)',
+                flexShrink: 0,
+              }}
+            >
+              {pageMeta.icon}
+            </Box>
+
+            <Box sx={{ minWidth: 0 }}>
+              <Chip
+                size="small"
+                icon={<AutoAwesomeRounded sx={{ fontSize: 14 }} />}
+                label={pageMeta.eyebrow}
+                sx={{
+                  height: 26,
+                  mb: 0.7,
+                  bgcolor: 'rgba(255,255,255,0.66)',
+                  color: 'primary.dark',
+                  border: '1px solid rgba(47,127,79,0.14)',
+                  '& .MuiChip-icon': { color: 'inherit' },
+                }}
+              />
+              <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontWeight: 800, fontSize: { xs: 22, md: 28 }, color: 'text.primary', lineHeight: 1.02 }}>
+                {pageMeta.title}
+              </Typography>
+              <Typography sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.45, mt: 0.4, maxWidth: 620, display: { xs: 'none', md: 'block' } }}>
+                {pageMeta.note}
               </Typography>
             </Box>
           </Box>
@@ -226,13 +389,12 @@ export function AppLayout() {
               sx={{
                 border: 'none',
                 p: 0,
-                borderRadius: '14px',
+                borderRadius: '16px',
                 bgcolor: 'transparent',
                 position: 'relative',
                 zIndex: 1,
-                pointerEvents: 'auto',
                 '&:focus-visible': {
-                  outline: '2px solid rgba(86,184,112,0.38)',
+                  outline: '2px solid rgba(47,127,79,0.28)',
                   outlineOffset: 2,
                 },
               }}
@@ -242,32 +404,63 @@ export function AppLayout() {
                 icon={offline ? <WifiOffRounded /> : <WifiRounded />}
                 label={offline ? 'Offline' : 'Online'}
                 sx={{
-                  height: 32,
-                  borderRadius: '12px',
+                  height: 34,
+                  borderRadius: '14px',
                   fontWeight: 800,
-                  bgcolor: offline ? 'rgba(219,118,130,0.12)' : 'rgba(86,184,112,0.14)',
-                  color: offline ? '#bc5564' : 'primary.dark',
+                  bgcolor: offline ? 'rgba(206,106,123,0.12)' : 'rgba(47,127,79,0.12)',
+                  color: offline ? '#a7495a' : 'primary.dark',
                   '& .MuiChip-icon': { color: 'inherit' },
-                  cursor: 'pointer',
                 }}
               />
             </ButtonBase>
           </Tooltip>
 
+          <Tooltip title="Open task notices">
+            <IconButton
+              onClick={handleOpenNotifications}
+              aria-label="Open task notices"
+              aria-haspopup="menu"
+              aria-expanded={Boolean(notificationAnchor)}
+              sx={{
+                width: 46,
+                height: 46,
+                flexShrink: 0,
+                position: 'relative',
+                zIndex: 2,
+                cursor: 'pointer',
+                border: '1px solid rgba(47,127,79,0.16)',
+                bgcolor: 'rgba(255,255,255,0.82)',
+                color: 'primary.dark',
+                borderRadius: '16px',
+                boxShadow: '0 10px 24px rgba(31,52,43,0.06)',
+                '&:hover': { bgcolor: 'rgba(47,127,79,0.08)' },
+              }}
+            >
+              <Badge
+                badgeContent={notificationTasks.length}
+                color="success"
+                max={9}
+                invisible={!notificationTasks.length}
+              >
+                <NotificationsRounded />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+
           <Tooltip title="Sign out">
             <ButtonBase
-              onClick={handleLogout}
+              onClick={handleLogoutClick}
               aria-label="Sign out"
               sx={{
                 border: 'none',
                 p: 0,
-                borderRadius: '14px',
+                borderRadius: '16px',
                 bgcolor: 'transparent',
                 position: 'relative',
-                zIndex: 1,
-                pointerEvents: 'auto',
+                zIndex: 2,
+                cursor: 'pointer',
                 '&:focus-visible': {
-                  outline: '2px solid rgba(244,162,140,0.36)',
+                  outline: '2px solid rgba(234,143,115,0.34)',
                   outlineOffset: 2,
                 },
               }}
@@ -277,13 +470,12 @@ export function AppLayout() {
                 icon={<LogoutRounded />}
                 label="Logout"
                 sx={{
-                  height: 32,
-                  borderRadius: '12px',
+                  height: 34,
+                  borderRadius: '14px',
                   fontWeight: 800,
-                  bgcolor: 'rgba(244,162,140,0.14)',
+                  bgcolor: 'rgba(234,143,115,0.12)',
                   color: 'secondary.dark',
                   '& .MuiChip-icon': { color: 'inherit' },
-                  cursor: 'pointer',
                 }}
               />
             </ButtonBase>
@@ -295,68 +487,45 @@ export function AppLayout() {
             onClose={closeStatusMenu}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            MenuListProps={{
-              sx: {
-                p: 0.5,
-              },
-            }}
+            MenuListProps={{ sx: { p: 0.6 } }}
             PaperProps={{
               sx: {
-                width: 280,
+                width: 300,
                 mt: 1.2,
-                borderRadius: '18px !important',
-                border: '1px solid rgba(86,184,112,0.18)',
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,248,242,0.95) 100%)',
+                borderRadius: '22px !important',
+                border: '1px solid rgba(47,127,79,0.16)',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,248,243,0.95) 100%)',
                 overflow: 'hidden',
-                p: 0.5,
+                p: 0.6,
               },
             }}
           >
-            <Box sx={{ px: 1.5, pt: 1, pb: 0.8 }}>
-              <Typography sx={{ fontFamily: 'Syne, Fredoka, sans-serif', fontWeight: 700, color: 'text.primary' }}>
+            <Box sx={{ px: 1.6, pt: 1.1, pb: 0.9 }}>
+              <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontWeight: 800, color: 'text.primary' }}>
                 System status
               </Typography>
-              <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.4 }}>
-                {offline ? 'The browser is offline. Live sync will resume once the connection returns.' : 'The browser is online and ready to sync recorded data.'}
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.45, lineHeight: 1.55 }}>
+                {offline
+                  ? 'The browser is offline. New edits are safe, and live sync will continue once your connection returns.'
+                  : 'The browser is online and ready to sync records, calendar updates, and map activity.'}
               </Typography>
             </Box>
             <Divider sx={{ mb: 0.4 }} />
-              <MenuItem onClick={handleRefreshPage} sx={{ borderRadius: 3, py: 1.1 }}>
-                <RefreshRounded fontSize="small" sx={{ mr: 1.2, color: 'primary.dark' }} />
-                <ListItemText
-                  primary="Refresh current page"
-                  secondary="Reload the latest map and form data"
-                />
-              </MenuItem>
-              <MenuItem onClick={() => handleNavigate('/map')} sx={{ borderRadius: 3, py: 1.1 }}>
-                <MapRounded fontSize="small" sx={{ mr: 1.2, color: 'primary.dark' }} />
-                <ListItemText
-                  primary="Open map view"
-                  secondary="Jump straight to field boundaries and recorded coverage"
-                />
+            <MenuItem onClick={handleRefreshPage} sx={{ borderRadius: 3.5, py: 1.15 }}>
+              <RefreshRounded fontSize="small" sx={{ mr: 1.2, color: 'primary.dark' }} />
+              <ListItemText
+                primary="Refresh current page"
+                secondary="Reload the latest map, records, and web-form data"
+              />
+            </MenuItem>
+            <MenuItem onClick={() => handleNavigate('/map')} sx={{ borderRadius: 3.5, py: 1.15 }}>
+              <MapRounded fontSize="small" sx={{ mr: 1.2, color: 'primary.dark' }} />
+              <ListItemText
+                primary="Open map view"
+                secondary="Jump straight to field boundaries and recorded coverage"
+              />
             </MenuItem>
           </Menu>
-
-          <IconButton
-            onClick={(e) => setNotificationAnchor(e.currentTarget)}
-            aria-label="Open notifications"
-            sx={{
-              width: 44,
-              height: 44,
-              border: '1px solid rgba(86,184,112,0.22)',
-              bgcolor: 'rgba(255,255,255,0.82)',
-              color: 'primary.dark',
-              borderRadius: '12px',
-              position: 'relative',
-              zIndex: 1,
-              pointerEvents: 'auto',
-              '&:hover': { bgcolor: 'rgba(86,184,112,0.12)' },
-            }}
-          >
-            <Badge badgeContent={NOTIFICATIONS.length} color="success" sx={{ '& .MuiBadge-badge': { fontWeight: 800 } }}>
-              <NotificationsRounded />
-            </Badge>
-          </IconButton>
 
           <Menu
             anchorEl={notificationAnchor}
@@ -364,37 +533,95 @@ export function AppLayout() {
             onClose={() => setNotificationAnchor(null)}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            MenuListProps={{
-              sx: {
-                p: 0.5,
-              },
-            }}
+            MenuListProps={{ sx: { p: 0.6 } }}
             PaperProps={{
               sx: {
-                width: 320,
+                width: 336,
                 mt: 1.2,
-                borderRadius: '18px !important',
-                border: '1px solid rgba(86,184,112,0.18)',
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,248,242,0.95) 100%)',
+                borderRadius: '22px !important',
+                border: '1px solid rgba(47,127,79,0.16)',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,248,243,0.95) 100%)',
                 overflow: 'hidden',
-                p: 0.5,
+                p: 0.6,
               },
             }}
           >
-            <Box sx={{ px: 1.5, pt: 1, pb: 0.8 }}>
-              <Typography sx={{ fontFamily: 'Syne, Fredoka, sans-serif', fontWeight: 700, color: 'text.primary' }}>Little updates</Typography>
+            <Box sx={{ px: 1.6, pt: 1.1, pb: 0.9 }}>
+              <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontWeight: 800, color: 'text.primary' }}>
+                Upcoming tasks
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.35 }}>
+                Notices for activities that need attention from the farming calendar.
+              </Typography>
             </Box>
             <Divider sx={{ mb: 0.4 }} />
-            {NOTIFICATIONS.map((note) => (
-              <MenuItem key={note.title} onClick={() => handleNavigate(note.path)} sx={{ borderRadius: 3, alignItems: 'flex-start', gap: 1.2, py: 1.2 }}>
-                <Avatar sx={{ width: 28, height: 28, bgcolor: 'rgba(244,162,140,0.18)', color: 'secondary.dark', fontSize: 14 }}>✦</Avatar>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 800, fontSize: 13, color: 'text.primary', lineHeight: 1.2 }}>{note.title}</Typography>
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>{note.message}</Typography>
-                  <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.4 }}>{note.time}</Typography>
-                </Box>
-              </MenuItem>
-            ))}
+            {notificationsLoading && (
+              <Box sx={{ px: 1.6, py: 1.4 }}>
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.5 }}>
+                  Checking the latest field schedules and upcoming activities.
+                </Typography>
+              </Box>
+            )}
+            {!notificationsLoading && notificationsError && (
+              <Box sx={{ px: 1.6, py: 1.4 }}>
+                <Typography sx={{ fontSize: 12.5, color: 'error.main', lineHeight: 1.5 }}>
+                  Task notices could not be loaded right now.
+                </Typography>
+              </Box>
+            )}
+            {!notificationsLoading && !notificationsError && notificationTasks.length === 0 && (
+              <Box sx={{ px: 1.6, py: 1.4 }}>
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.5 }}>
+                  No upcoming task notices yet. Add planting or cut dates to see calendar activities here.
+                </Typography>
+              </Box>
+            )}
+            {!notificationsLoading && !notificationsError && notificationTasks.map((task) => {
+              const avatarTone = task.severity === 'overdue'
+                ? { bg: 'rgba(206,106,123,0.14)', fg: '#a7495a' }
+                : task.severity === 'today'
+                  ? { bg: 'rgba(234,143,115,0.16)', fg: 'secondary.dark' }
+                  : { bg: 'rgba(47,127,79,0.12)', fg: 'primary.dark' }
+
+              return (
+                <MenuItem
+                  key={task.key}
+                  onClick={() => handleNavigate('/calendar')}
+                  sx={{ borderRadius: 3.5, alignItems: 'flex-start', gap: 1.2, py: 1.15 }}
+                >
+                  <Avatar
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: '10px',
+                      bgcolor: avatarTone.bg,
+                      color: avatarTone.fg,
+                    }}
+                  >
+                    <CalendarMonthRounded sx={{ fontSize: 18 }} />
+                  </Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: 12.8, color: 'text.primary', lineHeight: 1.3 }}>
+                      {task.activity}
+                    </Typography>
+                    <Typography sx={{ fontSize: 11.5, color: 'text.secondary', lineHeight: 1.4, mt: 0.25 }}>
+                      {task.fieldLabel} · {task.weekLabel}
+                    </Typography>
+                    <Typography sx={{ fontSize: 11.25, color: 'text.secondary', lineHeight: 1.4, mt: 0.35 }}>
+                      {getTaskDueLabel(task.daysUntil)} · {formatDateOnlyLabel(task.dateIso) ?? task.dateIso}
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              )
+            })}
+            <Divider sx={{ mt: 0.4, mb: 0.4 }} />
+            <MenuItem onClick={() => handleNavigate('/calendar')} sx={{ borderRadius: 3.5, py: 1.15 }}>
+              <CalendarMonthRounded fontSize="small" sx={{ mr: 1.2, color: 'primary.dark' }} />
+              <ListItemText
+                primary="Open farming calendar"
+                secondary="See the full schedule of activities that need to be done"
+              />
+            </MenuItem>
           </Menu>
         </Toolbar>
       </AppBar>
@@ -436,7 +663,7 @@ export function AppLayout() {
         sx={{
           flexGrow: 1,
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          mt: '98px',
+          mt: '110px',
           px: { xs: 1.6, md: 3.2 },
           pb: 4,
           position: 'relative',
@@ -452,14 +679,14 @@ export function AppLayout() {
             <Alert
               severity="warning"
               sx={{
-                mb: 2.2,
+                mb: 2.4,
                 borderRadius: 5,
-                border: '1px solid rgba(219,118,130,0.2)',
-                bgcolor: 'rgba(255,246,247,0.92)',
-                color: '#bc5564',
+                border: '1px solid rgba(206,106,123,0.18)',
+                bgcolor: 'rgba(255,247,248,0.92)',
+                color: '#a7495a',
               }}
             >
-              Offline mode enabled. Changes will sync once your connection is back.
+              Offline mode is active. Your changes stay on the device and will sync back once the connection is restored.
             </Alert>
           )}
           <Outlet />

@@ -15,7 +15,7 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
-import { UploadFileOutlined } from '@mui/icons-material';
+import { EditNoteRounded, UploadFileOutlined } from '@mui/icons-material';
 import L from 'leaflet';
 import { MapContainer, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import {
@@ -75,6 +75,41 @@ const RESIDUE_TYPE_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Bea
 const RESIDUE_MANAGEMENT_METHOD_OPTIONS = ['Ploughed in', 'Parting', 'Broadcasting', 'None'];
 const DRAW_NEW_FIELD_VALUE = '__draw_new_field__';
 const DEFAULT_DRAW_CENTER: [number, number] = [-18.922, 31.134];
+const WHITE_SELECT_MENU_PROPS = {
+    PaperProps: {
+        sx: {
+            mt: 0.8,
+            borderRadius: '18px',
+            border: '1px solid rgba(86,184,112,0.22)',
+            bgcolor: '#ffffff',
+            background: '#ffffff',
+            backgroundImage: 'none',
+            backdropFilter: 'none',
+            boxShadow: '0 22px 42px rgba(35,64,52,0.16)',
+            maxHeight: '70vh',
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            '& .MuiMenu-list': {
+                py: 0.5,
+                bgcolor: '#ffffff',
+            },
+            '& .MuiMenuItem-root': {
+                bgcolor: '#ffffff',
+                whiteSpace: 'normal',
+                lineHeight: 1.35,
+            },
+            '& .MuiMenuItem-root.Mui-selected': {
+                bgcolor: 'rgba(86,184,112,0.14)',
+            },
+            '& .MuiMenuItem-root.Mui-selected:hover': {
+                bgcolor: 'rgba(86,184,112,0.2)',
+            },
+            '& .MuiMenuItem-root:hover': {
+                bgcolor: 'rgba(244,162,140,0.12)',
+            },
+        },
+    },
+};
 
 type DrawPoint = [number, number];
 
@@ -820,7 +855,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             <TextField
                                 select
                                 fullWidth
-                                label="Field ID"
+                                label="Trials"
                                 value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : formData.field_name}
                                 onChange={(e) => handleFieldSelection(e.target.value)}
                                 disabled={loadingFields}
@@ -828,41 +863,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     ? 'Drawing a new field or trial. Save the form to add it to the registry.'
                                     : 'Can’t find it in the list? Choose "Draw New Trial / Field".'}
                                 SelectProps={{
-                                    MenuProps: {
-                                        PaperProps: {
-                                            sx: {
-                                                mt: 0.8,
-                                                borderRadius: '18px',
-                                                border: '1px solid rgba(86,184,112,0.22)',
-                                                bgcolor: '#fffdfa',
-                                                background: '#fffdfa',
-                                                backgroundImage: 'none',
-                                                backdropFilter: 'none',
-                                                boxShadow: '0 22px 42px rgba(35,64,52,0.16)',
-                                                maxHeight: '70vh',
-                                                overflowY: 'auto',
-                                                overscrollBehavior: 'contain',
-                                                '& .MuiMenu-list': {
-                                                    py: 0.5,
-                                                    bgcolor: '#fffdfa',
-                                                },
-                                                '& .MuiMenuItem-root': {
-                                                    bgcolor: '#fffdfa',
-                                                    whiteSpace: 'normal',
-                                                    lineHeight: 1.35,
-                                                },
-                                                '& .MuiMenuItem-root.Mui-selected': {
-                                                    bgcolor: 'rgba(86,184,112,0.14)',
-                                                },
-                                                '& .MuiMenuItem-root.Mui-selected:hover': {
-                                                    bgcolor: 'rgba(86,184,112,0.2)',
-                                                },
-                                                '& .MuiMenuItem-root:hover': {
-                                                    bgcolor: 'rgba(244,162,140,0.12)',
-                                                },
-                                            },
-                                        },
-                                    },
+                                    MenuProps: WHITE_SELECT_MENU_PROPS,
                                 }}
                             >
                                 {selectableFieldOptions.map((field) => (
@@ -1134,6 +1135,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         crop_class: nextOptions.includes(prev.crop_class || '') ? prev.crop_class : '',
                                     }));
                                 }}
+                                SelectProps={{
+                                    MenuProps: WHITE_SELECT_MENU_PROPS,
+                                }}
                             >
                                 {CROP_TYPE_OPTIONS.map((option) => (
                                     <MenuItem key={option} value={option}>
@@ -1149,6 +1153,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Crop Class"
                                 value={formData.crop_class || ''}
                                 onChange={(e) => updateField('crop_class', e.target.value)}
+                                SelectProps={{
+                                    MenuProps: WHITE_SELECT_MENU_PROPS,
+                                }}
                             >
                                 {cropClassOptions.map((option) => (
                                     <MenuItem key={option} value={option}>
@@ -1367,16 +1374,63 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     </Grid>
                 </Stack>
             </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
+            <DialogActions
+                sx={{
+                    px: 3,
+                    pb: 2.4,
+                    pt: 1.6,
+                    gap: 1.2,
+                    flexWrap: 'wrap',
+                }}
+            >
+                <Button
+                    onClick={onClose}
+                    sx={{
+                        borderRadius: '999px',
+                        px: 2.1,
+                        fontWeight: 700,
+                        textTransform: 'none',
+                    }}
+                >
+                    Cancel
+                </Button>
                 <Button
                     onClick={handleEditForm}
                     variant="outlined"
                     disabled={saving || parsingPdf || importingCsv || loadingFields}
+                    startIcon={<EditNoteRounded />}
+                    sx={{
+                        borderRadius: '999px',
+                        px: 2.3,
+                        py: 0.95,
+                        borderColor: 'rgba(86,184,112,0.42)',
+                        bgcolor: 'rgba(255,255,255,0.86)',
+                        color: '#2f7f4f',
+                        fontWeight: 800,
+                        textTransform: 'none',
+                        boxShadow: '0 10px 24px rgba(86,184,112,0.1)',
+                        '&:hover': {
+                            borderColor: 'rgba(86,184,112,0.66)',
+                            bgcolor: 'rgba(86,184,112,0.08)',
+                            boxShadow: '0 12px 28px rgba(86,184,112,0.14)',
+                        },
+                    }}
                 >
                     Edit Form
                 </Button>
-                <Button onClick={handleSubmit} variant="contained" disabled={saving || parsingPdf || importingCsv || loadingFields}>
+                <Button
+                    onClick={handleSubmit}
+                    variant="contained"
+                    disabled={saving || parsingPdf || importingCsv || loadingFields}
+                    sx={{
+                        borderRadius: '999px',
+                        px: 2.5,
+                        py: 0.95,
+                        fontWeight: 800,
+                        textTransform: 'none',
+                        boxShadow: '0 14px 28px rgba(86,184,112,0.22)',
+                    }}
+                >
                     {saving ? 'Saving...' : 'Save Form'}
                 </Button>
             </DialogActions>

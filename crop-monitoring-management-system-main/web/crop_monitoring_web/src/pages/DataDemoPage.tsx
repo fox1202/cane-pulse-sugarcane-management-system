@@ -1,8 +1,8 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { motion } from "framer-motion";
 
-// ─── Google Fonts ──────────────────────────────────────────────────────────────
-const FONTS = `@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap');`;
+// ─── Typography Override ───────────────────────────────────────────────────────
+const FONTS = ``;
 
 // ─── Mock data ─────────────────────────────────────────────────────────────────
 type StaffRole = "admin" | "supervisor" | "collector";
@@ -200,7 +200,7 @@ function GlowBadge({ color, bg, children }: GlowBadgeProps) {
       padding: "4px 10px", borderRadius: 6,
       background: bg,
       border: `1px solid ${color}40`,
-      fontFamily: "'DM Mono', monospace",
+      fontFamily: "Times New Roman, Times, serif",
       fontSize: 11, fontWeight: 500, color,
       letterSpacing: "0.1em",
       boxShadow: `inset 0 1px 0 ${color}20`,
@@ -226,7 +226,7 @@ function HexAvatar({ name, email, size = 40 }: HexAvatarProps) {
         background: `linear-gradient(135deg, ${color}20, ${color}08)`,
         border: `1.5px solid ${color}35`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: "'DM Mono', monospace", fontWeight: 500,
+        fontFamily: "Times New Roman, Times, serif", fontWeight: 500,
         fontSize: size * 0.32, color,
         boxShadow: `0 0 20px ${color}15, inset 0 1px 0 ${color}20`,
         cursor: "default",
@@ -308,11 +308,11 @@ function CardHeader({ icon, title, subtitle, count, accentColor }: CardHeaderPro
         </div>
         <div>
           <div style={{
-            fontFamily: "'Cabinet Grotesk', sans-serif",
+            fontFamily: "Times New Roman, Times, serif",
             fontWeight: 800, fontSize: 18, color: C.t90, letterSpacing: "-0.02em",
           }}>{title}</div>
           <div style={{
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: "Times New Roman, Times, serif",
             fontSize: 11, color: C.t35, marginTop: 2, letterSpacing: "0.05em",
           }}>{subtitle}</div>
         </div>
@@ -322,7 +322,7 @@ function CardHeader({ icon, title, subtitle, count, accentColor }: CardHeaderPro
           padding: "6px 14px", borderRadius: 8,
           background: `${accentColor}12`,
           border: `1px solid ${accentColor}25`,
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "Times New Roman, Times, serif",
           fontSize: 12, fontWeight: 500, color: accentColor,
           letterSpacing: "0.05em",
         }}>
@@ -344,7 +344,7 @@ function ColBar({ cols, template }: ColBarProps) {
     }}>
       {cols.map(c => (
         <div key={c} style={{
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "Times New Roman, Times, serif",
           fontSize: 10, fontWeight: 500, letterSpacing: "0.14em",
           color: C.t35, textTransform: "uppercase",
         }}>{c}</div>
@@ -403,11 +403,11 @@ function StaffTable({ isAdmin }: StaffTableProps) {
                 <HexAvatar name={`${person.first_name} ${person.last_name}`} email={person.email} />
                 <div>
                   <div style={{
-                    fontFamily: "'Cabinet Grotesk', sans-serif",
+                    fontFamily: "Times New Roman, Times, serif",
                     fontWeight: 700, fontSize: 14, color: C.t90,
                   }}>{person.first_name} {person.last_name}</div>
                   <div style={{
-                    fontFamily: "'DM Mono', monospace",
+                    fontFamily: "Times New Roman, Times, serif",
                     fontSize: 10, color: C.t35, marginTop: 1,
                   }}>UID-{String(person.id).padStart(4, "0")}</div>
                 </div>
@@ -415,7 +415,7 @@ function StaffTable({ isAdmin }: StaffTableProps) {
 
               {/* Email */}
               <div style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: "Times New Roman, Times, serif",
                 fontSize: 12, color: C.t60, letterSpacing: "0.02em",
               }}>{person.email}</div>
 
@@ -483,7 +483,7 @@ function ObsTable() {
               {/* Field */}
               <div>
                 <div style={{
-                  fontFamily: "'Cabinet Grotesk', sans-serif",
+                  fontFamily: "Times New Roman, Times, serif",
                   fontWeight: 700, fontSize: 14, color: C.t90,
                 }}>{obs.field_name || 'Unknown'}</div>
               </div>
@@ -491,12 +491,12 @@ function ObsTable() {
               {/* Crop */}
               <div>
                 <div style={{
-                  fontFamily: "'Cabinet Grotesk', sans-serif",
+                  fontFamily: "Times New Roman, Times, serif",
                   fontWeight: 600, fontSize: 14, color: C.t90,
                 }}>{obs.crop_information?.crop_type || 'Unknown'}</div>
                 {obs.crop_information?.variety && (
                   <div style={{
-                    fontFamily: "'DM Mono', monospace",
+                    fontFamily: "Times New Roman, Times, serif",
                     fontSize: 10, color: C.cyan + "80", marginTop: 1,
                   }}>{obs.crop_information.variety}</div>
                 )}
@@ -510,7 +510,7 @@ function ObsTable() {
 
               {/* Date */}
               <div style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: "Times New Roman, Times, serif",
                 fontSize: 12, color: C.t60,
               }}>
                 {new Date(obs.date_recorded).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
@@ -530,7 +530,7 @@ function ObsTable() {
                 >
                   <span style={{ fontSize: 12 }}>🖼</span>
                   <span style={{
-                    fontFamily: "'DM Mono', monospace",
+                    fontFamily: "Times New Roman, Times, serif",
                     fontSize: 11, fontWeight: 500,
                     color: imgCount > 0 ? C.gold : C.t35,
                   }}>{imgCount}</span>
@@ -580,7 +580,7 @@ function StatBar() {
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, ${s.color}50, transparent)` }} />
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{
-              fontFamily: "'DM Mono', monospace",
+              fontFamily: "Times New Roman, Times, serif",
               fontSize: 10, letterSpacing: "0.12em",
               color: C.t35, textTransform: "uppercase",
             }}>{s.label}</div>
@@ -591,7 +591,7 @@ function StatBar() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.07 + 0.2, type: "spring", stiffness: 200 }}
             style={{
-              fontFamily: "'Cabinet Grotesk', sans-serif",
+              fontFamily: "Times New Roman, Times, serif",
               fontWeight: 900, fontSize: 38, color: C.t90,
               letterSpacing: "-0.04em", lineHeight: 1,
             }}
@@ -640,14 +640,14 @@ function RoleBanner({ isAdmin, role }: RoleBannerProps) {
       }}>⬡</div>
       <div style={{ flex: 1 }}>
         <div style={{
-          fontFamily: "'Cabinet Grotesk', sans-serif",
+          fontFamily: "Times New Roman, Times, serif",
           fontWeight: 700, fontSize: 14, color: C.t90, marginBottom: 2,
         }}>
           Active Session —{" "}
           <span style={{ color }}>{role?.toUpperCase() || "UNKNOWN"}</span>
         </div>
         <div style={{
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "Times New Roman, Times, serif",
           fontSize: 11, color: C.t35,
         }}>
           {isAdmin
@@ -658,7 +658,7 @@ function RoleBanner({ isAdmin, role }: RoleBannerProps) {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <PulseDot color={color} size={10} />
         <span style={{
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "Times New Roman, Times, serif",
           fontSize: 11, fontWeight: 500, color,
           letterSpacing: "0.1em",
         }}>
@@ -690,14 +690,14 @@ function PageHeader() {
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <PulseDot color={C.emerald} size={7} />
           <span style={{
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: "Times New Roman, Times, serif",
             fontSize: 10, color: C.cyan + "80",
             letterSpacing: "0.18em", textTransform: "uppercase",
           }}>Live Supabase · TanStack Query</span>
         </div>
         <div style={{ marginLeft: "auto" }}>
           <span style={{
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: "Times New Roman, Times, serif",
             fontSize: 10, color: C.t35, letterSpacing: "0.08em",
           }}>{currentTime}</span>
         </div>
@@ -705,7 +705,7 @@ function PageHeader() {
 
       {/* Title */}
       <h1 style={{
-        fontFamily: "'DM Serif Display', serif",
+        fontFamily: "Times New Roman, Times, serif",
         fontWeight: 400, fontSize: "clamp(2rem, 4vw, 3rem)",
         color: C.t90, letterSpacing: "-0.02em",
         lineHeight: 1.05, margin: 0, marginBottom: 12,
@@ -718,7 +718,7 @@ function PageHeader() {
       </h1>
 
       <p style={{
-        fontFamily: "'Cabinet Grotesk', sans-serif",
+        fontFamily: "Times New Roman, Times, serif",
         fontSize: 15, color: C.t60, maxWidth: 520, lineHeight: 1.65, margin: 0,
       }}>
         Real-time data pipeline from Supabase with TypeScript generics, TanStack Query caching, and role-based access control.
