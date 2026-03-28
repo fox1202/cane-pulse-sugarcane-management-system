@@ -21,6 +21,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useNavigate } from 'react-router-dom'
 import type {
   MobileObservationEntryFormFields,
   MobileObservationRecord,
@@ -76,6 +77,8 @@ type FieldSnapshot = {
   fieldKey: string
   field: string
   fieldLabel: string
+  section: string
+  block: string
   sectionBlock: string
   timestamp: number
   cropGroup: AreaCropGroup
@@ -90,6 +93,18 @@ type FieldSnapshot = {
   areaHa: number | null
 }
 
+type DashboardMapSearchParams = Partial<Record<'cropType' | 'cropClass' | 'soilType' | 'phBand', string>>
+
+type DashboardNavigation = {
+  searchParams?: DashboardMapSearchParams
+  focusField?: {
+    fieldName: string
+    sectionName?: string
+    blockId?: string
+    cropType?: string
+  }
+}
+
 type LegendItem = {
   label: string
   color: string
@@ -100,6 +115,7 @@ type RankedDatum = {
   value: number
   color: string
   helper?: string
+  navigation?: DashboardNavigation
 }
 
 type CoverageDatum = RankedDatum & {
@@ -442,9 +458,11 @@ function EmptyState({ message }: { message: string }) {
 function AreaPieSummary({
   totalArea,
   data,
+  onSelectCrop,
 }: {
   totalArea: number
   data: CoverageDatum[]
+  onSelectCrop?: (item: CoverageDatum) => void
 }) {
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.6 }}>
@@ -468,7 +486,12 @@ function AreaPieSummary({
               strokeWidth={3}
             >
               {data.map((entry) => (
-                <Cell key={entry.label} fill={entry.color} />
+                <Cell
+                  key={entry.label}
+                  fill={entry.color}
+                  onClick={onSelectCrop ? () => onSelectCrop(entry) : undefined}
+                  style={onSelectCrop ? { cursor: 'pointer' } : undefined}
+                />
               ))}
             </Pie>
             <Tooltip
@@ -524,12 +547,35 @@ function AreaPieSummary({
         {data.map((item) => (
           <Grid key={item.label} size={{ xs: 12, sm: 4 }}>
             <Paper
+              onClick={onSelectCrop ? () => onSelectCrop(item) : undefined}
+              onKeyDown={onSelectCrop ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onSelectCrop(item)
+                }
+              } : undefined}
+              role={onSelectCrop ? 'button' : undefined}
+              tabIndex={onSelectCrop ? 0 : undefined}
               sx={{
                 p: 1.35,
                 borderRadius: '18px',
                 border: `1px solid ${alpha(item.color, 0.16)}`,
                 bgcolor: alpha(item.color, 0.08),
                 boxShadow: 'none',
+                cursor: onSelectCrop ? 'pointer' : 'default',
+                transition: onSelectCrop
+                  ? 'transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease'
+                  : undefined,
+                '&:hover': onSelectCrop ? {
+                  transform: 'translateY(-2px)',
+                  borderColor: alpha(item.color, 0.28),
+                  bgcolor: alpha(item.color, 0.13),
+                  boxShadow: `0 14px 28px ${alpha(item.color, 0.16)}`,
+                } : undefined,
+                '&:focus-visible': onSelectCrop ? {
+                  outline: `2px solid ${alpha(item.color, 0.52)}`,
+                  outlineOffset: 3,
+                } : undefined,
               }}
             >
               <Typography sx={{ fontSize: 11, fontWeight: 800, color: item.color, textTransform: 'uppercase', letterSpacing: '0.08em', mb: 0.45 }}>
@@ -545,6 +591,12 @@ function AreaPieSummary({
           </Grid>
         ))}
       </Grid>
+
+      {onSelectCrop && (
+        <Typography sx={{ fontSize: 11.5, color: 'text.secondary', textAlign: 'center' }}>
+          Click a crop slice or card to open matching fields on the map.
+        </Typography>
+      )}
     </Box>
   )
 }
@@ -554,11 +606,13 @@ function RankedPieSummary({
   totalLabel,
   data,
   valueFormatter,
+  onSelectItem,
 }: {
   totalValue: number
   totalLabel: string
   data: RankedDatum[]
   valueFormatter: (value: number) => string
+  onSelectItem?: (item: RankedDatum) => void
 }) {
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.6 }}>
@@ -582,7 +636,12 @@ function RankedPieSummary({
               strokeWidth={3}
             >
               {data.map((entry) => (
-                <Cell key={entry.label} fill={entry.color} />
+                <Cell
+                  key={entry.label}
+                  fill={entry.color}
+                  onClick={onSelectItem ? () => onSelectItem(entry) : undefined}
+                  style={onSelectItem ? { cursor: 'pointer' } : undefined}
+                />
               ))}
             </Pie>
             <Tooltip
@@ -637,12 +696,35 @@ function RankedPieSummary({
         {data.map((item) => (
           <Paper
             key={item.label}
+            onClick={onSelectItem ? () => onSelectItem(item) : undefined}
+            onKeyDown={onSelectItem ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onSelectItem(item)
+              }
+            } : undefined}
+            role={onSelectItem ? 'button' : undefined}
+            tabIndex={onSelectItem ? 0 : undefined}
             sx={{
               p: 1.15,
               borderRadius: '16px',
               border: `1px solid ${alpha(item.color, 0.16)}`,
               bgcolor: alpha(item.color, 0.06),
               boxShadow: 'none',
+              cursor: onSelectItem ? 'pointer' : 'default',
+              transition: onSelectItem
+                ? 'transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease'
+                : undefined,
+              '&:hover': onSelectItem ? {
+                transform: 'translateY(-2px)',
+                borderColor: alpha(item.color, 0.28),
+                bgcolor: alpha(item.color, 0.11),
+                boxShadow: `0 14px 28px ${alpha(item.color, 0.14)}`,
+              } : undefined,
+              '&:focus-visible': onSelectItem ? {
+                outline: `2px solid ${alpha(item.color, 0.52)}`,
+                outlineOffset: 3,
+              } : undefined,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
@@ -656,6 +738,12 @@ function RankedPieSummary({
           </Paper>
         ))}
       </Stack>
+
+      {onSelectItem && (
+        <Typography sx={{ fontSize: 11.5, color: 'text.secondary', textAlign: 'center' }}>
+          Click a slice or row to open those fields on the map.
+        </Typography>
+      )}
     </Box>
   )
 }
@@ -664,10 +752,12 @@ function CoverageRows({
   items,
   emptyMessage,
   formatValue,
+  onSelectItem,
 }: {
   items: RankedDatum[]
   emptyMessage: string
   formatValue: (item: RankedDatum) => string
+  onSelectItem?: (item: RankedDatum) => void
 }) {
   if (items.length === 0) {
     return <EmptyState message={emptyMessage} />
@@ -680,12 +770,35 @@ function CoverageRows({
       {items.map((item) => (
         <Paper
           key={item.label}
+          onClick={onSelectItem ? () => onSelectItem(item) : undefined}
+          onKeyDown={onSelectItem ? (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onSelectItem(item)
+            }
+          } : undefined}
+          role={onSelectItem ? 'button' : undefined}
+          tabIndex={onSelectItem ? 0 : undefined}
           sx={{
             p: 1.35,
             borderRadius: '18px',
             border: `1px solid ${alpha(item.color, 0.16)}`,
             bgcolor: alpha(item.color, 0.07),
             boxShadow: 'none',
+            cursor: onSelectItem ? 'pointer' : 'default',
+            transition: onSelectItem
+              ? 'transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease'
+              : undefined,
+            '&:hover': onSelectItem ? {
+              transform: 'translateY(-2px)',
+              borderColor: alpha(item.color, 0.28),
+              bgcolor: alpha(item.color, 0.12),
+              boxShadow: `0 14px 28px ${alpha(item.color, 0.14)}`,
+            } : undefined,
+            '&:focus-visible': onSelectItem ? {
+              outline: `2px solid ${alpha(item.color, 0.52)}`,
+              outlineOffset: 3,
+            } : undefined,
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
@@ -716,6 +829,12 @@ function CoverageRows({
           />
         </Paper>
       ))}
+
+      {onSelectItem && (
+        <Typography sx={{ fontSize: 11.5, color: 'text.secondary', textAlign: 'center' }}>
+          Click a row to open those fields on the map.
+        </Typography>
+      )}
     </Stack>
   )
 }
@@ -1058,6 +1177,45 @@ function createCoverageData(
 
 export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observations }) => {
   const theme = useTheme()
+  const navigate = useNavigate()
+
+  const handleMapNavigation = (navigation?: DashboardNavigation) => {
+    if (!navigation) {
+      return
+    }
+
+    const params = new URLSearchParams()
+
+    Object.entries(navigation.searchParams ?? {}).forEach(([key, value]) => {
+      const normalized = (value ?? '').trim()
+      if (normalized) {
+        params.set(key, normalized)
+      }
+    })
+
+    const search = params.toString()
+    const pathname = search ? `/map?${search}` : '/map'
+
+    if (navigation.focusField) {
+      navigate(pathname, {
+        state: {
+          focusObservation: {
+            fieldName: navigation.focusField.fieldName,
+            sectionName: navigation.focusField.sectionName,
+            blockId: navigation.focusField.blockId,
+            cropType: navigation.focusField.cropType,
+          },
+        },
+      })
+      return
+    }
+
+    navigate(pathname)
+  }
+
+  const handleAreaCoverageSelect = (item: CoverageDatum) => {
+    handleMapNavigation(item.navigation)
+  }
 
   const records = useMemo<AnalyticsRecord[]>(() => {
     const deduped = dedupeObservationsForAnalytics(observations as AnalyticsObservation[])
@@ -1146,6 +1304,8 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
           fieldKey: record.fieldKey,
           field: record.field,
           fieldLabel: record.fieldLabel,
+          section: record.section,
+          block: record.block,
           sectionBlock: record.sectionBlock,
           timestamp: record.timestamp,
           cropGroup: record.cropGroup,
@@ -1164,6 +1324,14 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
 
       if (existing.areaHa === null && record.fieldAreaHa !== null) {
         existing.areaHa = record.fieldAreaHa
+      }
+
+      if (!existing.section && record.section) {
+        existing.section = record.section
+      }
+
+      if (!existing.block && record.block) {
+        existing.block = record.block
       }
 
       if (existing.cropGroup === 'Unspecified' && record.cropGroup !== 'Unspecified') {
@@ -1211,11 +1379,6 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     [fieldSnapshots]
   )
 
-  const typedMeasuredFields = useMemo(
-    () => measuredFields.filter((field) => field.cropGroup !== 'Unspecified'),
-    [measuredFields]
-  )
-
   const sugarcaneFields = useMemo(
     () => measuredFields.filter((field) => field.cropGroup === 'Sugarcane'),
     [measuredFields]
@@ -1261,21 +1424,6 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     [fallowFields]
   )
 
-  const classifiedMeasuredArea = useMemo(
-    () => sumBy(typedMeasuredFields, (field) => field.areaHa ?? 0),
-    [typedMeasuredFields]
-  )
-
-  const uniqueSoilTypes = useMemo(
-    () => new Set(
-      fieldSnapshots
-        .map((field) => field.soilType)
-        .filter((soilType) => !isFallbackLabel(soilType))
-        .map((soilType) => soilType.toLowerCase())
-    ).size,
-    [fieldSnapshots]
-  )
-
   const phValues = useMemo(
     () => phFields.map((field) => field.soilPh as number),
     [phFields]
@@ -1300,18 +1448,33 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         value: Number(totalSugarcaneArea.toFixed(2)),
         fieldCount: sugarcaneFields.length,
         color: AREA_COLORS.sugarcane,
+        navigation: {
+          searchParams: {
+            cropType: 'Sugarcane',
+          },
+        },
       },
       {
         label: 'Break Crop',
         value: Number(totalBreakCropArea.toFixed(2)),
         fieldCount: breakCropFields.length,
         color: AREA_COLORS.breakCrop,
+        navigation: {
+          searchParams: {
+            cropType: 'Break Crop',
+          },
+        },
       },
       {
         label: 'Fallow Period',
         value: Number(totalFallowArea.toFixed(2)),
         fieldCount: fallowFields.length,
         color: AREA_COLORS.fallow,
+        navigation: {
+          searchParams: {
+            cropType: 'Fallow Period',
+          },
+        },
       },
     ].filter((item) => item.value > 0),
     [
@@ -1340,22 +1503,29 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     })
 
     const order = ['Acidic', 'Working Range', 'Alkaline']
+    const items: PhBandDatum[] = []
 
-    return order
-      .map((label) => {
-        const entry = grouped.get(label)
-        if (!entry) {
-          return null
-        }
+    order.forEach((label) => {
+      const entry = grouped.get(label)
+      if (!entry) {
+        return
+      }
 
-        return {
-          label,
-          value: entry.value,
-          range: entry.range,
-          color: entry.color,
-        }
+      items.push({
+        label,
+        value: entry.value,
+        range: entry.range,
+        color: entry.color,
+        navigation: {
+          searchParams: {
+            cropType: 'all',
+            phBand: label,
+          },
+        },
       })
-      .filter((item): item is PhBandDatum => item !== null)
+    })
+
+    return items
   }, [phFields])
 
   const tamFieldData = useMemo<FieldBarDatum[]>(
@@ -1369,6 +1539,17 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         value: Number((field.tamMm ?? 0).toFixed(2)),
         color: PALETTE[index % PALETTE.length],
         helper: field.fieldLabel,
+        navigation: {
+          searchParams: {
+            cropType: field.cropGroup !== 'Unspecified' ? field.cropGroup : 'all',
+          },
+          focusField: {
+            fieldName: field.field,
+            sectionName: field.section || undefined,
+            blockId: field.block || undefined,
+            cropType: field.cropGroup !== 'Unspecified' ? field.cropGroup : undefined,
+          },
+        },
       })),
     [tamFields]
   )
@@ -1384,6 +1565,17 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         value: Number((field.areaHa ?? 0).toFixed(2)),
         color: PALETTE[index % PALETTE.length],
         helper: field.fieldLabel,
+        navigation: {
+          searchParams: {
+            cropType: field.cropGroup !== 'Unspecified' ? field.cropGroup : 'all',
+          },
+          focusField: {
+            fieldName: field.field,
+            sectionName: field.section || undefined,
+            blockId: field.block || undefined,
+            cropType: field.cropGroup !== 'Unspecified' ? field.cropGroup : undefined,
+          },
+        },
       })),
     [measuredFields]
   )
@@ -1400,6 +1592,12 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     ).map((item) => ({
       ...item,
       helper: `${item.fieldCount} field(s)`,
+      navigation: {
+        searchParams: {
+          cropType: 'all',
+          soilType: item.label,
+        },
+      },
     })),
     [measuredFields]
   )
@@ -1409,7 +1607,15 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
       sugarcaneFields,
       (field) => field.sugarcaneClass || 'Unspecified cane',
       (left, right) => getSugarcaneSortOrder(left.label) - getSugarcaneSortOrder(right.label) || right.value - left.value
-    ),
+    ).map((item) => ({
+      ...item,
+      navigation: {
+        searchParams: {
+          cropType: 'Sugarcane',
+          cropClass: item.label,
+        },
+      },
+    })),
     [sugarcaneFields]
   )
 
@@ -1417,7 +1623,15 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     () => createCoverageData(
       breakCropFields,
       (field) => field.breakCropType || 'Unspecified break crop'
-    ),
+    ).map((item) => ({
+      ...item,
+      navigation: {
+        searchParams: {
+          cropType: 'Break Crop',
+          cropClass: item.label,
+        },
+      },
+    })),
     [breakCropFields]
   )
 
@@ -1431,6 +1645,17 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         value: Number((field.areaHa ?? 0).toFixed(2)),
         color: PALETTE[index % PALETTE.length],
         helper: field.sectionBlock,
+        navigation: {
+          searchParams: {
+            cropType: 'Fallow Period',
+          },
+          focusField: {
+            fieldName: field.field,
+            sectionName: field.section || undefined,
+            blockId: field.block || undefined,
+            cropType: 'Fallow Period',
+          },
+        },
       })),
     [fallowFields]
   )
@@ -1484,20 +1709,6 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         <Grid container spacing={2.4} sx={{ position: 'relative', zIndex: 1 }}>
           <Grid size={{ xs: 12 }}>
             <Grid container spacing={1.4}>
-              <Grid size={{ xs: 12 }}>
-                <MetricGroupCard
-                  label="Coverage Snapshot"
-                  items={[
-                    { label: 'Snapshots', value: String(fieldSnapshots.length) },
-                    { label: 'Mapped', value: String(measuredFields.length) },
-                    { label: 'Classified', value: formatMetricValue(classifiedMeasuredArea, 'ha') },
-                    { label: 'Soil Types', value: String(uniqueSoilTypes) },
-                  ]}
-                  helper="The latest field coverage and data-readiness counts behind this board."
-                  tone={AREA_COLORS.sugarcane}
-                  columns={4}
-                />
-              </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <MetricGroupCard
                   label="Soil pH Summary"
@@ -1606,7 +1817,11 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
             accentColor={AREA_COLORS.sugarcane}
           >
             {totalMeasuredArea > 0 && areaOverviewData.length > 0 ? (
-              <AreaPieSummary totalArea={totalMeasuredArea} data={areaOverviewData} />
+              <AreaPieSummary
+                totalArea={totalMeasuredArea}
+                data={areaOverviewData}
+                onSelectCrop={handleAreaCoverageSelect}
+              />
             ) : (
               <EmptyState message="Record mapped field areas and crop types to unlock the crop land coverage chart." />
             )}
@@ -1650,7 +1865,12 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                       />
                       <Bar dataKey="value" radius={[12, 12, 0, 0]} barSize={42}>
                         {phBandData.map((entry) => (
-                          <Cell key={entry.label} fill={entry.color} />
+                          <Cell
+                            key={entry.label}
+                            fill={entry.color}
+                            onClick={() => handleMapNavigation(entry.navigation)}
+                            style={{ cursor: 'pointer' }}
+                          />
                         ))}
                       </Bar>
                     </BarChart>
@@ -1703,7 +1923,12 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                   />
                   <Bar dataKey="value" radius={[0, 12, 12, 0]} barSize={22}>
                     {tamFieldData.map((entry) => (
-                      <Cell key={`${entry.label}-${entry.detail}`} fill={entry.color} />
+                      <Cell
+                        key={`${entry.label}-${entry.detail}`}
+                        fill={entry.color}
+                        onClick={() => handleMapNavigation(entry.navigation)}
+                        style={{ cursor: 'pointer' }}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -1728,6 +1953,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                 totalLabel="Top mapped area"
                 data={fieldAreaData}
                 valueFormatter={formatAreaValue}
+                onSelectItem={(item) => handleMapNavigation(item.navigation)}
               />
             ) : (
               <EmptyState message="The area ranking will appear here once live fields include a recorded or polygon-derived area." />
@@ -1747,6 +1973,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
               items={soilTypeCoverageData}
               emptyMessage="Soil type coverage will appear here once mapped fields include a soil type label."
               formatValue={(item) => formatAreaValue(item.value)}
+              onSelectItem={(item) => handleMapNavigation(item.navigation)}
             />
           </ChartShell>
         </Box>
@@ -1788,7 +2015,12 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                   />
                   <Bar dataKey="value" radius={[0, 12, 12, 0]} barSize={22}>
                     {sugarcaneRatoonData.map((entry) => (
-                      <Cell key={entry.label} fill={entry.color} />
+                      <Cell
+                        key={entry.label}
+                        fill={entry.color}
+                        onClick={() => handleMapNavigation(entry.navigation)}
+                        style={{ cursor: 'pointer' }}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -1836,7 +2068,12 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                   />
                   <Bar dataKey="value" radius={[0, 12, 12, 0]} barSize={22}>
                     {breakCropCoverageData.map((entry) => (
-                      <Cell key={entry.label} fill={entry.color} />
+                      <Cell
+                        key={entry.label}
+                        fill={entry.color}
+                        onClick={() => handleMapNavigation(entry.navigation)}
+                        style={{ cursor: 'pointer' }}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -1874,6 +2111,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                     items={fallowFieldData}
                     emptyMessage="No individual fallow field areas are available yet."
                     formatValue={(item) => formatAreaValue(item.value)}
+                    onSelectItem={(item) => handleMapNavigation(item.navigation)}
                   />
                 </Box>
               </Box>
