@@ -67,8 +67,6 @@ export function createEmptyObservationDraft(collectorId: string): FullObservatio
         crop_monitoring: {
             id: '',
             observation_id: '',
-            canopy_cover: 0,
-            crop_vigor: '',
             stress: '',
             remarks: '',
         },

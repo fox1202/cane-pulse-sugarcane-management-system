@@ -77,7 +77,7 @@ export function ObservationEntryFormPage() {
                     startIcon={<AddCircleOutline />}
                     onClick={() => setIntakeOpen(true)}
                 >
-                    Upload CSV/PDF or Enter Record
+                    Enter Record
                 </Button>
                 <Button
                     variant="outlined"

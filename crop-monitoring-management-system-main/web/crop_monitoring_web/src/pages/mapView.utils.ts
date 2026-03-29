@@ -752,8 +752,6 @@ export function createSyntheticFieldFromMobileRecord(
         crop_type: fallback?.crop_type || getMobileCropType(record) || undefined,
         latest_variety: fallback?.latest_variety || getMobileVariety(record) || undefined,
         latest_stage: fallback?.latest_stage || record.crop_information?.crop_stage || undefined,
-        latest_vigor: fallback?.latest_vigor,
-        latest_canopy_cover: fallback?.latest_canopy_cover,
         latest_stress: fallback?.latest_stress,
         latest_moisture: fallback?.latest_moisture,
         latest_irrigation_type: fallback?.latest_irrigation_type || getMobileIrrigation(record) || undefined,

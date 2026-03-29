@@ -134,10 +134,10 @@ function getCalendarTemplateForField(seed: CalendarFieldSeed): FarmingCalendarTe
 
 function getCalendarAnchorDate(seed: CalendarFieldSeed, template: FarmingCalendarTemplate): string | null {
     if (template.fieldAnchor === 'cut_date') {
-        return normalizeDateOnlyValue(seed.cutDate || seed.plantingDate)
+        return normalizeDateOnlyValue(seed.cutDate || seed.plantingDate || seed.recordedDate)
     }
 
-    return normalizeDateOnlyValue(seed.plantingDate || seed.cutDate)
+    return normalizeDateOnlyValue(seed.plantingDate || seed.cutDate || seed.recordedDate)
 }
 
 function isCalendarRelevantCrop(cropType?: string | null, cropClass?: string | null): boolean {
@@ -265,10 +265,6 @@ export function buildUpcomingTaskNotices(
 
             const taskTimestamp = getDateOnlyTimestamp(dateIso)
             const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
-
-            if (daysUntil < -21) {
-                return
-            }
 
             const kind = getCalendarTaskKind(task.activity)
             const taskKey = `${seed.fieldKey}|${template.id}|${task.weekNumber}|${kind}|${task.activity.toLowerCase()}`

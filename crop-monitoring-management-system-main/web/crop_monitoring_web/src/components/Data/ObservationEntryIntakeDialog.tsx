@@ -3,7 +3,6 @@ import {
     Alert,
     Box,
     Button,
-    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -15,11 +14,9 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
-import { EditNoteRounded, UploadFileOutlined } from '@mui/icons-material';
 import L from 'leaflet';
 import { MapContainer, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import {
-    bulkCreateObservationEntryFormSubmissions,
     createPredefinedField,
     createObservationEntryFormSubmission,
     fetchPredefinedFields,
@@ -28,15 +25,6 @@ import {
     type PredefinedField,
 } from '@/services/database.service';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-    downloadObservationEntryCsvTemplate,
-    parseObservationEntryCsv,
-} from '@/utils/csvObservationImport';
-import {
-    buildObservationEntrySubmissionFromPdf,
-    extractTextFromPdf,
-    parseObservationPdfText,
-} from '@/utils/pdfObservationImport';
 
 interface ObservationEntryIntakeDialogProps {
     open: boolean;
@@ -429,24 +417,45 @@ function buildFreshFormData(
     };
 }
 
+function buildFollowUpTrialUpdateData(
+    currentSubmission: ObservationEntryFormSubmissionInput,
+    collectorId: string,
+    matchedField?: PredefinedField
+): ObservationEntryFormSubmissionInput {
+    const preserved = buildFreshFormData(currentSubmission, collectorId, matchedField);
+
+    return {
+        ...preserved,
+        date_recorded: '',
+        fertilizer_type: '',
+        nutrient_application_date: '',
+        application_rate: undefined,
+        foliar_sampling_date: '',
+        herbicide_name: '',
+        weed_application_date: '',
+        weed_application_rate: undefined,
+        pest_remarks: '',
+        disease_remarks: '',
+        harvest_date: '',
+        yield: undefined,
+        quality_remarks: '',
+    };
+}
+
 export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialogProps> = ({
     open,
     onClose,
     onSubmitted,
 }) => {
     const { user } = useAuth();
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const csvInputRef = useRef<HTMLInputElement | null>(null);
     const dialogContentRef = useRef<HTMLDivElement | null>(null);
     const [predefinedFields, setPredefinedFields] = useState<PredefinedField[]>([]);
     const [formData, setFormData] = useState<ObservationEntryFormSubmissionInput>(createEmptySubmission(user?.id || ''));
     const [loadingFields, setLoadingFields] = useState(false);
-    const [parsingPdf, setParsingPdf] = useState(false);
-    const [importingCsv, setImportingCsv] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [saveMode, setSaveMode] = useState<'close' | 'add_another' | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [parseSummary, setParseSummary] = useState<string | null>(null);
-    const [parseWarnings, setParseWarnings] = useState<string[]>([]);
     const [isCreatingCustomField, setIsCreatingCustomField] = useState(false);
     const [drawPoints, setDrawPoints] = useState<DrawPoint[]>([]);
 
@@ -456,7 +465,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setFormData(createEmptySubmission(user?.id || ''));
         setError(null);
         setParseSummary(null);
-        setParseWarnings([]);
+        setSaveMode(null);
         setIsCreatingCustomField(false);
         setDrawPoints([]);
     }, [open, user?.id]);
@@ -573,12 +582,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     }, [drawnArea, drawnCentroid, drawnGeometry, isCreatingCustomField]);
 
     const handleFieldSelection = (fieldName: string) => {
+        setError(null);
+
         if (fieldName === DRAW_NEW_FIELD_VALUE) {
             setIsCreatingCustomField(true);
             setDrawPoints([]);
-            setFormData((prev) => buildFreshFormData(
-                prev,
-                user?.id || prev.collector_id || '',
+            setParseSummary(null);
+            setFormData(() => buildFreshFormData(
+                createEmptySubmission(user?.id || ''),
+                user?.id || '',
             ));
             return;
         }
@@ -591,9 +603,10 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             return;
         }
 
-        setFormData((prev) => buildFreshFormData(
-            prev,
-            user?.id || prev.collector_id || '',
+        setParseSummary(null);
+        setFormData(() => buildFreshFormData(
+            createEmptySubmission(user?.id || ''),
+            user?.id || '',
             match,
         ));
     };
@@ -610,68 +623,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setDrawPoints([]);
     };
 
-    const handlePdfSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        event.target.value = '';
-
-        if (!file) return;
-
-        setParsingPdf(true);
-        setError(null);
-
-        try {
-            const text = await extractTextFromPdf(file);
-            const parsed = parseObservationPdfText(text);
-            const draft = buildObservationEntrySubmissionFromPdf(parsed, user?.id || '', predefinedFields);
-
-            setFormData((prev) => ({
-                ...prev,
-                ...draft,
-                collector_id: user?.id || prev.collector_id,
-            }));
-            setParseWarnings(parsed.warnings);
-            setParseSummary(`Parsed ${Object.keys(parsed.extractedFields).length} field(s) from ${file.name}. Review before saving.`);
-        } catch (err: any) {
-            console.error('Failed to parse PDF:', err);
-            setError(err.message || 'Failed to read the PDF file.');
-        } finally {
-            setParsingPdf(false);
-        }
-    };
-
-    const handleCsvSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        event.target.value = '';
-
-        if (!file) return;
-
-        setImportingCsv(true);
+    const handleSubmit = async (mode: 'close' | 'add_another' = 'close') => {
+        setSaving(true);
+        setSaveMode(mode);
         setError(null);
         setParseSummary(null);
-        setParseWarnings([]);
-
-        try {
-            const text = await file.text();
-            const parsed = parseObservationEntryCsv(text, user?.id || '', predefinedFields);
-            const result = await bulkCreateObservationEntryFormSubmissions(parsed.rows);
-
-            await onSubmitted();
-
-            setParseWarnings([...parsed.warnings, ...result.failures]);
-            setParseSummary(
-                `CSV import complete: ${result.insertedCount} inserted and ${result.failureCount} failed from ${parsed.parsedRowCount} parsed row(s). Duplicates are allowed.`
-            );
-        } catch (err: any) {
-            console.error('Failed to import CSV:', err);
-            setError(err.message || 'Failed to import the CSV file.');
-        } finally {
-            setImportingCsv(false);
-        }
-    };
-
-    const handleSubmit = async () => {
-        setSaving(true);
-        setError(null);
 
         try {
             if (!formData.field_name && !isCreatingCustomField) {
@@ -768,159 +724,38 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             await createObservationEntryFormSubmission(submission, registryFields);
 
             await onSubmitted();
+
+            if (mode === 'add_another') {
+                const collectorId = user?.id || submission.collector_id || '';
+
+                setParseSummary('Saved update. The same trial is still selected so you can add the next nutrient or herbicide date.');
+                setFormData(buildFollowUpTrialUpdateData(submission, collectorId, resolvedField));
+                setIsCreatingCustomField(false);
+                setDrawPoints([]);
+                dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+
             onClose();
         } catch (err: any) {
             setError(err.message || 'Failed to save the observation entry form.');
         } finally {
             setSaving(false);
+            setSaveMode(null);
         }
     };
 
-    const handleEditForm = () => {
-        dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-            <DialogTitle>Upload CSV/PDF or Manually Enter Field Observation Form</DialogTitle>
+            <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+            <DialogTitle>Enter Field Observation Record</DialogTitle>
             <DialogContent ref={dialogContentRef} dividers>
                 <Stack spacing={2.5}>
-                    <Alert severity="info">
-                        Upload a text-based PDF to auto-fill one form, upload a CSV for bulk import, or leave it blank and type the details manually.
-                    </Alert>
-
                     {error && <Alert severity="error">{error}</Alert>}
                     {parseSummary && <Alert severity="success">{parseSummary}</Alert>}
-                    {parseWarnings.length > 0 && (
-                        <Alert severity="warning">
-                            {parseWarnings.join(' ')}
-                        </Alert>
-                    )}
 
-                    <Box
-                        sx={{
-                            border: '1px dashed rgba(47,159,90,0.35)',
-                            borderRadius: 3,
-                            p: 2.5,
-                            bgcolor: 'rgba(47,159,90,0.04)',
-                        }}
-                    >
-                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
-                            <Button
-                                variant="outlined"
-                                startIcon={parsingPdf ? <CircularProgress size={16} /> : <UploadFileOutlined />}
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={parsingPdf || importingCsv || loadingFields}
-                            >
-                                {parsingPdf ? 'Reading PDF...' : 'Upload PDF to Autofill'}
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                startIcon={importingCsv ? <CircularProgress size={16} /> : <UploadFileOutlined />}
-                                onClick={() => csvInputRef.current?.click()}
-                                disabled={parsingPdf || importingCsv || loadingFields}
-                            >
-                                {importingCsv ? 'Importing CSV...' : 'Upload CSV for Bulk Import'}
-                            </Button>
-                            <Button
-                                variant="text"
-                                onClick={downloadObservationEntryCsvTemplate}
-                                disabled={parsingPdf || importingCsv}
-                            >
-                                Download CSV Template
-                            </Button>
-                            <Typography variant="body2" color="text.secondary">
-                                PDF works best with selectable text. CSV supports multiple columns, keeps blank cells empty, and allows duplicates.
-                            </Typography>
-                        </Stack>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="application/pdf"
-                            hidden
-                            onChange={handlePdfSelect}
-                        />
-                        <input
-                            ref={csvInputRef}
-                            type="file"
-                            accept=".csv,text/csv"
-                            hidden
-                            onChange={handleCsvSelect}
-                        />
-                    </Box>
-
+                    <Box>
                     <SectionHeading title="1. Field Information" />
                     <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                select
-                                fullWidth
-                                label="Trials"
-                                value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : formData.field_name}
-                                onChange={(e) => handleFieldSelection(e.target.value)}
-                                disabled={loadingFields}
-                                helperText={isCreatingCustomField
-                                    ? 'Drawing a new field or trial. Save the form to add it to the registry.'
-                                    : 'Can’t find it in the list? Choose "Draw New Trial / Field".'}
-                                SelectProps={{
-                                    MenuProps: WHITE_SELECT_MENU_PROPS,
-                                }}
-                            >
-                                {selectableFieldOptions.map((field) => (
-                                    <MenuItem
-                                        key={`${field.blockId}-${field.sectionName}-${field.value}`}
-                                        value={field.value}
-                                    >
-                                        {field.value}
-                                    </MenuItem>
-                                ))}
-                                <MenuItem value={DRAW_NEW_FIELD_VALUE} sx={{ fontWeight: 800, color: 'primary.main' }}>
-                                    Draw New Trial / Field
-                                </MenuItem>
-                            </TextField>
-                        </Grid>
-                        {isCreatingCustomField ? (
-                            <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    fullWidth
-                                    label="New Trial / Field Name"
-                                    value={formData.field_name || ''}
-                                    onChange={(e) => updateField('field_name', e.target.value)}
-                                    helperText="This name will be saved into the field registry for future use."
-                                />
-                            </Grid>
-                        ) : (
-                            <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    fullWidth
-                                    label="Block ID"
-                                    value={selectedField?.block_id || formData.block_id || ''}
-                                    InputProps={{ readOnly: true }}
-                                    disabled
-                                />
-                            </Grid>
-                        )}
-                        {isCreatingCustomField && (
-                            <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    fullWidth
-                                    label="Block ID"
-                                    value={formData.block_id || ''}
-                                    onChange={(e) => updateField('block_id', e.target.value)}
-                                    helperText="Set the block where this new field or trial belongs."
-                                />
-                            </Grid>
-                        )}
-                        <Grid size={{ xs: 12, md: isCreatingCustomField ? 6 : 4 }}>
-                            <TextField
-                                fullWidth
-                                label="Area"
-                                value={formData.area ?? formData.block_size ?? ''}
-                                InputProps={{ readOnly: true }}
-                                disabled
-                                helperText={isCreatingCustomField ? 'Area is estimated from the drawn boundary.' : undefined}
-                            />
-                        </Grid>
                         {isCreatingCustomField && (
                             <Grid size={{ xs: 12 }}>
                                 <Alert severity="info" sx={{ mb: 1 }}>
@@ -1001,6 +836,76 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 </Paper>
                             </Grid>
                         )}
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                select
+                                fullWidth
+                                label="Field Name"
+                                value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : formData.field_name}
+                                onChange={(e) => handleFieldSelection(e.target.value)}
+                                disabled={loadingFields}
+                                helperText={isCreatingCustomField
+                                    ? 'Drawing a new field or trial. Save the form to add it to the registry.'
+                                    : 'Can’t find it in the list? Choose "Draw New Trial / Field".'}
+                                SelectProps={{
+                                    MenuProps: WHITE_SELECT_MENU_PROPS,
+                                }}
+                            >
+                                {selectableFieldOptions.map((field) => (
+                                    <MenuItem
+                                        key={`${field.blockId}-${field.sectionName}-${field.value}`}
+                                        value={field.value}
+                                    >
+                                        {field.value}
+                                    </MenuItem>
+                                ))}
+                                <MenuItem value={DRAW_NEW_FIELD_VALUE} sx={{ fontWeight: 800, color: 'primary.main' }}>
+                                    Draw New Trial / Field
+                                </MenuItem>
+                            </TextField>
+                        </Grid>
+                        {isCreatingCustomField ? (
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    fullWidth
+                                    label="New Trial / Field Name"
+                                    value={formData.field_name || ''}
+                                    onChange={(e) => updateField('field_name', e.target.value)}
+                                    helperText="This name will be saved into the field registry for future use."
+                                />
+                            </Grid>
+                        ) : (
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Field ID"
+                                    value={selectedField?.block_id || formData.block_id || ''}
+                                    InputProps={{ readOnly: true }}
+                                    disabled
+                                />
+                            </Grid>
+                        )}
+                        {isCreatingCustomField && (
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Field ID"
+                                    value={formData.block_id || ''}
+                                    onChange={(e) => updateField('block_id', e.target.value)}
+                                    helperText="Set the block where this new field or trial belongs."
+                                />
+                            </Grid>
+                        )}
+                        <Grid size={{ xs: 12, md: isCreatingCustomField ? 6 : 4 }}>
+                            <TextField
+                                fullWidth
+                                label="Hectares (ha)"
+                                value={formData.area ?? formData.block_size ?? ''}
+                                InputProps={{ readOnly: true }}
+                                disabled
+                                helperText={isCreatingCustomField ? 'Area is estimated from the drawn boundary.' : undefined}
+                            />
+                        </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
                                 select
@@ -1078,7 +983,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             />
                         </Grid>
                     </Grid>
+                    </Box>
 
+                    <Box>
                     <SectionHeading title="2. Trial Information" />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 3 }}>
@@ -1117,7 +1024,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             />
                         </Grid>
                     </Grid>
+                    </Box>
 
+                    <Box>
                     <SectionHeading title="3. Crop Information" />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -1199,7 +1108,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             />
                         </Grid>
                     </Grid>
+                    </Box>
 
+                    <Box>
                     <SectionHeading title="4. Residue Management" />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 6 }}>
@@ -1243,7 +1154,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             />
                         </Grid>
                     </Grid>
+                    </Box>
 
+                    <Box>
                     <SectionHeading title="5. Nutrient Management" />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -1284,7 +1197,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             />
                         </Grid>
                     </Grid>
+                    </Box>
 
+                    <Box>
                     <SectionHeading title="6. Weed Management" />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -1315,7 +1230,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             />
                         </Grid>
                     </Grid>
+                    </Box>
 
+                    <Box>
                     <SectionHeading title="7. Crop Protection" />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 6 }}>
@@ -1339,7 +1256,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             />
                         </Grid>
                     </Grid>
+                    </Box>
 
+                    <Box>
                     <SectionHeading title="8. Harvest Information" />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -1372,6 +1291,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             />
                         </Grid>
                     </Grid>
+                    </Box>
                 </Stack>
             </DialogContent>
             <DialogActions
@@ -1395,33 +1315,32 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     Cancel
                 </Button>
                 <Button
-                    onClick={handleEditForm}
+                    onClick={() => handleSubmit('add_another')}
                     variant="outlined"
-                    disabled={saving || parsingPdf || importingCsv || loadingFields}
-                    startIcon={<EditNoteRounded />}
+                    disabled={saving || loadingFields}
                     sx={{
                         borderRadius: '999px',
                         px: 2.3,
                         py: 0.95,
-                        borderColor: 'rgba(86,184,112,0.42)',
-                        bgcolor: 'rgba(255,255,255,0.86)',
-                        color: '#2f7f4f',
+                        borderColor: 'rgba(244,183,64,0.42)',
+                        bgcolor: 'rgba(255,255,255,0.9)',
+                        color: '#8a6500',
                         fontWeight: 800,
                         textTransform: 'none',
-                        boxShadow: '0 10px 24px rgba(86,184,112,0.1)',
+                        boxShadow: '0 10px 24px rgba(244,183,64,0.12)',
                         '&:hover': {
-                            borderColor: 'rgba(86,184,112,0.66)',
-                            bgcolor: 'rgba(86,184,112,0.08)',
-                            boxShadow: '0 12px 28px rgba(86,184,112,0.14)',
+                            borderColor: 'rgba(244,183,64,0.7)',
+                            bgcolor: 'rgba(244,183,64,0.1)',
+                            boxShadow: '0 12px 28px rgba(244,183,64,0.16)',
                         },
                     }}
                 >
-                    Edit Form
+                    {saving && saveMode === 'add_another' ? 'Saving...' : 'Save & Add Another Update'}
                 </Button>
                 <Button
-                    onClick={handleSubmit}
+                    onClick={() => handleSubmit('close')}
                     variant="contained"
-                    disabled={saving || parsingPdf || importingCsv || loadingFields}
+                    disabled={saving || loadingFields}
                     sx={{
                         borderRadius: '999px',
                         px: 2.5,
@@ -1431,7 +1350,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                         boxShadow: '0 14px 28px rgba(86,184,112,0.22)',
                     }}
                 >
-                    {saving ? 'Saving...' : 'Save Form'}
+                    {saving && saveMode === 'close' ? 'Saving...' : 'Save Form'}
                 </Button>
             </DialogActions>
         </Dialog>

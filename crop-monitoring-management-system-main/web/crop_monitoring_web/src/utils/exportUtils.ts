@@ -108,8 +108,6 @@ export const exportToCSV = (data: ExportObservationRecord[], filename = 'observa
             'Crop Type': entryForm?.crop_class || obs.crop_information?.crop_type || '',
             Variety: entryForm?.variety || obs.crop_information?.variety || '',
             Stage: obs.crop_information?.crop_stage || '',
-            'Canopy %': obs.crop_monitoring?.canopy_cover ?? '',
-            Vigor: obs.crop_monitoring?.crop_vigor || '',
             Stress: obs.crop_monitoring?.stress || 'None',
             'Soil Type': entryForm?.soil_type || obs.soil_characteristics?.soil_type || '',
             'pH': entryForm?.soil_ph ?? obs.soil_characteristics?.soil_ph ?? '',
@@ -200,8 +198,6 @@ export const generatePDFReport = (obs: ExportObservationRecord) => {
         { label: 'Variety', value: entryForm?.variety || obs.crop_information?.variety },
         { label: 'Growth Stage', value: obs.crop_information?.crop_stage },
         { label: 'Stress Level', value: obs.crop_monitoring?.stress },
-        { label: 'Canopy Cover', value: hasValue(obs.crop_monitoring?.canopy_cover) ? `${obs.crop_monitoring?.canopy_cover}%` : undefined },
-        { label: 'Crop Vigor', value: obs.crop_monitoring?.crop_vigor },
     ])
 
     if (cropRows.length > 0) {
@@ -394,8 +390,6 @@ export const exportComprehensiveDataToCSV = async () => {
             crop_stage: obs.crop_information?.crop_stage,
 
             // Crop Monitoring
-            crop_vigor: obs.crop_monitoring?.crop_vigor,
-            canopy_cover: obs.crop_monitoring?.canopy_cover,
             stress: obs.crop_monitoring?.stress,
             monitoring_remarks: obs.crop_monitoring?.remarks,
 

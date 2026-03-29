@@ -133,7 +133,6 @@ type SprayFilter      = 'all' | 'sprayed' | 'not-sprayed'
 type CollectionFilter = 'all' | 'recorded' | 'pending'
 type MapLayer         = 'satellite' | 'terrain'
 type MapCropGroup     = 'Sugarcane' | 'Break Crop' | 'Fallow Period' | 'Unspecified'
-type MapPhBand        = 'Acidic' | 'Working Range' | 'Alkaline'
 
 interface GeoFeature {
     type: 'Feature'
@@ -159,7 +158,6 @@ interface RequestedMapFilters {
     cropType: MapCropGroup | 'all' | null
     cropClass: string | null
     soilType: string | null
-    phBand: MapPhBand | null
 }
 
 function toOrdinal(value: number): string {
@@ -186,13 +184,6 @@ function normalizeRequestedFilterValue(value?: string | null): string | null {
     return normalized || null
 }
 
-function getMapPhBand(value?: number | null): MapPhBand | null {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return null
-    if (value < 5.5) return 'Acidic'
-    if (value > 7) return 'Alkaline'
-    return 'Working Range'
-}
-
 function resolveRequestedMapFilters(search: string): RequestedMapFilters {
     const params = new URLSearchParams(search)
     const normalizedCropType = normalizeRequestedFilterValue(params.get('cropType'))
@@ -207,16 +198,10 @@ function resolveRequestedMapFilters(search: string): RequestedMapFilters {
         }
     }
 
-    const phBand = normalizeRequestedFilterValue(params.get('phBand'))
-    const requestedPhBand = phBand === 'Acidic' || phBand === 'Working Range' || phBand === 'Alkaline'
-        ? phBand
-        : null
-
     return {
         cropType,
         cropClass: normalizeRequestedFilterValue(params.get('cropClass')),
         soilType: normalizeRequestedFilterValue(params.get('soilType')),
-        phBand: requestedPhBand,
     }
 }
 
@@ -495,7 +480,7 @@ function MobileRecordInfoPanel({ record }: { record: MobileObservationRecord }) 
     const expectedHarvestDate = getMobileExpectedHarvestDate(record)
     const remarks             = getMobileRemarks(record)
     const trialLabel          = [currentSheet?.trial_name || record.entry_form?.trial_name, currentSheet?.trial_number || record.entry_form?.trial_number].filter(Boolean).join(' · ')
-    const collectorLabel      = currentSheet?.contact_person || record.collector_id || record.entry_form?.contact_person || ''
+    const collectorLabel      = currentSheet?.contact_person || record.entry_form?.contact_person || record.collector_id || ''
 
     return (
         <Box sx={{ mt: 0.8 }}>
@@ -503,7 +488,7 @@ function MobileRecordInfoPanel({ record }: { record: MobileObservationRecord }) 
                 Feed: {getMobileSourceLabel(record)}
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.55 }}>
-                <PopupInfoRow label="Collector"        value={collectorLabel} />
+                <PopupInfoRow label="Contact Person"   value={collectorLabel} />
                 <PopupInfoRow label="Recorded"         value={formatDisplayDate(recordedAt, true)} />
                 <PopupInfoRow label="Block"            value={currentSheet?.block_id || record.block_id} />
                 <PopupInfoRow label="Crop"             value={cropType} />
@@ -549,8 +534,6 @@ function FieldInfoPanel({ field, collectionLabel, sourceLabel }: {
                 <PopupInfoRow label="Observations" value={field.observation_count} />
                 <PopupInfoRow label="Crop"         value={field.crop_type} />
                 <PopupInfoRow label="Stage"        value={field.latest_stage} />
-                <PopupInfoRow label="Vigor"        value={field.latest_vigor} />
-                <PopupInfoRow label="Canopy"       value={field.latest_canopy_cover != null ? `${field.latest_canopy_cover}%` : null} />
                 <PopupInfoRow label="Stress"       value={field.latest_stress} />
                 <PopupInfoRow label="Moisture"     value={field.latest_moisture != null ? `${field.latest_moisture}%` : null} />
                 <PopupInfoRow label="Irrigation"   value={field.latest_irrigation_type} />
@@ -948,7 +931,6 @@ export function MapViewPage() {
     const [selectedCropType,    setSelectedCropType]    = useState<string>(DEFAULT_CROP_TYPE)
     const [selectedCropClass,   setSelectedCropClass]   = useState<string>('all')
     const [selectedSoilType,    setSelectedSoilType]    = useState<string>('all')
-    const [selectedPhBand,      setSelectedPhBand]      = useState<string>('all')
     const [selectedCollector,   setSelectedCollector]   = useState<string>('all')
     const [userLocation,        setUserLocation]        = useState<[number, number] | null>(null)
     const [manualLocationRequest, setManualLocationRequest] = useState(false)
@@ -1042,9 +1024,9 @@ export function MapViewPage() {
     const getCollectorLabel = useCallback((record?: MobileObservationRecord | null, field?: Partial<Field> | null): string => {
         return String(
             record?.monitoring_sheet?.contact_person
-            || record?.collector_id
             || record?.entry_form?.contact_person
             || field?.created_by
+            || record?.collector_id
             || ''
         ).trim().replace(/\s+/g, ' ')
     }, [])
@@ -1062,7 +1044,6 @@ export function MapViewPage() {
         setSelectedCropType(requestedMapFilters.cropType ?? (focusObservation ? 'all' : DEFAULT_CROP_TYPE))
         setSelectedCropClass(requestedMapFilters.cropClass ?? 'all')
         setSelectedSoilType(requestedMapFilters.soilType ?? 'all')
-        setSelectedPhBand(requestedMapFilters.phBand ?? 'all')
         setSelectedCollector('all')
         setSelectedBoundaryKey(null)
     }, [focusObservation, requestedMapFilters])
@@ -1241,39 +1222,14 @@ export function MapViewPage() {
         return normalizeSoilType(value) === selectedSoilType
     }, [selectedSoilType, normalizeSoilType])
 
-    const matchesSelectedPhBand = useCallback((value?: number | null) => {
-        if (selectedPhBand === 'all') return true
-        return getMapPhBand(value) === selectedPhBand
-    }, [selectedPhBand])
-
     const soilTypeOptions = useMemo(
         () => Array.from(new Set(
             mobileRecordsForCropType
                 .filter((record) => matchesSelectedCropClass(getMobileCropClass(record)))
-                .filter((record) => matchesSelectedPhBand(getMobileSoilPh(record)))
                 .map((record) => normalizeSoilType(getMobileSoilType(record)))
                 .filter(Boolean)
         )).sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' })),
-        [mobileRecordsForCropType, matchesSelectedCropClass, matchesSelectedPhBand, getMobileCropClass, normalizeSoilType]
-    )
-
-    const phBandOptions = useMemo(
-        () => Array.from(new Set(
-            mobileRecordsForCropType
-                .filter((record) => matchesSelectedCropClass(getMobileCropClass(record)))
-                .filter((record) => selectedSoilType === 'all' || normalizeSoilType(getMobileSoilType(record)) === selectedSoilType)
-                .map((record) => getMapPhBand(getMobileSoilPh(record)))
-                .filter((value): value is MapPhBand => Boolean(value))
-        )).sort((left, right) => {
-            const order = new Map<MapPhBand, number>([
-                ['Acidic', 0],
-                ['Working Range', 1],
-                ['Alkaline', 2],
-            ])
-
-            return (order.get(left) ?? 99) - (order.get(right) ?? 99)
-        }),
-        [mobileRecordsForCropType, matchesSelectedCropClass, getMobileCropClass, selectedSoilType, normalizeSoilType]
+        [mobileRecordsForCropType, matchesSelectedCropClass, getMobileCropClass, normalizeSoilType]
     )
 
     useEffect(() => {
@@ -1295,13 +1251,6 @@ export function MapViewPage() {
             setSelectedSoilType('all')
         }
     }, [isLoading, isMobileRecordsLoading, selectedSoilType, soilTypeOptions])
-
-    useEffect(() => {
-        if (isLoading || isMobileRecordsLoading) return
-        if (selectedPhBand !== 'all' && !phBandOptions.includes(selectedPhBand as MapPhBand)) {
-            setSelectedPhBand('all')
-        }
-    }, [isLoading, isMobileRecordsLoading, selectedPhBand, phBandOptions])
 
     const getFieldCropClass = useCallback((field: Field, matchedRecord?: MobileObservationRecord | null): string => {
         const linkedRecord = matchedRecord ?? getMobileRecordForBoundary(field, mobileRecordsForCropType)
@@ -1336,28 +1285,11 @@ export function MapViewPage() {
         return linkedRecord ? normalizeSoilType(getMobileSoilType(linkedRecord)) : ''
     }, [mobileRecordsForCropType, normalizeSoilType])
 
-    const getFieldSoilPh = useCallback((field: Field, matchedRecord?: MobileObservationRecord | null): number | null => {
-        const linkedRecord = matchedRecord ?? getMobileRecordForBoundary(field, mobileRecordsForCropType)
-        return linkedRecord ? getMobileSoilPh(linkedRecord) : null
-    }, [mobileRecordsForCropType])
-
     const collectorOptions = useMemo(
         () => {
             const optionMap = new Map<string, string>()
 
-            mobileRecordsForCropType.forEach((record) => {
-                if (!matchesSelectedCropClass(getMobileCropClass(record))) {
-                    return
-                }
-
-                if (!matchesSelectedSoilType(getMobileSoilType(record))) {
-                    return
-                }
-
-                if (!matchesSelectedPhBand(getMobileSoilPh(record))) {
-                    return
-                }
-
+            mobileRecords.forEach((record) => {
                 const label = getCollectorLabel(record)
                 const token = normalizeCollectorToken(label)
                 if (token && !optionMap.has(token)) {
@@ -1366,23 +1298,7 @@ export function MapViewPage() {
             })
 
             fields.forEach((field) => {
-                if (selectedCropType !== 'all' && normalizeCropType(field.crop_type) !== selectedCropType) {
-                    return
-                }
-
-                const matchedRecord = getMobileRecordForBoundary(field, mobileRecordsForCropType)
-                if (!matchesSelectedCropClass(getFieldCropClass(field, matchedRecord))) {
-                    return
-                }
-
-                if (!matchesSelectedSoilType(matchedRecord ? getMobileSoilType(matchedRecord) : '')) {
-                    return
-                }
-
-                if (!matchesSelectedPhBand(matchedRecord ? getMobileSoilPh(matchedRecord) : null)) {
-                    return
-                }
-
+                const matchedRecord = getMobileRecordForBoundary(field, mobileRecords)
                 const label = getCollectorLabel(matchedRecord, field)
                 const token = normalizeCollectorToken(label)
                 if (token && !optionMap.has(token)) {
@@ -1397,14 +1313,7 @@ export function MapViewPage() {
         [
             fields,
             getCollectorLabel,
-            getFieldCropClass,
-            getMobileCropClass,
-            matchesSelectedCropClass,
-            matchesSelectedPhBand,
-            matchesSelectedSoilType,
-            mobileRecordsForCropType,
-            normalizeCropType,
-            selectedCropType,
+            mobileRecords,
         ]
     )
 
@@ -1438,7 +1347,6 @@ export function MapViewPage() {
         () => mobileRecordsForCropType.filter((record) => {
             if (!matchesSelectedCropClass(getMobileCropClass(record))) return false
             if (!matchesSelectedSoilType(getMobileSoilType(record))) return false
-            if (!matchesSelectedPhBand(getMobileSoilPh(record))) return false
             if (!matchesSelectedCollector(getCollectorLabel(record))) return false
             return Boolean(record.field_name || record.entry_form?.selected_field || record.block_id || record.section_name)
         }),
@@ -1446,7 +1354,6 @@ export function MapViewPage() {
             mobileRecordsForCropType,
             matchesSelectedCropClass,
             matchesSelectedSoilType,
-            matchesSelectedPhBand,
             getMobileCropClass,
             matchesSelectedCollector,
             getCollectorLabel,
@@ -1483,17 +1390,14 @@ export function MapViewPage() {
 
             return matchesSelectedCropClass(getFieldCropClass(field, matchedRecord))
                 && matchesSelectedSoilType(getFieldSoilType(field, matchedRecord))
-                && matchesSelectedPhBand(getFieldSoilPh(field, matchedRecord))
                 && matchesSelectedCollectorField(field, matchedRecord)
         }),
         [
             linkedFields,
             matchesSelectedCropClass,
             matchesSelectedSoilType,
-            matchesSelectedPhBand,
             getFieldCropClass,
             getFieldSoilType,
-            getFieldSoilPh,
             matchesSelectedCollectorField,
             mobileRecordsForFieldLinking,
         ]
@@ -1605,7 +1509,6 @@ export function MapViewPage() {
                     : ''
             const soilRecord = matchedRecordForType ?? matchedRecordedRecord
             const effectiveSoilType = soilRecord ? normalizeSoilType(getMobileSoilType(soilRecord)) : ''
-            const effectiveSoilPh = soilRecord ? getMobileSoilPh(soilRecord) : null
 
             if (selectedCropType !== 'all' && normalizeCropType(effectiveCropType) !== selectedCropType) {
                 return false
@@ -1616,10 +1519,6 @@ export function MapViewPage() {
             }
 
             if (!matchesSelectedSoilType(effectiveSoilType)) {
-                return false
-            }
-
-            if (!matchesSelectedPhBand(effectiveSoilPh)) {
                 return false
             }
 
@@ -1642,7 +1541,6 @@ export function MapViewPage() {
             matchesSelectedCropClass,
             normalizeSoilType,
             matchesSelectedSoilType,
-            matchesSelectedPhBand,
             matchesSelectedCollectorField,
             matchesRecordedBoundaryFilter,
         ]
@@ -1661,7 +1559,6 @@ export function MapViewPage() {
                     : ''
             const soilRecord = matchedRecordForType ?? matchedRecordedRecord
             const effectiveSoilType = soilRecord ? normalizeSoilType(getMobileSoilType(soilRecord)) : ''
-            const effectiveSoilPh = soilRecord ? getMobileSoilPh(soilRecord) : null
             const isRecorded = Boolean(matchedRecordedRecord)
 
             if (selectedCropType !== 'all' && normalizeCropType(effectiveCropType) !== selectedCropType) {
@@ -1673,10 +1570,6 @@ export function MapViewPage() {
             }
 
             if (!matchesSelectedSoilType(effectiveSoilType)) {
-                return false
-            }
-
-            if (!matchesSelectedPhBand(effectiveSoilPh)) {
                 return false
             }
 
@@ -1699,7 +1592,6 @@ export function MapViewPage() {
             matchesSelectedCropClass,
             normalizeSoilType,
             matchesSelectedSoilType,
-            matchesSelectedPhBand,
             matchesSelectedCollectorField,
             matchesRecordedBoundaryFilter,
         ]
@@ -1925,7 +1817,6 @@ export function MapViewPage() {
         || cropClassOptions.length > 0
     )
     const shouldShowSoilTypeFilter = selectedSoilType !== 'all' || soilTypeOptions.length > 0
-    const shouldShowPhBandFilter = selectedPhBand !== 'all' || phBandOptions.length > 0
     const cropFocusLabel = selectedCropType === 'all'
         ? 'All crops'
         : selectedCropClass === 'all'
@@ -1942,7 +1833,7 @@ export function MapViewPage() {
             ? 'ALL BREAK CROPS'
             : 'ALL CLASSES'
     const selectedCollectorLabel = selectedCollector === 'all'
-        ? 'ALL COLLECTORS'
+        ? 'ALL CONTACT PERSONS'
         : collectorOptions.find((option) => option.value === selectedCollector)?.label ?? selectedCollector
     // ── Labels ────────────────────────────────────────────────────────────────
     const activeTileSource = mapLayer === 'satellite' ? SATELLITE_TILE_SOURCES[satelliteSourceIndex] : TERRAIN_TILE_SOURCE
@@ -2119,35 +2010,18 @@ export function MapViewPage() {
                                             ))}
                                         </ControlSelect>
                                     )}
-                                    {shouldShowPhBandFilter && (
-                                        <ControlSelect
-                                            label="Soil pH"
-                                            value={selectedPhBand}
-                                            onChange={setSelectedPhBand}
-                                            renderValue={(value) => value === 'all' ? 'ALL PH BANDS' : value.toUpperCase()}
-                                        >
-                                            <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                                ALL PH BANDS
-                                            </MenuItem>
-                                            {phBandOptions.map((phBand) => (
-                                                <MenuItem key={phBand} value={phBand} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                                    {phBand.toUpperCase()}
-                                                </MenuItem>
-                                            ))}
-                                        </ControlSelect>
-                                    )}
                                     <ControlSelect
-                                        label="Collector"
+                                        label="Contact Person"
                                         value={selectedCollector}
                                         onChange={setSelectedCollector}
                                         renderValue={(value) =>
                                             value === 'all'
-                                                ? 'ALL COLLECTORS'
+                                                ? 'ALL CONTACT PERSONS'
                                                 : selectedCollectorLabel.toUpperCase()
                                         }
                                     >
                                         <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                            ALL COLLECTORS
+                                            ALL CONTACT PERSONS
                                         </MenuItem>
                                         {collectorOptions.map((collector) => (
                                             <MenuItem key={collector.value} value={collector.value} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>

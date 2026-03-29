@@ -48,8 +48,6 @@ export interface CropInformation {
 export interface CropMonitoring {
     id: string;
     observation_id: string;
-    crop_vigor: string;
-    canopy_cover: number;
     stress: string;
     remarks: string;
 }
@@ -141,8 +139,6 @@ export interface Field {
     crop_type?: string;
     latest_variety?: string;
     latest_stage?: string;
-    latest_vigor?: string;
-    latest_canopy_cover?: number;
     latest_stress?: string;
     latest_moisture?: number;
     latest_irrigation_type?: string;
@@ -201,8 +197,6 @@ export interface ObservationEntryForm {
     soil_type?: string;
     soil_ph?: number;
     field_remarks?: string;
-    crop_vigor?: string;
-    canopy_cover?: number;
     stress?: string;
     residue_type?: string;
     residue_management_method?: string;
@@ -246,8 +240,6 @@ export interface SugarcaneMonitoringRecord {
     previous_cutting?: string;
     previous_cutting_date?: string;
     expected_harvest_date?: string;
-    crop_vigor?: string;
-    canopy_cover?: number;
     stress?: string;
     tam_mm?: string;
     soil_type?: string;

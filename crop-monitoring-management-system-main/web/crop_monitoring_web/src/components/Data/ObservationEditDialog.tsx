@@ -426,29 +426,7 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                     <>
                         <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 700 }}>MONITORING</Typography>
                         <Grid container spacing={2} sx={{ mb: 4 }}>
-                            <Grid size={{ xs: 12, md: 4 }}>
-                                <TextField
-                                    type="number"
-                                    fullWidth
-                                    label="Canopy Cover (%)"
-                                    value={formData.crop_monitoring?.canopy_cover || 0}
-                                    onChange={(e) => handleChange('crop_monitoring', 'canopy_cover', parseFloat(e.target.value))}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, md: 4 }}>
-                                <TextField
-                                    select
-                                    fullWidth
-                                    label="Crop Vigor"
-                                    value={formData.crop_monitoring?.crop_vigor || ''}
-                                    onChange={(e) => handleChange('crop_monitoring', 'crop_vigor', e.target.value)}
-                                >
-                                    {['Excellent', 'Good', 'Fair', 'Poor'].map((opt) => (
-                                        <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                                    ))}
-                                </TextField>
-                            </Grid>
-                            <Grid size={{ xs: 12, md: 4 }}>
+                            <Grid size={{ xs: 12, md: 6 }}>
                                 <TextField
                                     select
                                     fullWidth

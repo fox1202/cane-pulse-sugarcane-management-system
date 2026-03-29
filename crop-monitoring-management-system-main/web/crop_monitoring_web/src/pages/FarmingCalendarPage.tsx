@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
     Box,
     Button,
@@ -9,112 +10,77 @@ import {
     Stack,
     Typography,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import {
-    AccessTimeRounded,
     CalendarMonthRounded,
-    DownloadRounded,
-    EventNoteRounded,
-    InsightsRounded,
-    SpaRounded,
+    FlagRounded,
+    GrassRounded,
+    ScienceRounded,
+    TaskAltRounded,
     TimelineRounded,
 } from '@mui/icons-material'
-import { motion } from 'framer-motion'
 import { FARMING_CALENDAR_TEMPLATES, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
+import { formatDateOnlyLabel } from '@/utils/dateOnly'
+import {
+    buildAnchoredCalendarTaskDate,
+    resolveFarmingCalendarRouteContext,
+} from '@/utils/farmingCalendarLinks'
 
-const CREAM = '#fffaf3'
-const FOREST = '#234034'
-const MINT = '#56b870'
-const MINT_DARK = '#2f7f4f'
-const MINT_PALE = 'rgba(86,184,112,0.12)'
-const MINT_BORDER = 'rgba(86,184,112,0.18)'
-const PEACH = '#f4a28c'
-const PEACH_DARK = '#d97b63'
-const PEACH_PALE = 'rgba(244,162,140,0.14)'
-const PEACH_BORDER = 'rgba(244,162,140,0.2)'
-const SKY = '#68c3d4'
-const SKY_PALE = 'rgba(104,195,212,0.14)'
-const SKY_BORDER = 'rgba(104,195,212,0.18)'
-const PANEL = 'rgba(255,255,255,0.9)'
-const PANEL_SOFT = 'rgba(255,255,255,0.72)'
-const TEXT_DIM = 'rgba(35,64,52,0.56)'
-const TEXT_MID = 'rgba(35,64,52,0.76)'
-const CALENDAR_SECTION_ID = 'farming-calendar-month-focus'
-const TASK_SECTION_ID = 'farming-calendar-task-panels'
+const DISPLAY_FONT = '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, "Times New Roman", serif'
+const BODY_FONT = '"Avenir Next", "Trebuchet MS", "Gill Sans", sans-serif'
 
 type TemplateTask = FarmingCalendarTemplate['tasks'][number]
+type ScheduledTemplateTask = TemplateTask & { dueDate: string | null }
+type ActivityKind = 'Nutrient' | 'Herbicide'
 
-function getMonthPalette(month: number) {
-    const palettes = [
-        {
-            wash: 'linear-gradient(180deg, rgba(86,184,112,0.18) 0%, rgba(255,255,255,0) 52%)',
-            dot: MINT,
-            chipBg: MINT_PALE,
-            chipBorder: MINT_BORDER,
-            chipColor: MINT_DARK,
-        },
-        {
-            wash: 'linear-gradient(180deg, rgba(104,195,212,0.18) 0%, rgba(255,255,255,0) 52%)',
-            dot: SKY,
-            chipBg: SKY_PALE,
-            chipBorder: SKY_BORDER,
-            chipColor: '#2c7a88',
-        },
-        {
-            wash: 'linear-gradient(180deg, rgba(244,162,140,0.18) 0%, rgba(255,255,255,0) 52%)',
-            dot: PEACH,
-            chipBg: PEACH_PALE,
-            chipBorder: PEACH_BORDER,
-            chipColor: PEACH_DARK,
-        },
-    ]
-
-    return palettes[Math.abs(month) % palettes.length]
+function getMonthTitle(month: number): string {
+    return month === 0 ? 'Kickoff' : `Month ${month}`
 }
 
-function SurfacePattern() {
-    return (
-        <Box
-            sx={{
-                position: 'absolute',
-                inset: 0,
-                pointerEvents: 'none',
-                backgroundImage: `
-                    radial-gradient(circle at 1px 1px, rgba(244,162,140,0.12) 1px, transparent 0),
-                    repeating-linear-gradient(135deg, transparent 0, transparent 14px, rgba(86,184,112,0.032) 14px, rgba(86,184,112,0.032) 16px)
-                `,
-                backgroundSize: '22px 22px, auto',
-                opacity: 0.9,
-            }}
-        />
-    )
+function getActivityKind(activity: string): ActivityKind {
+    return /herbicide|weed|hoe/i.test(activity) ? 'Herbicide' : 'Nutrient'
 }
 
-function StatCard({
+function getActivityTone(kind: ActivityKind) {
+    return kind === 'Herbicide'
+        ? {
+            icon: <GrassRounded fontSize="small" />,
+            accent: '#d27f52',
+            bg: 'rgba(244, 202, 173, 0.24)',
+            border: 'rgba(210,127,82,0.24)',
+            labelBg: 'rgba(244, 202, 173, 0.42)',
+        }
+        : {
+            icon: <ScienceRounded fontSize="small" />,
+            accent: '#2f7f4f',
+            bg: 'rgba(86,184,112,0.18)',
+            border: 'rgba(47,127,79,0.18)',
+            labelBg: 'rgba(86,184,112,0.22)',
+        }
+}
+
+function SeasonStatCard({
     icon,
     label,
     value,
-    tone = 'mint',
+    helper,
+    accent,
 }: {
     icon: React.ReactNode
     label: string
     value: string
-    tone?: 'mint' | 'peach' | 'sky'
+    helper: string
+    accent: string
 }) {
-    const palette = tone === 'peach'
-        ? { bg: PEACH_PALE, border: PEACH_BORDER, color: PEACH_DARK }
-        : tone === 'sky'
-            ? { bg: SKY_PALE, border: SKY_BORDER, color: '#2c7a88' }
-            : { bg: MINT_PALE, border: MINT_BORDER, color: MINT_DARK }
-
     return (
-        <Box
+        <Paper
             sx={{
                 p: 2,
-                borderRadius: '24px',
-                border: `1px solid ${palette.border}`,
-                bgcolor: PANEL_SOFT,
-                boxShadow: '0 18px 40px rgba(35,64,52,0.05)',
                 height: '100%',
+                borderRadius: '22px',
+                border: `1px solid ${alpha(accent, 0.16)}`,
+                bgcolor: alpha(accent, 0.07),
+                boxShadow: 'none',
             }}
         >
             <Box
@@ -122,944 +88,883 @@ function StatCard({
                     width: 42,
                     height: 42,
                     borderRadius: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: palette.bg,
-                    color: palette.color,
-                    mb: 1.5,
+                    display: 'grid',
+                    placeItems: 'center',
+                    mb: 1.2,
+                    color: accent,
+                    bgcolor: alpha(accent, 0.12),
                 }}
             >
                 {icon}
             </Box>
-            <Typography sx={{ fontSize: '1.45rem', fontWeight: 900, color: FOREST, lineHeight: 1.05, mb: 0.4 }}>
-                {value}
-            </Typography>
-            <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800 }}>
+            <Typography
+                sx={{
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.16em',
+                    textTransform: 'uppercase',
+                    fontWeight: 800,
+                    color: alpha(accent, 0.88),
+                    mb: 0.55,
+                    fontFamily: BODY_FONT,
+                }}
+            >
                 {label}
             </Typography>
-        </Box>
+            <Typography
+                sx={{
+                    fontSize: '1.45rem',
+                    lineHeight: 1.05,
+                    fontWeight: 900,
+                    color: '#20382d',
+                    fontFamily: DISPLAY_FONT,
+                    mb: 0.45,
+                }}
+            >
+                {value}
+            </Typography>
+            <Typography
+                sx={{
+                    fontSize: '0.83rem',
+                    lineHeight: 1.55,
+                    color: 'rgba(32,56,45,0.66)',
+                    fontFamily: BODY_FONT,
+                }}
+            >
+                {helper}
+            </Typography>
+        </Paper>
     )
 }
 
-function TemplateSwitcherCard({
+function TemplateToggle({
     template,
     active,
-    onClick,
+    onSelect,
 }: {
     template: FarmingCalendarTemplate
     active: boolean
-    onClick: () => void
+    onSelect: () => void
 }) {
     return (
-        <Box
-            component={motion.button}
-            type="button"
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.99 }}
-            onClick={onClick}
+        <Button
+            variant={active ? 'contained' : 'outlined'}
+            onClick={onSelect}
             sx={{
-                width: '100%',
-                textAlign: 'left',
-                cursor: 'pointer',
-                p: 0,
-                borderRadius: '26px',
-                appearance: 'none',
-                background: active
-                    ? 'linear-gradient(135deg, rgba(86,184,112,0.22) 0%, rgba(255,255,255,0.96) 42%, rgba(244,162,140,0.16) 100%)'
-                    : 'linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,248,242,0.76) 100%)',
-                border: active ? '1px solid rgba(86,184,112,0.28)' : '1px solid rgba(86,184,112,0.12)',
-                boxShadow: active ? '0 24px 52px rgba(86,184,112,0.12)' : '0 18px 38px rgba(35,64,52,0.05)',
-                transition: 'all 0.2s ease',
+                minWidth: 182,
+                px: 2.25,
+                py: 1.1,
+                borderRadius: '16px',
+                textTransform: 'none',
+                fontWeight: 800,
+                fontFamily: BODY_FONT,
+                letterSpacing: '0.01em',
+                boxShadow: active ? '0 14px 28px rgba(47,127,79,0.22)' : 'none',
+                bgcolor: active ? 'var(--calendar-forest)' : 'rgba(255,255,255,0.82)',
+                color: active ? '#fffdf7' : 'var(--calendar-ink)',
+                borderColor: active ? 'var(--calendar-forest)' : 'var(--calendar-line)',
+                '&:hover': {
+                    borderColor: 'var(--calendar-forest)',
+                    bgcolor: active ? '#285e3d' : 'rgba(86,184,112,0.12)',
+                    boxShadow: active ? '0 16px 30px rgba(47,127,79,0.24)' : 'none',
+                },
             }}
         >
-            <Box sx={{ p: 2.4 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
-                    <Box>
-                        <Typography sx={{ fontSize: '1.12rem', fontWeight: 900, color: FOREST, mb: 0.45 }}>
-                            {template.title}
-                        </Typography>
-                        <Typography sx={{ fontSize: '0.92rem', color: TEXT_MID, lineHeight: 1.65 }}>
-                            Anchored to the workbook&apos;s {template.referenceLabel.toLowerCase()}.
-                        </Typography>
-                    </Box>
-                    <Box
-                        sx={{
-                            minWidth: 42,
-                            height: 42,
-                            borderRadius: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            bgcolor: active ? MINT_PALE : 'rgba(35,64,52,0.05)',
-                            color: active ? MINT_DARK : TEXT_DIM,
-                        }}
-                    >
-                        <SpaRounded fontSize="small" />
-                    </Box>
-                </Stack>
-
-                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.7 }}>
-                    <Chip
-                        size="small"
-                        label={`${template.tasks.length} activities`}
-                        sx={{ bgcolor: MINT_PALE, color: MINT_DARK, fontWeight: 800 }}
-                    />
-                    <Chip
-                        size="small"
-                        label={`Months ${template.monthRange[0]}-${template.monthRange[1]}`}
-                        sx={{ bgcolor: PEACH_PALE, color: PEACH_DARK, fontWeight: 800 }}
-                    />
-                </Stack>
-            </Box>
-        </Box>
+            {template.title}
+        </Button>
     )
 }
 
-function MonthRibbon({
-    months,
-    tasksByMonth,
-    busiestMonth,
-    activeMonth,
-    onViewTasks,
-}: {
-    months: number[]
-    tasksByMonth: Map<number, TemplateTask[]>
-    busiestMonth: number | null
-    activeMonth: number | null
-    onViewTasks: (month: number) => void
-}) {
+function TaskLine({ item }: { item: ScheduledTemplateTask }) {
+    const kind = getActivityKind(item.activity)
+    const tone = getActivityTone(kind)
+
     return (
         <Box
             sx={{
-                p: { xs: 2.2, md: 2.6 },
-                borderRadius: '30px',
-                border: '1px solid rgba(86,184,112,0.14)',
-                bgcolor: PANEL,
-                position: 'relative',
-                overflow: 'hidden',
-                boxShadow: '0 24px 60px rgba(35,64,52,0.06)',
+                p: 1.4,
+                borderRadius: '18px',
+                border: `1px solid ${tone.border}`,
+                bgcolor: '#fffdf8',
+                boxShadow: '0 10px 22px rgba(32,56,45,0.04)',
             }}
         >
-            <SurfacePattern />
-            <Box sx={{ position: 'relative', zIndex: 1 }}>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.7 }}>
-                    <TimelineRounded sx={{ color: MINT_DARK }} />
-                    <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800 }}>
-                        Season Rhythm
-                    </Typography>
-                </Stack>
-
+            <Stack direction="row" spacing={1.25} alignItems="flex-start">
                 <Box
                     sx={{
+                        width: 46,
+                        height: 46,
+                        borderRadius: '16px',
                         display: 'grid',
-                        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(5, minmax(0, 1fr))', xl: 'repeat(8, minmax(0, 1fr))' },
-                        gap: 1.2,
+                        placeItems: 'center',
+                        flexShrink: 0,
+                        color: tone.accent,
+                        bgcolor: tone.bg,
                     }}
                 >
-                    {months.length === 0 && (
-                        <Box
-                            sx={{
-                                gridColumn: '1 / -1',
-                                p: 2,
-                                borderRadius: '20px',
-                                border: '1px dashed rgba(86,184,112,0.24)',
-                                background: 'rgba(255,255,255,0.72)',
-                            }}
-                        >
-                            <Typography sx={{ fontSize: '0.94rem', color: TEXT_MID, fontWeight: 700 }}>
-                                No scheduled tasks are available for this template yet.
-                            </Typography>
-                        </Box>
-                    )}
-                    {months.map((month) => {
-                        const activityCount = tasksByMonth.get(month)?.length ?? 0
-                        const palette = getMonthPalette(month)
-                        const isPeak = month === busiestMonth && activityCount > 0
-                        const isActive = month === activeMonth
-
-                        return (
-                            <Box
-                                key={month}
-                                sx={{
-                                    p: 1.45,
-                                    borderRadius: '20px',
-                                    border: `1px solid ${isActive ? palette.dot : palette.chipBorder}`,
-                                    background: isPeak
-                                        ? `${palette.wash}, rgba(255,255,255,0.94)`
-                                        : 'rgba(255,255,255,0.74)',
-                                    boxShadow: isActive
-                                        ? `0 18px 36px ${palette.chipBg}`
-                                        : 'none',
-                                    transition: 'all 0.2s ease',
-                                }}
-                            >
-                                <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.65 }}>
-                                    Month
-                                </Typography>
-                                <Typography sx={{ fontSize: '1.55rem', fontWeight: 900, color: FOREST, lineHeight: 1, mb: 0.75 }}>
-                                    {month}
-                                </Typography>
-                                <Stack direction="row" spacing={0.8} alignItems="center">
-                                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: palette.dot }} />
-                                    <Typography sx={{ fontSize: '0.84rem', color: TEXT_MID, fontWeight: 700 }}>
-                                        {activityCount} task{activityCount === 1 ? '' : 's'}
-                                    </Typography>
-                                </Stack>
-                                <Button
-                                    fullWidth
-                                    size="small"
-                                    variant={isActive ? 'contained' : 'outlined'}
-                                    onClick={() => onViewTasks(month)}
-                                    sx={{
-                                        mt: 1.2,
-                                        borderRadius: '999px',
-                                        textTransform: 'none',
-                                        fontWeight: 800,
-                                        fontSize: '0.76rem',
-                                        py: 0.55,
-                                        color: isActive ? '#fff' : palette.chipColor,
-                                        bgcolor: isActive ? palette.dot : 'rgba(255,255,255,0.64)',
-                                        borderColor: isActive ? palette.dot : palette.chipBorder,
-                                        boxShadow: 'none',
-                                        '&:hover': {
-                                            borderColor: palette.dot,
-                                            bgcolor: isActive ? palette.chipColor : palette.chipBg,
-                                            boxShadow: 'none',
-                                        },
-                                    }}
-                                >
-                                    {isActive ? 'Calendar open' : 'Open calendar'}
-                                </Button>
-                            </Box>
-                        )
-                    })}
+                    {tone.icon}
                 </Box>
-            </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" sx={{ mb: 0.9 }}>
+                        <Chip
+                            label={kind}
+                            size="small"
+                            sx={{
+                                height: 24,
+                                borderRadius: '999px',
+                                bgcolor: tone.labelBg,
+                                color: tone.accent,
+                                fontWeight: 800,
+                                fontFamily: BODY_FONT,
+                            }}
+                        />
+                        <Chip
+                            label={item.weekLabel}
+                            size="small"
+                            sx={{
+                                height: 24,
+                                borderRadius: '999px',
+                                bgcolor: 'rgba(35,64,52,0.08)',
+                                color: 'rgba(35,64,52,0.82)',
+                                fontWeight: 700,
+                                fontFamily: BODY_FONT,
+                            }}
+                        />
+                        {item.dueDate && (
+                            <Chip
+                                label={`Due ${formatDateOnlyLabel(item.dueDate, { day: '2-digit', month: 'short' }) || item.dueDate}`}
+                                size="small"
+                                sx={{
+                                    height: 24,
+                                    borderRadius: '999px',
+                                    bgcolor: 'rgba(214,176,44,0.18)',
+                                    color: '#8b6b00',
+                                    fontWeight: 700,
+                                    fontFamily: BODY_FONT,
+                                }}
+                            />
+                        )}
+                    </Stack>
+                    <Typography
+                        sx={{
+                            fontSize: '0.96rem',
+                            lineHeight: 1.7,
+                            color: 'rgba(35,64,52,0.82)',
+                            fontFamily: BODY_FONT,
+                        }}
+                    >
+                        {item.activity}
+                    </Typography>
+                </Box>
+            </Stack>
         </Box>
     )
 }
 
-function CalendarFocusPanel({
+function MonthTaskCard({
     month,
     items,
-    sourceSheet,
-    referenceLabel,
-    notesCount,
-    onClearSelection,
+    index,
 }: {
-    month: number | null
-    items: TemplateTask[]
-    sourceSheet: string
-    referenceLabel: string
-    notesCount: number
-    onClearSelection: () => void
+    month: number
+    items: ScheduledTemplateTask[]
+    index: number
 }) {
-    const palette = month == null ? null : getMonthPalette(month)
-    const weekLabels = Array.from(new Set(items.map((item) => item.weekLabel)))
+    const nutrientCount = items.filter((item) => getActivityKind(item.activity) === 'Nutrient').length
+    const herbicideCount = items.length - nutrientCount
 
     return (
         <Paper
-            id={CALENDAR_SECTION_ID}
             sx={{
-                p: { xs: 2.2, md: 2.6 },
-                borderRadius: '30px',
-                border: month == null
-                    ? '1px solid rgba(244,162,140,0.16)'
-                    : `1px solid ${palette?.chipBorder}`,
-                bgcolor: month == null
-                    ? 'rgba(255,248,242,0.94)'
-                    : 'rgba(255,255,255,0.94)',
-                background: month == null
-                    ? 'rgba(255,248,242,0.94)'
-                    : `linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.88) 100%), ${palette?.wash}`,
-                boxShadow: '0 24px 60px rgba(35,64,52,0.06)',
-                height: '100%',
-                position: { xl: 'sticky' },
-                top: { xl: 24 },
+                position: 'relative',
+                overflow: 'hidden',
+                p: { xs: 2, md: 2.2 },
+                borderRadius: '26px',
+                border: '1px solid rgba(86,184,112,0.18)',
+                bgcolor: 'rgba(255,255,255,0.88)',
+                boxShadow: '0 26px 46px rgba(35,64,52,0.07)',
+                animation: 'calendarRise 0.72s cubic-bezier(0.22, 1, 0.36, 1) both',
+                animationDelay: `${index * 90}ms`,
+                '@keyframes calendarRise': {
+                    '0%': {
+                        opacity: 0,
+                        transform: 'translateY(18px)',
+                    },
+                    '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                    },
+                },
+                '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '5px',
+                    background: 'linear-gradient(90deg, rgba(47,127,79,0.92) 0%, rgba(214,176,44,0.9) 100%)',
+                },
             }}
         >
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.1 }}>
-                <EventNoteRounded sx={{ color: month == null ? PEACH_DARK : palette?.chipColor }} />
-                <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800 }}>
-                    Calendar Focus
-                </Typography>
-            </Stack>
-
-            {month == null ? (
-                <>
-                    <Typography sx={{ fontSize: '1.16rem', fontWeight: 900, color: FOREST, mb: 0.7 }}>
-                        Select a month to open the calendar
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.94rem', color: TEXT_MID, lineHeight: 1.74, mb: 1.8 }}>
-                        Choose a month from Season Rhythm and this calendar panel will show the exact work scheduled for that month.
-                    </Typography>
-                </>
-            ) : (
-                <>
-                    <Stack direction="row" justifyContent="space-between" spacing={1.2} alignItems="flex-start" sx={{ mb: 1.2 }}>
-                        <Box>
-                            <Typography sx={{ fontSize: '1.16rem', fontWeight: 900, color: FOREST, mb: 0.55 }}>
-                                Month {month} calendar
-                            </Typography>
-                            <Typography sx={{ fontSize: '0.94rem', color: TEXT_MID, lineHeight: 1.72 }}>
-                                {items.length} scheduled task{items.length === 1 ? '' : 's'} linked to this month.
-                            </Typography>
-                        </Box>
-                        <Chip
-                            size="small"
-                            label={`${items.length} task${items.length === 1 ? '' : 's'}`}
-                            sx={{
-                                bgcolor: palette?.chipBg,
-                                color: palette?.chipColor,
-                                border: `1px solid ${palette?.chipBorder}`,
-                                fontWeight: 800,
-                            }}
-                        />
-                    </Stack>
-
-                    {weekLabels.length > 0 && (
-                        <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
-                            {weekLabels.map((label) => (
-                                <Chip
-                                    key={label}
-                                    size="small"
-                                    label={label}
-                                    sx={{
-                                        bgcolor: 'rgba(255,255,255,0.72)',
-                                        color: palette?.chipColor,
-                                        border: `1px solid ${palette?.chipBorder}`,
-                                        fontWeight: 800,
-                                    }}
-                                />
-                            ))}
-                        </Stack>
-                    )}
-
-                    <Stack spacing={1}>
-                        {items.map((item) => (
-                            <Box
-                                key={`${month}-${item.weekLabel}-${item.activity}`}
-                                sx={{
-                                    p: 1.35,
-                                    borderRadius: '18px',
-                                    border: `1px solid ${palette?.chipBorder}`,
-                                    bgcolor: 'rgba(255,255,255,0.78)',
-                                }}
-                            >
-                                <Typography sx={{ fontSize: '0.72rem', color: palette?.chipColor, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
-                                    {item.weekLabel}
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.92rem', color: TEXT_MID, lineHeight: 1.65 }}>
-                                    {item.activity}
-                                </Typography>
-                            </Box>
-                        ))}
-                    </Stack>
-
-                    <Button
-                        variant="outlined"
-                        onClick={onClearSelection}
+            <Stack direction="row" spacing={1.6} alignItems="flex-start" sx={{ mb: 1.8 }}>
+                <Box
+                    sx={{
+                        width: 68,
+                        height: 68,
+                        borderRadius: '22px',
+                        display: 'grid',
+                        placeItems: 'center',
+                        bgcolor: 'rgba(35,64,52,0.06)',
+                        border: '1px solid rgba(35,64,52,0.08)',
+                        flexShrink: 0,
+                    }}
+                >
+                    <Typography
                         sx={{
-                            mt: 1.6,
-                            borderRadius: '999px',
-                            textTransform: 'none',
-                            fontWeight: 800,
-                            borderColor: palette?.chipBorder,
-                            color: palette?.chipColor,
-                            bgcolor: 'rgba(255,255,255,0.72)',
-                            '&:hover': {
-                                borderColor: palette?.dot,
-                                bgcolor: palette?.chipBg,
-                            },
+                            fontSize: '1.45rem',
+                            fontWeight: 900,
+                            color: 'var(--calendar-forest)',
+                            fontFamily: DISPLAY_FONT,
                         }}
                     >
-                        Show all months again
-                    </Button>
-                </>
-            )}
+                        {month}
+                    </Typography>
+                </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography
+                        sx={{
+                            fontSize: '0.74rem',
+                            letterSpacing: '0.16em',
+                            textTransform: 'uppercase',
+                            fontWeight: 800,
+                            color: 'rgba(35,64,52,0.54)',
+                            mb: 0.45,
+                            fontFamily: BODY_FONT,
+                        }}
+                    >
+                        Timeline Window
+                    </Typography>
+                    <Typography
+                        sx={{
+                            fontSize: '1.5rem',
+                            lineHeight: 1.05,
+                            fontWeight: 900,
+                            color: 'var(--calendar-ink)',
+                            fontFamily: DISPLAY_FONT,
+                            mb: 0.65,
+                        }}
+                    >
+                        {getMonthTitle(month)}
+                    </Typography>
+                    <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
+                        <Chip
+                            label={`${items.length} must-do ${items.length === 1 ? 'task' : 'tasks'}`}
+                            size="small"
+                            sx={{
+                                height: 24,
+                                borderRadius: '999px',
+                                bgcolor: 'rgba(214,176,44,0.18)',
+                                color: '#8b6b00',
+                                fontWeight: 800,
+                                fontFamily: BODY_FONT,
+                            }}
+                        />
+                        {nutrientCount > 0 && (
+                            <Chip
+                                label={`${nutrientCount} nutrient`}
+                                size="small"
+                                sx={{
+                                    height: 24,
+                                    borderRadius: '999px',
+                                    bgcolor: 'rgba(86,184,112,0.18)',
+                                    color: '#2f7f4f',
+                                    fontWeight: 700,
+                                    fontFamily: BODY_FONT,
+                                }}
+                            />
+                        )}
+                        {herbicideCount > 0 && (
+                            <Chip
+                                label={`${herbicideCount} herbicide`}
+                                size="small"
+                                sx={{
+                                    height: 24,
+                                    borderRadius: '999px',
+                                    bgcolor: 'rgba(244, 202, 173, 0.32)',
+                                    color: '#c26b42',
+                                    fontWeight: 700,
+                                    fontFamily: BODY_FONT,
+                                }}
+                            />
+                        )}
+                    </Stack>
+                </Box>
+            </Stack>
 
-            <Stack spacing={1.1} sx={{ mt: 1.8 }}>
-                <Box sx={{ p: 1.4, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(244,162,140,0.12)' }}>
-                    <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
-                        Sheet
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.98rem', color: FOREST, fontWeight: 800 }}>
-                        {sourceSheet}
-                    </Typography>
-                </Box>
-                <Box sx={{ p: 1.4, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(244,162,140,0.12)' }}>
-                    <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
-                        Workbook Anchor
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.98rem', color: FOREST, fontWeight: 800 }}>
-                        {referenceLabel}
-                    </Typography>
-                </Box>
-                <Box sx={{ p: 1.4, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(244,162,140,0.12)' }}>
-                    <Typography sx={{ fontSize: '0.72rem', color: TEXT_DIM, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
-                        Guidance Notes
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.98rem', color: FOREST, fontWeight: 800 }}>
-                        {notesCount} notes included
-                    </Typography>
-                </Box>
+            <Stack spacing={1.15}>
+                {items.map((item) => (
+                    <TaskLine
+                        key={`${month}-${item.weekNumber}-${item.activity}`}
+                        item={item}
+                    />
+                ))}
             </Stack>
         </Paper>
     )
 }
 
-function MonthPanel({
-    month,
-    items,
-    delay,
-}: {
-    month: number
-    items: TemplateTask[]
-    delay: number
-}) {
-    const palette = getMonthPalette(month)
-
-    return (
-        <Grid size={{ xs: 12, md: 6 }}>
-            <Box
-                component={motion.div}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, delay }}
-                sx={{
-                    height: '100%',
-                    p: 0.2,
-                    borderRadius: '30px',
-                    background: `linear-gradient(180deg, rgba(255,255,255,0.76) 0%, rgba(255,255,255,0.36) 100%), ${palette.wash}`,
-                    boxShadow: '0 24px 56px rgba(35,64,52,0.07)',
-                }}
-            >
-                <Box
-                    sx={{
-                        height: '100%',
-                        borderRadius: '29px',
-                        border: `1px solid ${palette.chipBorder}`,
-                        bgcolor: 'rgba(255,255,255,0.9)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                    }}
-                >
-                    <SurfacePattern />
-                    <Box sx={{ position: 'relative', zIndex: 1, p: 2.4 }}>
-                        <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ mb: 2.1 }}>
-                            <Stack direction="row" spacing={1.3} alignItems="center">
-                                <Box
-                                    sx={{
-                                        minWidth: 56,
-                                        height: 56,
-                                        borderRadius: '18px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        bgcolor: palette.chipBg,
-                                        color: palette.chipColor,
-                                        boxShadow: `inset 0 0 0 1px ${palette.chipBorder}`,
-                                    }}
-                                >
-                                    <Typography sx={{ fontSize: '1.4rem', fontWeight: 900, lineHeight: 1 }}>
-                                        {month}
-                                    </Typography>
-                                </Box>
-                                <Box>
-                                    <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800, mb: 0.35 }}>
-                                        Timeline Window
-                                    </Typography>
-                                    <Typography sx={{ fontSize: '1.08rem', fontWeight: 900, color: FOREST }}>
-                                        Month {month}
-                                    </Typography>
-                                </Box>
-                            </Stack>
-
-                            <Chip
-                                label={items.length > 0 ? `${items.length} active` : 'Quiet'}
-                                sx={{
-                                    height: 30,
-                                    bgcolor: items.length > 0 ? palette.chipBg : 'rgba(35,64,52,0.06)',
-                                    color: items.length > 0 ? palette.chipColor : TEXT_DIM,
-                                    border: `1px solid ${items.length > 0 ? palette.chipBorder : 'rgba(35,64,52,0.08)'}`,
-                                    fontWeight: 800,
-                                }}
-                            />
-                        </Stack>
-
-                        {items.length > 0 ? (
-                            <Box sx={{ position: 'relative', pl: 1.5 }}>
-                                <Box
-                                    sx={{
-                                        position: 'absolute',
-                                        top: 12,
-                                        bottom: 12,
-                                        left: 8,
-                                        width: 2,
-                                        borderRadius: '999px',
-                                        background: `linear-gradient(180deg, ${palette.dot} 0%, rgba(255,255,255,0) 100%)`,
-                                        opacity: 0.4,
-                                    }}
-                                />
-                                <Stack spacing={1.25}>
-                                    {items.map((item) => (
-                                        <Box key={`${month}-${item.weekLabel}-${item.activity}`} sx={{ display: 'grid', gridTemplateColumns: '18px minmax(0, 1fr)', columnGap: 1.05 }}>
-                                            <Box sx={{ pt: 1.2, display: 'flex', justifyContent: 'center' }}>
-                                                <Box
-                                                    sx={{
-                                                        width: 10,
-                                                        height: 10,
-                                                        borderRadius: '50%',
-                                                        bgcolor: palette.dot,
-                                                        boxShadow: `0 0 0 4px ${palette.chipBg}`,
-                                                    }}
-                                                />
-                                            </Box>
-                                            <Box
-                                                sx={{
-                                                    p: 1.5,
-                                                    borderRadius: '18px',
-                                                    border: '1px solid rgba(35,64,52,0.08)',
-                                                    bgcolor: 'rgba(255,255,255,0.8)',
-                                                }}
-                                            >
-                                                <Typography sx={{ fontSize: '0.72rem', color: palette.chipColor, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, mb: 0.55 }}>
-                                                    {item.weekLabel}
-                                                </Typography>
-                                                <Typography sx={{ fontSize: '0.95rem', color: TEXT_MID, lineHeight: 1.72 }}>
-                                                    {item.activity}
-                                                </Typography>
-                                            </Box>
-                                        </Box>
-                                    ))}
-                                </Stack>
-                            </Box>
-                        ) : (
-                            <Box
-                                sx={{
-                                    p: 1.75,
-                                    borderRadius: '20px',
-                                    border: '1px dashed rgba(35,64,52,0.14)',
-                                    bgcolor: 'rgba(255,255,255,0.62)',
-                                }}
-                            >
-                                <Typography sx={{ fontSize: '0.92rem', color: TEXT_DIM, lineHeight: 1.7 }}>
-                                    This month stays open in the workbook, so there are no fixed activities listed here.
-                                </Typography>
-                            </Box>
-                        )}
-                    </Box>
-                </Box>
-            </Box>
-        </Grid>
-    )
-}
-
 export function FarmingCalendarPage() {
-    const [selectedTemplateId, setSelectedTemplateId] = useState<FarmingCalendarTemplate['id']>('plant')
-    const [selectedTaskMonth, setSelectedTaskMonth] = useState<number | null>(null)
+    const location = useLocation()
+    const routeContext = useMemo(
+        () => resolveFarmingCalendarRouteContext(location.search),
+        [location.search]
+    )
+    const [selectedTemplateId, setSelectedTemplateId] = useState<FarmingCalendarTemplate['id']>(
+        routeContext.templateId ?? 'plant'
+    )
+
+    useEffect(() => {
+        if (routeContext.templateId) {
+            setSelectedTemplateId(routeContext.templateId)
+        }
+    }, [routeContext.templateId])
 
     const selectedTemplate = useMemo(
         () => FARMING_CALENDAR_TEMPLATES.find((template) => template.id === selectedTemplateId) ?? FARMING_CALENDAR_TEMPLATES[0],
         [selectedTemplateId]
     )
 
-    const months = useMemo(() => {
-        const [startMonth, endMonth] = selectedTemplate.monthRange
-        return Array.from({ length: endMonth - startMonth + 1 }, (_, index) => startMonth + index)
-    }, [selectedTemplate])
+    const linkedTemplateMatchesSelection = routeContext.templateId === selectedTemplate.id
+    const linkedTaskDatesEnabled = linkedTemplateMatchesSelection && Boolean(routeContext.anchorDate)
+    const contextLabel = routeContext.trialLabel || routeContext.fieldLabel || ''
 
-    const tasksByMonth = useMemo(() => {
-        const mapped = new Map<number, TemplateTask[]>()
+    const monthSections = useMemo(() => {
+        const grouped = new Map<number, ScheduledTemplateTask[]>()
 
-        months.forEach((month) => {
-            mapped.set(
-                month,
-                selectedTemplate.tasks
-                    .filter((task) => task.month === month)
-                    .sort((left, right) => left.weekNumber - right.weekNumber)
-            )
-        })
-
-        return mapped
-    }, [months, selectedTemplate])
-
-    const monthsWithTasks = useMemo(
-        () => months.filter((month) => (tasksByMonth.get(month)?.length ?? 0) > 0),
-        [months, tasksByMonth]
-    )
-
-    const activeTaskMonth = useMemo(
-        () => (selectedTaskMonth != null && monthsWithTasks.includes(selectedTaskMonth) ? selectedTaskMonth : null),
-        [selectedTaskMonth, monthsWithTasks]
-    )
-
-    const visibleTaskMonths = useMemo(
-        () => (activeTaskMonth == null ? monthsWithTasks : [activeTaskMonth]),
-        [activeTaskMonth, monthsWithTasks]
-    )
-
-    const selectedCalendarItems = useMemo(
-        () => (activeTaskMonth == null ? [] : tasksByMonth.get(activeTaskMonth) ?? []),
-        [activeTaskMonth, tasksByMonth]
-    )
-
-    const busiestMonth = useMemo(() => {
-        let result: number | null = null
-        let highestCount = 0
-
-        months.forEach((month) => {
-            const count = tasksByMonth.get(month)?.length ?? 0
-            if (count > highestCount) {
-                highestCount = count
-                result = month
-            }
-        })
-
-        return result
-    }, [months, tasksByMonth])
-
-    const handleViewMonthTasks = (month: number) => {
-        setSelectedTaskMonth(month)
-        if (typeof window === 'undefined') return
-        window.requestAnimationFrame(() => {
-            document.getElementById(CALENDAR_SECTION_ID)?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start',
+        selectedTemplate.tasks
+            .slice()
+            .sort((left, right) => left.month - right.month || left.weekNumber - right.weekNumber)
+            .forEach((task) => {
+                const dueDate = linkedTaskDatesEnabled && routeContext.anchorDate
+                    ? buildAnchoredCalendarTaskDate(selectedTemplate, task, routeContext.anchorDate)
+                    : null
+                const items = grouped.get(task.month) ?? []
+                items.push({
+                    ...task,
+                    dueDate,
+                })
+                grouped.set(task.month, items)
             })
-        })
-    }
 
-    const handleShowAllTaskMonths = () => {
-        setSelectedTaskMonth(null)
-    }
+        return Array.from(grouped.entries()).sort((left, right) => left[0] - right[0])
+    }, [linkedTaskDatesEnabled, routeContext.anchorDate, selectedTemplate])
+
+    const seasonSummary = useMemo(() => {
+        const allTasks = monthSections.flatMap(([, items]) => items)
+        const nutrientCount = allTasks.filter((task) => getActivityKind(task.activity) === 'Nutrient').length
+        const herbicideCount = allTasks.length - nutrientCount
+
+        return {
+            totalTasks: allTasks.length,
+            totalMonths: monthSections.length,
+            nutrientCount,
+            herbicideCount,
+            monthLabels: monthSections.map(([month]) => getMonthTitle(month)),
+        }
+    }, [monthSections])
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: CREAM, position: 'relative' }}>
-            <Box
-                sx={{
-                    position: 'fixed',
-                    inset: 0,
-                    pointerEvents: 'none',
-                    background: `
-                        radial-gradient(ellipse 38% 26% at 12% 2%, rgba(166,226,184,0.22) 0%, transparent 68%),
-                        radial-gradient(ellipse 28% 22% at 88% 14%, rgba(244,162,140,0.18) 0%, transparent 72%),
-                        radial-gradient(ellipse 28% 22% at 78% 92%, rgba(104,195,212,0.16) 0%, transparent 72%)
-                    `,
-                }}
-            />
-
-            <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, py: { xs: 3, md: 4 } }}>
-                <Box
-                    component={motion.div}
-                    initial={{ opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35 }}
-                    sx={{
-                        p: { xs: 2.3, md: 3.2 },
-                        borderRadius: '36px',
-                        border: '1px solid rgba(86,184,112,0.16)',
-                        bgcolor: PANEL,
-                        boxShadow: '0 34px 90px rgba(35,64,52,0.08)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        mb: 3.2,
-                    }}
-                >
-                    <SurfacePattern />
-                    <Grid container spacing={3.2} sx={{ position: 'relative', zIndex: 1 }}>
-                        <Grid size={{ xs: 12, lg: 7.5 }}>
-                            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1.6 }}>
-                                <Chip
-                                    icon={<CalendarMonthRounded />}
-                                    label="Workbook Imported"
-                                    sx={{
-                                        height: 34,
-                                        bgcolor: MINT_PALE,
-                                        color: MINT_DARK,
-                                        border: '1px solid rgba(86,184,112,0.2)',
-                                        fontWeight: 800,
-                                    }}
-                                />
-                                <Chip
-                                    label="Uploaded on 26 March 2026"
-                                    sx={{
-                                        height: 34,
-                                        bgcolor: PEACH_PALE,
-                                        color: PEACH_DARK,
-                                        border: '1px solid rgba(244,162,140,0.22)',
-                                        fontWeight: 800,
-                                    }}
-                                />
-                            </Stack>
-
-                            <Typography sx={{ fontSize: { xs: '2.2rem', md: '3.5rem' }, fontWeight: 900, color: FOREST, lineHeight: 0.98, mb: 1.1, maxWidth: 740 }}>
-                                Farming Calendar
-                            </Typography>
-
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems={{ xs: 'stretch', sm: 'center' }}>
-                                <Button
-                                    component="a"
-                                    href="/imports/farming-calendar.xlsx"
-                                    download
-                                    variant="contained"
-                                    startIcon={<DownloadRounded />}
-                                    sx={{
-                                        px: 2.3,
-                                        py: 1.2,
-                                        borderRadius: '999px',
-                                        bgcolor: MINT,
-                                        color: '#fff',
-                                        fontWeight: 800,
-                                        boxShadow: '0 18px 34px rgba(86,184,112,0.22)',
-                                        '&:hover': {
-                                            bgcolor: MINT_DARK,
-                                        },
-                                    }}
-                                >
-                                    Download Workbook
-                                </Button>
-                                <Typography sx={{ fontSize: '0.92rem', color: TEXT_DIM, lineHeight: 1.6 }}>
-                                    Active template follows the workbook&apos;s {selectedTemplate.referenceLabel.toLowerCase()}.
-                                </Typography>
-                            </Stack>
-                        </Grid>
-
-                        <Grid size={{ xs: 12, lg: 4.5 }}>
-                            <Box
-                                sx={{
-                                    p: 2.3,
-                                    borderRadius: '28px',
-                                    border: '1px solid rgba(35,64,52,0.08)',
-                                    background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,248,242,0.84) 100%)',
-                                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)',
-                                }}
-                            >
-                                <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800, mb: 0.9 }}>
-                                    Current Workbook View
-                                </Typography>
-                                <Typography sx={{ fontSize: '1.3rem', fontWeight: 900, color: FOREST, mb: 0.65 }}>
-                                    {selectedTemplate.title}
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.92rem', color: TEXT_MID, lineHeight: 1.7, mb: 1.6 }}>
-                                    Source sheet: {selectedTemplate.sourceSheet}. {selectedTemplate.workbookTitle}
-                                </Typography>
-
-                                <Grid container spacing={1.2}>
-                                    <Grid size={{ xs: 12, sm: 4 }}>
-                                        <StatCard
-                                            icon={<InsightsRounded fontSize="small" />}
-                                            label="Activities"
-                                            value={String(selectedTemplate.tasks.length)}
-                                            tone="mint"
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 12, sm: 4 }}>
-                                        <StatCard
-                                            icon={<CalendarMonthRounded fontSize="small" />}
-                                            label="Busy Months"
-                                            value={String(monthsWithTasks.length)}
-                                            tone="sky"
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 12, sm: 4 }}>
-                                        <StatCard
-                                            icon={<AccessTimeRounded fontSize="small" />}
-                                            label="Peak Window"
-                                            value={busiestMonth == null ? 'None' : `M${busiestMonth}`}
-                                            tone="peach"
-                                        />
-                                    </Grid>
-                                </Grid>
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </Box>
-
-                <Grid container spacing={3} sx={{ mb: 3 }}>
-                    <Grid size={{ xs: 12, xl: 8.5 }}>
-                        <Paper
-                            sx={{
-                                p: { xs: 2.2, md: 2.6 },
-                                borderRadius: '30px',
-                                border: '1px solid rgba(86,184,112,0.14)',
-                                bgcolor: PANEL,
-                                position: 'relative',
-                                overflow: 'hidden',
-                                boxShadow: '0 24px 60px rgba(35,64,52,0.06)',
-                                mb: 3,
-                            }}
-                        >
-                            <SurfacePattern />
-                            <Box sx={{ position: 'relative', zIndex: 1 }}>
-                                <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800, mb: 1.2 }}>
-                                    Template Selection
-                                </Typography>
-                                <Grid container spacing={1.4}>
-                                    {FARMING_CALENDAR_TEMPLATES.map((template) => (
-                                        <Grid key={template.id} size={{ xs: 12, md: 6 }}>
-                                            <TemplateSwitcherCard
-                                                template={template}
-                                                active={template.id === selectedTemplateId}
-                                                onClick={() => setSelectedTemplateId(template.id)}
-                                            />
-                                        </Grid>
-                                    ))}
-                                </Grid>
-                            </Box>
-                        </Paper>
-
-                        <MonthRibbon
-                            months={monthsWithTasks}
-                            tasksByMonth={tasksByMonth}
-                            busiestMonth={busiestMonth}
-                            activeMonth={activeTaskMonth}
-                            onViewTasks={handleViewMonthTasks}
-                        />
-                    </Grid>
-
-                    <Grid size={{ xs: 12, xl: 3.5 }}>
-                        <CalendarFocusPanel
-                            month={activeTaskMonth}
-                            items={selectedCalendarItems}
-                            sourceSheet={selectedTemplate.sourceSheet}
-                            referenceLabel={selectedTemplate.referenceLabel}
-                            notesCount={selectedTemplate.notes.length}
-                            onClearSelection={handleShowAllTaskMonths}
-                        />
-                    </Grid>
-                </Grid>
-
-                <Grid container spacing={3}>
-                    <Grid size={{ xs: 12, xl: 8.5 }}>
-                        <Box id={TASK_SECTION_ID}>
-                            <Stack
-                                direction={{ xs: 'column', sm: 'row' }}
-                                spacing={1.4}
-                                alignItems={{ xs: 'stretch', sm: 'center' }}
-                                justifyContent="space-between"
-                                sx={{ mb: 1.8 }}
-                            >
-                                <Box>
-                                    <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800, mb: 0.45 }}>
-                                        Task Windows
-                                    </Typography>
-                                    <Typography sx={{ fontSize: '0.98rem', color: TEXT_MID, lineHeight: 1.7 }}>
-                                        {activeTaskMonth == null
-                                            ? 'Use the buttons above to jump to a month and review the tasks that need to be done.'
-                                            : `Showing the scheduled tasks for Month ${activeTaskMonth}.`}
-                                    </Typography>
-                                </Box>
-                                {activeTaskMonth != null && (
-                                    <Button
-                                        variant="outlined"
-                                        onClick={handleShowAllTaskMonths}
+        <Box
+            sx={{
+                '--calendar-forest': '#234034',
+                '--calendar-green': '#2f7f4f',
+                '--calendar-gold': '#d6b02c',
+                '--calendar-line': 'rgba(86,184,112,0.2)',
+                '--calendar-ink': '#20382d',
+                minHeight: '100vh',
+                py: { xs: 3, md: 4.5 },
+                background: `
+                    radial-gradient(circle at top left, rgba(214,176,44,0.16), transparent 28%),
+                    radial-gradient(circle at 90% 10%, rgba(86,184,112,0.16), transparent 22%),
+                    linear-gradient(180deg, #f8f3e8 0%, #f3ecdf 100%)
+                `,
+            }}
+        >
+            <Container maxWidth="xl">
+                <Stack spacing={3}>
+                    <Paper
+                        sx={{
+                            position: 'relative',
+                            overflow: 'hidden',
+                            p: { xs: 2.2, md: 3.2 },
+                            borderRadius: '34px',
+                            border: '1px solid rgba(86,184,112,0.18)',
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(255,249,239,0.92) 100%)',
+                            boxShadow: '0 30px 68px rgba(35,64,52,0.08)',
+                            '&::before': {
+                                content: '""',
+                                position: 'absolute',
+                                inset: 'auto -8% -38% auto',
+                                width: 320,
+                                height: 320,
+                                borderRadius: '50%',
+                                background: 'radial-gradient(circle, rgba(214,176,44,0.18) 0%, rgba(214,176,44,0) 70%)',
+                            },
+                            '&::after': {
+                                content: '""',
+                                position: 'absolute',
+                                inset: '-12% auto auto -8%',
+                                width: 280,
+                                height: 280,
+                                borderRadius: '50%',
+                                background: 'radial-gradient(circle, rgba(86,184,112,0.18) 0%, rgba(86,184,112,0) 72%)',
+                            },
+                        }}
+                    >
+                        <Box sx={{ position: 'relative', zIndex: 1 }}>
+                            <Grid container spacing={2.4}>
+                                <Grid size={{ xs: 12, lg: 7 }}>
+                                    <Typography
                                         sx={{
-                                            alignSelf: { xs: 'flex-start', sm: 'center' },
-                                            borderRadius: '999px',
-                                            textTransform: 'none',
-                                            fontWeight: 800,
-                                            borderColor: MINT_BORDER,
-                                            color: MINT_DARK,
-                                            bgcolor: 'rgba(255,255,255,0.72)',
-                                            '&:hover': {
-                                                borderColor: MINT,
-                                                bgcolor: MINT_PALE,
-                                            },
+                                            fontSize: '0.78rem',
+                                            color: 'var(--calendar-green)',
+                                            letterSpacing: '0.18em',
+                                            textTransform: 'uppercase',
+                                            fontWeight: 900,
+                                            mb: 1,
+                                            fontFamily: BODY_FONT,
                                         }}
                                     >
-                                        Show all months
-                                    </Button>
-                                )}
-                            </Stack>
+                                        Farm Calendar
+                                    </Typography>
+                                    <Typography
+                                        sx={{
+                                            fontSize: { xs: '2.25rem', md: '3.3rem' },
+                                            lineHeight: 0.98,
+                                            letterSpacing: '-0.04em',
+                                            color: 'var(--calendar-ink)',
+                                            fontWeight: 900,
+                                            fontFamily: DISPLAY_FONT,
+                                            maxWidth: 680,
+                                            mb: 1.2,
+                                        }}
+                                    >
+                                        {contextLabel && linkedTemplateMatchesSelection
+                                            ? `${selectedTemplate.title} plan for ${contextLabel}`
+                                            : `${selectedTemplate.title} activity interface`}
+                                    </Typography>
+                                    <Typography
+                                        sx={{
+                                            fontSize: '1rem',
+                                            lineHeight: 1.8,
+                                            color: 'rgba(32,56,45,0.68)',
+                                            maxWidth: 640,
+                                            mb: 2.2,
+                                            fontFamily: BODY_FONT,
+                                        }}
+                                    >
+                                        Must-do fertiliser and herbicide timing only, arranged as a cleaner season board with linked trial dates when available.
+                                    </Typography>
 
-                            {visibleTaskMonths.length > 0 ? (
+                                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1} useFlexGap flexWrap="wrap" sx={{ mb: 1.8 }}>
+                                        {FARMING_CALENDAR_TEMPLATES.map((template) => (
+                                            <TemplateToggle
+                                                key={template.id}
+                                                template={template}
+                                                active={template.id === selectedTemplateId}
+                                                onSelect={() => setSelectedTemplateId(template.id)}
+                                            />
+                                        ))}
+                                    </Stack>
+
+                                    {(routeContext.trialLabel || routeContext.fieldLabel || routeContext.cropClass || routeContext.anchorDate || routeContext.templateId) && (
+                                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                                            {routeContext.trialLabel && (
+                                                <Chip
+                                                    label={`Trial: ${routeContext.trialLabel}`}
+                                                    sx={{
+                                                        borderRadius: '999px',
+                                                        bgcolor: 'rgba(86,184,112,0.14)',
+                                                        border: '1px solid rgba(86,184,112,0.22)',
+                                                        color: 'var(--calendar-forest)',
+                                                        fontWeight: 700,
+                                                        fontFamily: BODY_FONT,
+                                                    }}
+                                                />
+                                            )}
+                                            {routeContext.fieldLabel && routeContext.fieldLabel !== routeContext.trialLabel && (
+                                                <Chip
+                                                    label={`Field: ${routeContext.fieldLabel}`}
+                                                    sx={{
+                                                        borderRadius: '999px',
+                                                        bgcolor: 'rgba(86,184,112,0.14)',
+                                                        border: '1px solid rgba(86,184,112,0.22)',
+                                                        color: 'var(--calendar-forest)',
+                                                        fontWeight: 700,
+                                                        fontFamily: BODY_FONT,
+                                                    }}
+                                                />
+                                            )}
+                                            {routeContext.cropClass && (
+                                                <Chip
+                                                    label={routeContext.cropClass}
+                                                    sx={{
+                                                        borderRadius: '999px',
+                                                        bgcolor: 'rgba(35,64,52,0.08)',
+                                                        color: 'var(--calendar-ink)',
+                                                        fontWeight: 700,
+                                                        fontFamily: BODY_FONT,
+                                                    }}
+                                                />
+                                            )}
+                                            {routeContext.anchorDate && linkedTemplateMatchesSelection && (
+                                                <Chip
+                                                    label={`${selectedTemplate.referenceLabel}: ${formatDateOnlyLabel(routeContext.anchorDate, { day: '2-digit', month: 'short', year: 'numeric' }) || routeContext.anchorDate}`}
+                                                    sx={{
+                                                        borderRadius: '999px',
+                                                        bgcolor: 'rgba(214,176,44,0.18)',
+                                                        border: '1px solid rgba(214,176,44,0.26)',
+                                                        color: '#8b6b00',
+                                                        fontWeight: 800,
+                                                        fontFamily: BODY_FONT,
+                                                    }}
+                                                />
+                                            )}
+                                            {routeContext.templateId && !linkedTemplateMatchesSelection && (
+                                                <Chip
+                                                    label={`Switch back to ${FARMING_CALENDAR_TEMPLATES.find((template) => template.id === routeContext.templateId)?.title || 'the linked template'} to see dated tasks for this trial.`}
+                                                    sx={{
+                                                        borderRadius: '999px',
+                                                        bgcolor: 'rgba(255,255,255,0.78)',
+                                                        border: '1px solid rgba(214,176,44,0.22)',
+                                                        color: 'rgba(32,56,45,0.72)',
+                                                        fontWeight: 700,
+                                                        fontFamily: BODY_FONT,
+                                                    }}
+                                                />
+                                            )}
+                                        </Stack>
+                                    )}
+                                </Grid>
+
+                                <Grid size={{ xs: 12, lg: 5 }}>
+                                    <Grid container spacing={1.3}>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <SeasonStatCard
+                                                icon={<CalendarMonthRounded fontSize="small" />}
+                                                label="Active Template"
+                                                value={selectedTemplate.title}
+                                                helper={`Months ${selectedTemplate.monthRange[0]} to ${selectedTemplate.monthRange[1]}`}
+                                                accent="#2f7f4f"
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <SeasonStatCard
+                                                icon={<TaskAltRounded fontSize="small" />}
+                                                label="Must-Do Tasks"
+                                                value={String(seasonSummary.totalTasks)}
+                                                helper={`${seasonSummary.totalMonths} active month windows`}
+                                                accent="#d6b02c"
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <SeasonStatCard
+                                                icon={<ScienceRounded fontSize="small" />}
+                                                label="Nutrient Passes"
+                                                value={String(seasonSummary.nutrientCount)}
+                                                helper="Fertiliser and split nutrient timings"
+                                                accent="#2f7f4f"
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <SeasonStatCard
+                                                icon={<GrassRounded fontSize="small" />}
+                                                label="Herbicide Passes"
+                                                value={String(seasonSummary.herbicideCount)}
+                                                helper="Weed-control timing checkpoints"
+                                                accent="#d27f52"
+                                            />
+                                        </Grid>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    </Paper>
+
+                    <Grid container spacing={2.6} alignItems="flex-start">
+                        <Grid size={{ xs: 12, lg: 4 }}>
+                            <Paper
+                                sx={{
+                                    position: { lg: 'sticky' },
+                                    top: { lg: 88 },
+                                    p: 2.2,
+                                    borderRadius: '28px',
+                                    border: '1px solid rgba(86,184,112,0.18)',
+                                    bgcolor: 'rgba(255,255,255,0.84)',
+                                    boxShadow: '0 22px 44px rgba(35,64,52,0.06)',
+                                }}
+                            >
+                                <Stack spacing={2}>
+                                    <Box>
+                                        <Typography
+                                            sx={{
+                                                fontSize: '0.74rem',
+                                                letterSpacing: '0.16em',
+                                                textTransform: 'uppercase',
+                                                fontWeight: 800,
+                                                color: 'rgba(35,64,52,0.54)',
+                                                mb: 0.55,
+                                                fontFamily: BODY_FONT,
+                                            }}
+                                        >
+                                            Season Snapshot
+                                        </Typography>
+                                        <Typography
+                                            sx={{
+                                                fontSize: '1.45rem',
+                                                lineHeight: 1.08,
+                                                fontWeight: 900,
+                                                color: 'var(--calendar-ink)',
+                                                fontFamily: DISPLAY_FONT,
+                                                mb: 0.8,
+                                            }}
+                                        >
+                                            {linkedTaskDatesEnabled && routeContext.anchorDate
+                                                ? 'This schedule is dated and ready to follow.'
+                                                : 'This view keeps the calendar focused on action dates.'}
+                                        </Typography>
+                                        <Typography
+                                            sx={{
+                                                fontSize: '0.9rem',
+                                                lineHeight: 1.75,
+                                                color: 'rgba(32,56,45,0.66)',
+                                                fontFamily: BODY_FONT,
+                                            }}
+                                        >
+                                            {linkedTaskDatesEnabled && routeContext.anchorDate
+                                                ? `${selectedTemplate.referenceLabel} is locked to ${formatDateOnlyLabel(routeContext.anchorDate) || routeContext.anchorDate}, so each task card now shows a real due date.`
+                                                : `Add ${selectedTemplate.referenceLabel.toLowerCase()} on the monitoring record if you want the month cards to show real due dates for this trial.`}
+                                        </Typography>
+                                    </Box>
+
+                                    <Paper
+                                        sx={{
+                                            p: 1.6,
+                                            borderRadius: '22px',
+                                            border: '1px solid rgba(214,176,44,0.22)',
+                                            bgcolor: 'rgba(255,250,236,0.94)',
+                                            boxShadow: 'none',
+                                        }}
+                                    >
+                                        <Stack spacing={1.2}>
+                                            <Stack direction="row" spacing={1.1} alignItems="center">
+                                                <Box
+                                                    sx={{
+                                                        width: 38,
+                                                        height: 38,
+                                                        borderRadius: '14px',
+                                                        display: 'grid',
+                                                        placeItems: 'center',
+                                                        bgcolor: 'rgba(214,176,44,0.16)',
+                                                        color: '#8b6b00',
+                                                    }}
+                                                >
+                                                    <FlagRounded fontSize="small" />
+                                                </Box>
+                                                <Box>
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: '0.72rem',
+                                                            letterSpacing: '0.14em',
+                                                            textTransform: 'uppercase',
+                                                            fontWeight: 800,
+                                                            color: 'rgba(139,107,0,0.82)',
+                                                            fontFamily: BODY_FONT,
+                                                        }}
+                                                    >
+                                                        Reference Point
+                                                    </Typography>
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: '0.98rem',
+                                                            fontWeight: 800,
+                                                            color: 'var(--calendar-ink)',
+                                                            fontFamily: DISPLAY_FONT,
+                                                        }}
+                                                    >
+                                                        {selectedTemplate.referenceLabel}
+                                                    </Typography>
+                                                </Box>
+                                            </Stack>
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '0.88rem',
+                                                    lineHeight: 1.7,
+                                                    color: 'rgba(32,56,45,0.68)',
+                                                    fontFamily: BODY_FONT,
+                                                }}
+                                            >
+                                                {linkedTaskDatesEnabled && routeContext.anchorDate
+                                                    ? formatDateOnlyLabel(routeContext.anchorDate) || routeContext.anchorDate
+                                                    : 'Not linked to a recorded date yet.'}
+                                            </Typography>
+                                        </Stack>
+                                    </Paper>
+
+                                    <Box>
+                                        <Typography
+                                            sx={{
+                                                fontSize: '0.74rem',
+                                                letterSpacing: '0.16em',
+                                                textTransform: 'uppercase',
+                                                fontWeight: 800,
+                                                color: 'rgba(35,64,52,0.54)',
+                                                mb: 0.85,
+                                                fontFamily: BODY_FONT,
+                                            }}
+                                        >
+                                            Active Months
+                                        </Typography>
+                                        <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
+                                            {seasonSummary.monthLabels.map((label) => (
+                                                <Chip
+                                                    key={label}
+                                                    label={label}
+                                                    size="small"
+                                                    sx={{
+                                                        height: 28,
+                                                        borderRadius: '999px',
+                                                        bgcolor: 'rgba(35,64,52,0.08)',
+                                                        color: 'var(--calendar-ink)',
+                                                        fontWeight: 700,
+                                                        fontFamily: BODY_FONT,
+                                                    }}
+                                                />
+                                            ))}
+                                        </Stack>
+                                    </Box>
+
+                                    <Box>
+                                        <Typography
+                                            sx={{
+                                                fontSize: '0.74rem',
+                                                letterSpacing: '0.16em',
+                                                textTransform: 'uppercase',
+                                                fontWeight: 800,
+                                                color: 'rgba(35,64,52,0.54)',
+                                                mb: 0.85,
+                                                fontFamily: BODY_FONT,
+                                            }}
+                                        >
+                                            Priority Bands
+                                        </Typography>
+                                        <Stack spacing={1}>
+                                            <Box
+                                                sx={{
+                                                    p: 1.15,
+                                                    borderRadius: '18px',
+                                                    border: '1px solid rgba(47,127,79,0.18)',
+                                                    bgcolor: 'rgba(86,184,112,0.1)',
+                                                }}
+                                            >
+                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                    <ScienceRounded sx={{ color: '#2f7f4f', fontSize: 18 }} />
+                                                    <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--calendar-ink)', fontFamily: BODY_FONT }}>
+                                                        Nutrient applications
+                                                    </Typography>
+                                                </Stack>
+                                            </Box>
+                                            <Box
+                                                sx={{
+                                                    p: 1.15,
+                                                    borderRadius: '18px',
+                                                    border: '1px solid rgba(210,127,82,0.18)',
+                                                    bgcolor: 'rgba(244, 202, 173, 0.18)',
+                                                }}
+                                            >
+                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                    <GrassRounded sx={{ color: '#c26b42', fontSize: 18 }} />
+                                                    <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--calendar-ink)', fontFamily: BODY_FONT }}>
+                                                        Herbicide passes
+                                                    </Typography>
+                                                </Stack>
+                                            </Box>
+                                        </Stack>
+                                    </Box>
+                                </Stack>
+                            </Paper>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, lg: 8 }}>
+                            {monthSections.length > 0 ? (
                                 <Grid container spacing={2.2}>
-                                    {visibleTaskMonths.map((month, index) => (
-                                        <MonthPanel
+                                    {monthSections.map(([month, items], index) => (
+                                        <Grid
                                             key={month}
-                                            month={month}
-                                            items={tasksByMonth.get(month) ?? []}
-                                            delay={0.035 * index}
-                                        />
+                                            size={{
+                                                xs: 12,
+                                                md: monthSections.length === 1 ? 12 : 6,
+                                            }}
+                                        >
+                                            <MonthTaskCard
+                                                month={month}
+                                                items={items}
+                                                index={index}
+                                            />
+                                        </Grid>
                                     ))}
                                 </Grid>
                             ) : (
                                 <Paper
                                     sx={{
-                                        p: 2.2,
-                                        borderRadius: '24px',
-                                        border: '1px dashed rgba(86,184,112,0.22)',
-                                        bgcolor: 'rgba(255,255,255,0.72)',
+                                        p: 3,
+                                        borderRadius: '28px',
+                                        border: '1px dashed rgba(86,184,112,0.26)',
+                                        bgcolor: 'rgba(255,255,255,0.82)',
+                                        textAlign: 'center',
+                                        boxShadow: '0 18px 38px rgba(35,64,52,0.04)',
                                     }}
                                 >
-                                    <Typography sx={{ fontSize: '0.95rem', color: TEXT_MID, lineHeight: 1.7 }}>
-                                        No scheduled tasks are available for this template yet.
-                                    </Typography>
-                                </Paper>
-                            )}
-                        </Box>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, xl: 3.5 }}>
-                        <Paper
-                            sx={{
-                                p: { xs: 2.2, md: 2.6 },
-                                borderRadius: '30px',
-                                border: '1px solid rgba(86,184,112,0.14)',
-                                bgcolor: PANEL,
-                                position: { xl: 'sticky' },
-                                top: { xl: 24 },
-                                boxShadow: '0 24px 60px rgba(35,64,52,0.06)',
-                            }}
-                        >
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.2 }}>
-                                <SpaRounded sx={{ color: MINT_DARK }} />
-                                <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800 }}>
-                                    Field Guidance
-                                </Typography>
-                            </Stack>
-                            <Stack spacing={1.2}>
-                                {selectedTemplate.notes.map((note, index) => (
-                                    <Box
-                                        key={note}
-                                        sx={{
-                                            p: 1.45,
-                                            borderRadius: '18px',
-                                            border: '1px solid rgba(86,184,112,0.1)',
-                                            bgcolor: 'rgba(255,255,255,0.78)',
-                                            display: 'grid',
-                                            gridTemplateColumns: '34px minmax(0, 1fr)',
-                                            columnGap: 1,
-                                            alignItems: 'start',
-                                        }}
-                                    >
+                                    <Stack spacing={1.2} alignItems="center">
                                         <Box
                                             sx={{
-                                                width: 34,
-                                                height: 34,
-                                                borderRadius: '12px',
-                                                bgcolor: MINT_PALE,
-                                                color: MINT_DARK,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '0.82rem',
-                                                fontWeight: 900,
+                                                width: 56,
+                                                height: 56,
+                                                borderRadius: '18px',
+                                                display: 'grid',
+                                                placeItems: 'center',
+                                                bgcolor: 'rgba(86,184,112,0.12)',
+                                                color: 'var(--calendar-green)',
                                             }}
                                         >
-                                            {String(index + 1).padStart(2, '0')}
+                                            <TimelineRounded />
                                         </Box>
-                                        <Typography sx={{ fontSize: '0.92rem', color: TEXT_MID, lineHeight: 1.72 }}>
-                                            {note}
+                                        <Typography
+                                            sx={{
+                                                fontSize: '1.35rem',
+                                                fontWeight: 900,
+                                                color: 'var(--calendar-ink)',
+                                                fontFamily: DISPLAY_FONT,
+                                            }}
+                                        >
+                                            No calendar tasks are ready yet
                                         </Typography>
-                                    </Box>
-                                ))}
-                            </Stack>
-                        </Paper>
+                                        <Typography
+                                            sx={{
+                                                maxWidth: 520,
+                                                fontSize: '0.95rem',
+                                                lineHeight: 1.8,
+                                                color: 'rgba(32,56,45,0.66)',
+                                                fontFamily: BODY_FONT,
+                                            }}
+                                        >
+                                            This template does not have any yellow-highlighted must-do activities available right now.
+                                        </Typography>
+                                    </Stack>
+                                </Paper>
+                            )}
+                        </Grid>
                     </Grid>
-                </Grid>
+                </Stack>
             </Container>
         </Box>
     )

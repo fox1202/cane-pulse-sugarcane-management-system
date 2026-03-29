@@ -61,8 +61,6 @@ interface FlattenedObservationRow {
     previousCuttingDate: string
     expectedHarvestDate: string
     stress: string
-    cropVigor: string
-    canopyCover: string
     residueType: string
     residueManagementMethod: string
     residueRemarks: string
@@ -107,8 +105,6 @@ const OBSERVATION_COLUMNS: ObservationColumn[] = [
     { key: 'plantingDate', label: 'Planting Date', minWidth: 150 },
     { key: 'previousCuttingDate', label: 'Previous Cutting Date', minWidth: 180 },
     { key: 'expectedHarvestDate', label: 'Expected Harvest Date', minWidth: 180 },
-    { key: 'cropVigor', label: 'Crop Vigor', minWidth: 130 },
-    { key: 'canopyCover', label: 'Canopy Cover', minWidth: 130 },
     { key: 'residueType', label: 'Residue Type', minWidth: 140 },
     { key: 'residueManagementMethod', label: 'Residue Management Method', minWidth: 210, wrap: true },
     { key: 'residueRemarks', label: 'Residue Remarks', minWidth: 220, wrap: true },
@@ -174,11 +170,6 @@ function formatTextValue(value?: string | number | null) {
     return '-'
 }
 
-function formatPercentValue(value?: number) {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
-    return `${formatNumericValue(value)}%`
-}
-
 function toRecordedTime(value?: string) {
     if (!value) return 0
     const timestamp = new Date(value).getTime()
@@ -211,8 +202,6 @@ function buildFlattenedObservationRow(observation: ObservationTableRecord): Flat
         previousCuttingDate: formatDateValue(currentSheet?.previous_cutting_date || currentSheet?.previous_cutting || entryForm?.previous_cutting_date || entryForm?.cutting_date),
         expectedHarvestDate: formatDateValue(currentSheet?.expected_harvest_date || entryForm?.expected_harvest_date || observation.crop_information?.expected_harvest_date),
         stress: formatTextValue(currentSheet?.stress || entryForm?.stress || observation.crop_monitoring?.stress),
-        cropVigor: formatTextValue(currentSheet?.crop_vigor || entryForm?.crop_vigor || observation.crop_monitoring?.crop_vigor),
-        canopyCover: formatPercentValue(currentSheet?.canopy_cover ?? entryForm?.canopy_cover ?? observation.crop_monitoring?.canopy_cover),
         residueType: formatTextValue(currentSheet?.residue_type || entryForm?.residue_type),
         residueManagementMethod: formatTextValue(currentSheet?.residue_management_method || entryForm?.residue_management_method),
         residueRemarks: formatTextValue(currentSheet?.residual_management_remarks || entryForm?.residual_management_remarks),

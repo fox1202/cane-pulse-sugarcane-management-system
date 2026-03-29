@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
     Alert,
     Box,
+    Button,
     Chip,
     CircularProgress,
     Grid,
-    LinearProgress,
     Paper,
-    Stack,
     Table,
     TableBody,
     TableCell,
@@ -16,14 +16,19 @@ import {
     TableRow,
     Typography,
     alpha,
-    useTheme,
 } from '@mui/material'
 import {
     AgricultureOutlined,
+    CalendarMonthOutlined,
     LocalFloristOutlined,
+    OpenInNewRounded,
     TimelineOutlined,
 } from '@mui/icons-material'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
+import {
+    buildMonitoringCalendarSearch,
+    buildMonitoringTrialCalendarLinks,
+} from '@/utils/farmingCalendarLinks'
 
 function formatDate(value?: string | null, includeTime = false): string {
     if (!value) return 'N/A'
@@ -70,17 +75,6 @@ function getStressTone(stress?: string | null): 'success' | 'info' | 'warning' |
     }
 
     return 'error'
-}
-
-function getVigorProgress(vigor?: string | null): number {
-    const normalized = (vigor ?? '').trim().toLowerCase()
-
-    if (normalized === 'excellent') return 95
-    if (normalized === 'good') return 82
-    if (normalized === 'fair' || normalized === 'medium') return 60
-    if (normalized === 'poor' || normalized === 'low') return 35
-
-    return 50
 }
 
 function SummaryCard({
@@ -171,7 +165,7 @@ function InsightPanel({
 }
 
 export function SugarcaneMonitoringDashboard() {
-    const theme = useTheme()
+    const navigate = useNavigate()
     const { data: monitoring = [], isLoading, error } = useSugarcaneMonitoring()
 
     const summary = useMemo(() => {
@@ -213,6 +207,11 @@ export function SugarcaneMonitoringDashboard() {
         }
     }, [monitoring])
 
+    const trialCalendarLinks = useMemo(
+        () => buildMonitoringTrialCalendarLinks(monitoring),
+        [monitoring]
+    )
+
     if (isLoading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 320 }}>
@@ -235,6 +234,10 @@ export function SugarcaneMonitoringDashboard() {
                 No monitoring records are available yet.
             </Alert>
         )
+    }
+
+    const handleOpenCalendar = (search: string) => {
+        navigate(`/calendar?${search}`)
     }
 
     return (
@@ -270,6 +273,111 @@ export function SugarcaneMonitoringDashboard() {
             </Grid>
 
             <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                    <InsightPanel
+                        title="Trial Calendar Links"
+                    >
+                        <TableContainer>
+                            <Table sx={{ minWidth: 980 }}>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Trial</TableCell>
+                                        <TableCell>Field</TableCell>
+                                        <TableCell>Crop Class</TableCell>
+                                        <TableCell>Suitable Calendar</TableCell>
+                                        <TableCell>Anchor Date</TableCell>
+                                        <TableCell>Latest Update</TableCell>
+                                        <TableCell align="right">Action</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {trialCalendarLinks.length > 0 ? (
+                                        trialCalendarLinks.map((link) => {
+                                            const calendarSearch = link.templateId ? buildMonitoringCalendarSearch(link) : ''
+                                            const hasAnchorDate = Boolean(link.anchorDate)
+
+                                            return (
+                                                <TableRow key={link.key} hover>
+                                                    <TableCell sx={{ minWidth: 180 }}>
+                                                        <Typography sx={{ fontWeight: 700, fontSize: 13.5 }}>
+                                                            {link.trialLabel}
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                                                            {link.cropType || 'Crop type not set'}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell sx={{ minWidth: 220 }}>
+                                                        <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
+                                                            {link.fieldLabel}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell sx={{ minWidth: 170 }}>
+                                                        <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
+                                                            {normalizeText(link.cropClass, 'Not set')}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell sx={{ minWidth: 170 }}>
+                                                        <Chip
+                                                            size="small"
+                                                            icon={<CalendarMonthOutlined />}
+                                                            label={link.templateTitle ?? 'No linked calendar'}
+                                                            color={link.templateId ? 'success' : 'default'}
+                                                            variant={link.templateId ? 'filled' : 'outlined'}
+                                                            sx={{ fontWeight: 700 }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell sx={{ minWidth: 190 }}>
+                                                        <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
+                                                            {hasAnchorDate ? formatDate(link.anchorDate) : 'Date not set yet'}
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                                                            {link.templateId
+                                                                ? hasAnchorDate
+                                                                    ? link.anchorLabel
+                                                                    : `Add the ${link.anchorLabel?.toLowerCase() || 'reference date'} to date the tasks.`
+                                                                : 'Only sugarcane trials can be matched right now.'}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell sx={{ minWidth: 140 }}>
+                                                        <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
+                                                            {formatDate(link.latestDate)}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ minWidth: 180 }}>
+                                                        <Button
+                                                            size="small"
+                                                            variant={hasAnchorDate ? 'contained' : 'outlined'}
+                                                            endIcon={<OpenInNewRounded />}
+                                                            disabled={!link.templateId}
+                                                            onClick={() => handleOpenCalendar(calendarSearch)}
+                                                            sx={{
+                                                                borderRadius: '999px',
+                                                                px: 1.8,
+                                                                py: 0.8,
+                                                                textTransform: 'none',
+                                                                fontWeight: 800,
+                                                            }}
+                                                        >
+                                                            {hasAnchorDate ? 'Open dated calendar' : 'Open calendar'}
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={7} sx={{ py: 3.5 }}>
+                                                <Typography sx={{ fontSize: 13, color: 'text.secondary', textAlign: 'center' }}>
+                                                    No trial-to-calendar matches are available yet. Add crop class and planting or cut dates to monitoring records to enable linked calendars.
+                                                </Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </InsightPanel>
+                </Grid>
                 <Grid size={{ xs: 12 }}>
                     <InsightPanel
                         title="Recent Monitoring Records"
@@ -312,33 +420,13 @@ export function SugarcaneMonitoringDashboard() {
                                                 </Typography>
                                             </TableCell>
                                             <TableCell sx={{ minWidth: 190 }}>
-                                                <Stack spacing={1}>
-                                                    <Chip
-                                                        size="small"
-                                                        label={`Stress: ${normalizeText(record.stress, 'None')}`}
-                                                        color={getStressTone(record.stress)}
-                                                        variant="outlined"
-                                                        sx={{ fontWeight: 700, width: 'fit-content' }}
-                                                    />
-                                                    <Box>
-                                                        <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mb: 0.4 }}>
-                                                            Crop vigor: {normalizeText(record.crop_vigor, 'Not recorded')}
-                                                        </Typography>
-                                                        <LinearProgress
-                                                            variant="determinate"
-                                                            value={getVigorProgress(record.crop_vigor)}
-                                                            sx={{
-                                                                height: 8,
-                                                                borderRadius: 999,
-                                                                bgcolor: 'rgba(0,0,0,0.06)',
-                                                                '& .MuiLinearProgress-bar': {
-                                                                    borderRadius: 999,
-                                                                    bgcolor: getStressTone(record.stress) === 'error' ? '#d32f2f' : theme.palette.primary.main,
-                                                                },
-                                                            }}
-                                                        />
-                                                    </Box>
-                                                </Stack>
+                                                <Chip
+                                                    size="small"
+                                                    label={`Stress: ${normalizeText(record.stress, 'None')}`}
+                                                    color={getStressTone(record.stress)}
+                                                    variant="outlined"
+                                                    sx={{ fontWeight: 700, width: 'fit-content' }}
+                                                />
                                             </TableCell>
                                             <TableCell sx={{ minWidth: 150 }}>
                                                 <Typography sx={{ fontWeight: 700, fontSize: 13 }}>

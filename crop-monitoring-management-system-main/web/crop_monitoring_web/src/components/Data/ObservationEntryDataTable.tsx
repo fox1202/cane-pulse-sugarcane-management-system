@@ -38,8 +38,6 @@ export interface ObservationEntrySheetRow {
     previousCuttingDate: string
     expectedHarvestDate: string
     stress: string
-    cropVigor: string
-    canopyCover: string
     residueType: string
     residueManagementMethod: string
     residueRemarks: string
@@ -84,8 +82,6 @@ export const OBSERVATION_ENTRY_SHEET_COLUMNS: ObservationEntrySheetColumn[] = [
     { key: 'plantingDate', label: 'Planting Date', minWidth: 150 },
     { key: 'previousCuttingDate', label: 'Previous Cutting Date', minWidth: 180 },
     { key: 'expectedHarvestDate', label: 'Expected Harvest Date', minWidth: 180 },
-    { key: 'cropVigor', label: 'Crop Vigor', minWidth: 130 },
-    { key: 'canopyCover', label: 'Canopy Cover', minWidth: 130 },
     { key: 'residueType', label: 'Residue Type', minWidth: 140 },
     { key: 'residueManagementMethod', label: 'Residue Management Method', minWidth: 220, wrap: true },
     { key: 'residueRemarks', label: 'Residue Remarks', minWidth: 230, wrap: true },
@@ -123,11 +119,6 @@ function formatNumericValue(value?: number | null, maximumFractionDigits = 2) {
         minimumFractionDigits: 0,
         maximumFractionDigits,
     })
-}
-
-function formatPercentValue(value?: number | null) {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
-    return `${formatNumericValue(value)}%`
 }
 
 function formatDateValue(value?: string | null) {
@@ -189,8 +180,6 @@ export function buildObservationEntrySheetRow(form: ObservationEntryForm): Obser
         previousCuttingDate: formatDateValue(form.previous_cutting_date || form.cutting_date),
         expectedHarvestDate: formatDateValue(form.expected_harvest_date),
         stress: formatTextValue(form.stress),
-        cropVigor: formatTextValue(form.crop_vigor),
-        canopyCover: formatPercentValue(form.canopy_cover),
         residueType: formatTextValue(form.residue_type),
         residueManagementMethod: formatTextValue(form.residue_management_method),
         residueRemarks: formatTextValue(form.residual_management_remarks),

@@ -29,11 +29,11 @@ type SugarcanePhoto = {
 const slides: SlideDefinition[] = [
     {
         image: sugarcane1,
-        eyebrow: 'Canopy Overview',
+        eyebrow: 'Field Overview',
         title: 'Precision sugarcane intelligence at your fingertips.',
         description: 'A calmer visual layer for field teams, blending sugarcane imagery with clear monitoring context before maps, forms, and analytics open.',
         location: 'Season 2025/26',
-        metrics: ['Canopy 78%', 'Moisture 42%', '14 active blocks'],
+        metrics: ['Health 78%', 'Moisture 42%', '14 active blocks'],
     },
     {
         image: sugarcane2,
@@ -47,7 +47,7 @@ const slides: SlideDefinition[] = [
         image: sugarcane3,
         eyebrow: 'Health Watch',
         title: 'Stress patterns are easier to read in a quieter layout.',
-        description: 'Disease and vigor cues stay prominent while the interface stays focused on sugarcane observations, not decoration.',
+        description: 'Disease and stress cues stay prominent while the interface stays focused on sugarcane observations, not decoration.',
         location: 'Section East',
         metrics: ['Stress low', 'Leaf scan ready', 'Patrol logged'],
     },
@@ -74,7 +74,7 @@ const FRAME_INTERVAL_MS = 5200
 const sugarcanePhotoGrid: SugarcanePhoto[] = [
     { image: sugarcane1, label: 'Fresh cane', objectPosition: 'center center', rotation: -4 },
     { image: sugarcane2, label: 'Golden rows', objectPosition: 'center 42%', rotation: 3 },
-    { image: sugarcane3, label: 'Soft canopy', objectPosition: 'center 36%', rotation: -2 },
+    { image: sugarcane3, label: 'Soft rows', objectPosition: 'center 36%', rotation: -2 },
     { image: sugarcane4, label: 'Harvest glow', objectPosition: 'center 40%', rotation: 4 },
     { image: sugarcane5, label: 'Field curve', objectPosition: 'center center', rotation: -3 },
     { image: sugarcane1, label: 'Bright leaves', objectPosition: 'center 24%', rotation: 2 },

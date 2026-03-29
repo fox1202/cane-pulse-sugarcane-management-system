@@ -61,6 +61,9 @@ interface SummaryTileProps {
     value: string | number
 }
 
+const DIALOG_RECT_RADIUS = '12px'
+const CARD_RECT_RADIUS = '10px'
+
 function isMobileObservationRecord(observation: ObservationDetailRecord): observation is MobileObservationRecord {
     return 'source_table' in observation
 }
@@ -174,7 +177,7 @@ function DetailCard({ title, subtitle, children }: DetailCardProps) {
         <Paper
             sx={{
                 p: 3,
-                borderRadius: 4,
+                borderRadius: CARD_RECT_RADIUS,
                 bgcolor: '#f8fcf9',
                 border: '1px solid rgba(47,159,90,0.12)',
                 boxShadow: 'none',
@@ -199,7 +202,7 @@ function SummaryTile({ label, value }: SummaryTileProps) {
         <Paper
             sx={{
                 p: 2,
-                borderRadius: 3,
+                borderRadius: CARD_RECT_RADIUS,
                 bgcolor: '#ffffff',
                 border: '1px solid rgba(47,159,90,0.14)',
                 boxShadow: 'none',
@@ -275,6 +278,10 @@ export const ObservationDetailDialog = ({
         || entryForm?.crop_type
         || observation.crop_information?.crop_type
     const displayStress = currentSheet?.stress || entryForm?.stress || observation.crop_monitoring?.stress
+    const displayContactPerson = currentSheet?.contact_person
+        || entryForm?.contact_person
+        || observation.collector_id
+        || 'Contact person not recorded'
 
     const identityItems = [
         { label: 'Client UUID', value: observation.client_uuid },
@@ -302,7 +309,6 @@ export const ObservationDetailDialog = ({
 
     const observationItems = [
         { label: 'Stress', value: displayStress },
-        { label: 'Crop Vigor', value: currentSheet?.crop_vigor || entryForm?.crop_vigor || observation.crop_monitoring?.crop_vigor },
         { label: 'Remarks', value: currentSheet?.field_remarks || currentSheet?.remarks || entryForm?.field_remarks || entryForm?.remarks || observation.crop_monitoring?.remarks },
     ].filter((item) => hasValue(item.value))
 
@@ -360,7 +366,7 @@ export const ObservationDetailDialog = ({
             fullWidth
             PaperProps={{
                 sx: {
-                    borderRadius: 5,
+                    borderRadius: DIALOG_RECT_RADIUS,
                     bgcolor: '#f3f8f4',
                     backgroundImage: 'none',
                     border: '1px solid rgba(47,159,90,0.16)',
@@ -509,7 +515,7 @@ export const ObservationDetailDialog = ({
                                 ))}
                             </Grid>
                             {hasMapPreview && previewCenter ? (
-                                <Box sx={{ height: 260, width: '100%', borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(47,159,90,0.14)' }}>
+                                <Box sx={{ height: 260, width: '100%', borderRadius: CARD_RECT_RADIUS, overflow: 'hidden', border: '1px solid rgba(47,159,90,0.14)' }}>
                                     <MapContainer
                                         center={previewCenter}
                                         zoom={15}
@@ -549,7 +555,7 @@ export const ObservationDetailDialog = ({
                                     <MapCenterObject color={theme.palette.primary.main} size={42} />
                                 </Box>
                             ) : (
-                                <Paper sx={{ p: 3, borderRadius: 3, bgcolor: '#ffffff', border: '1px dashed rgba(47,159,90,0.2)', boxShadow: 'none' }}>
+                                <Paper sx={{ p: 3, borderRadius: CARD_RECT_RADIUS, bgcolor: '#ffffff', border: '1px dashed rgba(47,159,90,0.2)', boxShadow: 'none' }}>
                                     <Typography sx={{ fontWeight: 800, color: 'text.primary', mb: 0.4 }}>
                                         No map preview available
                                     </Typography>
@@ -575,7 +581,7 @@ export const ObservationDetailDialog = ({
                                                 width: '100%',
                                                 height: 160,
                                                 objectFit: 'cover',
-                                                borderRadius: 3,
+                                                borderRadius: CARD_RECT_RADIUS,
                                                 border: '1px solid rgba(47,159,90,0.14)',
                                             }}
                                         />
@@ -590,7 +596,7 @@ export const ObservationDetailDialog = ({
                             <Paper
                                 sx={{
                                     p: 3,
-                                    borderRadius: 4,
+                                    borderRadius: CARD_RECT_RADIUS,
                                     bgcolor: '#ffffff',
                                     border: '1px dashed rgba(47,159,90,0.22)',
                                     boxShadow: 'none',
@@ -628,7 +634,7 @@ export const ObservationDetailDialog = ({
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
                     <PersonOutlineRounded fontSize="small" />
                     <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
-                        {observation.collector_id || 'Collector not recorded'}
+                        {displayContactPerson}
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1.2, flexWrap: 'wrap' }}>
@@ -640,7 +646,7 @@ export const ObservationDetailDialog = ({
                         startIcon={hasImages ? <ImageIcon /> : hasCoordinates ? <MyLocationRounded /> : <GrassRounded />}
                         onClick={() => onGenerateReport(observation)}
                         sx={{
-                            borderRadius: 999,
+                            borderRadius: CARD_RECT_RADIUS,
                             px: 2.6,
                             fontWeight: 900,
                             boxShadow: 'none',
