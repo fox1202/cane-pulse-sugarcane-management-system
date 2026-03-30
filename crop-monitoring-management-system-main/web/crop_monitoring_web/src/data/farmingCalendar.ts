@@ -5,6 +5,15 @@ export interface FarmingCalendarTask {
     activity: string
 }
 
+export interface FarmingCalendarGrowthStage {
+    key: string
+    title: string
+    startWeek: number
+    endWeek: number
+    summary: string
+    activityFocus: string[]
+}
+
 export interface FarmingCalendarTemplate {
     id: 'plant' | 'ratoon'
     title: string
@@ -15,6 +24,7 @@ export interface FarmingCalendarTemplate {
     anchorWeekNumber: number
     monthRange: [number, number]
     notes: string[]
+    growthStages: FarmingCalendarGrowthStage[]
     tasks: FarmingCalendarTask[]
 }
 
@@ -35,6 +45,56 @@ export const FARMING_CALENDAR_TEMPLATES: FarmingCalendarTemplate[] = [
             'Timelines may differ slightly depending on season, on-farm conditions, and availability of resources.',
             'Contact ZSAES scientists when in doubt.',
             'For certified seedcane providers, contact ZSAES Plant Pathology.',
+        ],
+        growthStages: [
+            {
+                key: 'plant-establishment',
+                title: 'Establishment',
+                startWeek: 1,
+                endWeek: 4,
+                summary: 'Bud germination, emergence, and early stand establishment set the crop up for uniform growth.',
+                activityFocus: [
+                    'Keep irrigation even and watch emergence closely.',
+                    'Check stand establishment and early weed pressure.',
+                    'Prepare soil results and inputs before the first nutrient split.',
+                ],
+            },
+            {
+                key: 'plant-tillering',
+                title: 'Tillering',
+                startWeek: 5,
+                endWeek: 8,
+                summary: 'The crop builds tillers and early canopy, so nutrient timing and weed control matter most here.',
+                activityFocus: [
+                    'Apply the early post-emergent herbicide.',
+                    'Apply the first and second nitrogen and potassium splits.',
+                    'Monitor tiller build-up and close any early growth gaps.',
+                ],
+            },
+            {
+                key: 'plant-grand-growth',
+                title: 'Grand Growth',
+                startWeek: 9,
+                endWeek: 16,
+                summary: 'Rapid canopy expansion and stalk extension drive biomass accumulation in this phase.',
+                activityFocus: [
+                    'Apply the late nitrogen split where the calendar calls for it.',
+                    'Follow up with herbicide and hoeing where weeds remain active.',
+                    'Maintain stable irrigation to support vigorous cane growth.',
+                ],
+            },
+            {
+                key: 'plant-ripening',
+                title: 'Ripening and Maturity',
+                startWeek: 17,
+                endWeek: 60,
+                summary: 'The crop shifts from bulk growth into ripening, field conditioning, and harvest readiness.',
+                activityFocus: [
+                    'Keep checking crop health and late stress signals.',
+                    'Balance irrigation carefully as the crop moves toward maturity.',
+                    'Plan harvest timing, access, and field logistics.',
+                ],
+            },
         ],
         tasks: [
             { month: 2, weekNumber: 5, weekLabel: 'Week 5', activity: 'Apply the early post-emergent herbicide.' },
@@ -59,6 +119,56 @@ export const FARMING_CALENDAR_TEMPLATES: FarmingCalendarTemplate[] = [
             'Irrigation should happen throughout the period. Avoid over or under irrigating.',
             'Timelines may differ slightly depending on season, on-farm conditions, and availability of resources.',
             'Contact ZSAES scientists when in doubt.',
+        ],
+        growthStages: [
+            {
+                key: 'ratoon-recovery',
+                title: 'Shoot Recovery',
+                startWeek: 1,
+                endWeek: 4,
+                summary: 'Fresh ratoon shoots recover from the cut and rebuild the stool for the next cycle.',
+                activityFocus: [
+                    'Check stool recovery and keep moisture steady after the cut.',
+                    'Follow up soil analysis results and confirm early nutrient needs.',
+                    'Keep the field clean while the ratoon stand is re-establishing.',
+                ],
+            },
+            {
+                key: 'ratoon-tillering',
+                title: 'Tillering',
+                startWeek: 5,
+                endWeek: 8,
+                summary: 'Ratoon stools build productive tillers, so nutrition and early protection are the priorities.',
+                activityFocus: [
+                    'Apply the first and second nitrogen and potassium splits.',
+                    'Watch for uneven regrowth or nutrient deficiency across the stool.',
+                    'Protect the young canopy from weed competition.',
+                ],
+            },
+            {
+                key: 'ratoon-grand-growth',
+                title: 'Grand Growth',
+                startWeek: 9,
+                endWeek: 16,
+                summary: 'The ratoon canopy expands fast and the crop pushes rapid stalk extension.',
+                activityFocus: [
+                    'Apply the late nitrogen split where it is still needed.',
+                    'Apply post-emergent herbicide and hoeing where weeds survive.',
+                    'Maintain irrigation to support fast cane growth.',
+                ],
+            },
+            {
+                key: 'ratoon-ripening',
+                title: 'Ripening and Harvest Prep',
+                startWeek: 17,
+                endWeek: 52,
+                summary: 'The ratoon crop moves into ripening, field monitoring, and preparation for the next harvest cut.',
+                activityFocus: [
+                    'Monitor ripening progress and watch for lodging or stress.',
+                    'Balance irrigation with the expected harvest window.',
+                    'Prepare harvest timing, haulage access, and field readiness.',
+                ],
+            },
         ],
         tasks: [
             { month: 1, weekNumber: 2, weekLabel: 'Week 2', activity: 'Follow up on soil analysis results and apply SSP or MAP.' },

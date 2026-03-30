@@ -1,7 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import type {
+    FertilizerApplication,
     FullObservation,
     Field,
+    HerbicideApplication,
     ObservationEntryForm,
     ObservationFilters,
     SugarcaneMonitoringRecord,
@@ -62,10 +64,12 @@ export interface MobileObservationEntryFormFields {
     fertilizer_type?: string
     nutrient_application_date?: string
     application_rate?: number
+    fertilizer_applications?: FertilizerApplication[]
     foliar_sampling_date?: string
     herbicide_name?: string
     weed_application_date?: string
     weed_application_rate?: number
+    herbicide_applications?: HerbicideApplication[]
     pest_remarks?: string
     disease_remarks?: string
     harvest_date?: string
@@ -116,10 +120,12 @@ export interface ObservationEntryFormSubmissionInput {
     fertilizer_type?: string
     nutrient_application_date?: string
     application_rate?: number
+    fertilizer_applications?: FertilizerApplication[]
     foliar_sampling_date?: string
     herbicide_name?: string
     weed_application_date?: string
     weed_application_rate?: number
+    herbicide_applications?: HerbicideApplication[]
     pest_remarks?: string
     disease_remarks?: string
     harvest_date?: string
@@ -166,8 +172,203 @@ const isSugarcaneMonitoringSchemaError = (error: unknown): boolean => {
         message.includes('does not exist')
 }
 
+function extractMissingSugarcaneMonitoringColumn(error: unknown): string | null {
+    const message = String((error as { message?: string })?.message || error)
+    const match = [
+        /could not find the ['"]([^'"]+)['"] column/i,
+        /column ['"]([^'"]+)['"] of relation/i,
+        /column ['"]([^'"]+)['"] does not exist/i,
+    ]
+        .map((pattern) => message.match(pattern))
+        .find(Boolean)
+
+    return match?.[1] ?? null
+}
+
+async function insertSugarcaneMonitoringWithSchemaFallback(
+    payloads: Record<string, unknown>[]
+): Promise<{ data: Record<string, unknown>; droppedColumns: string[] }> {
+    let lastError: any = null
+    const seenPayloads = new Set<string>()
+
+    for (const candidatePayload of payloads) {
+        let currentPayload: Record<string, unknown> = { ...candidatePayload }
+        const droppedColumnsForCandidate: string[] = []
+
+        while (Object.keys(currentPayload).length > 0) {
+            const payloadSignature = JSON.stringify(Object.keys(currentPayload).sort())
+            if (seenPayloads.has(payloadSignature)) {
+                break
+            }
+            seenPayloads.add(payloadSignature)
+
+            const result = await supabase
+                .from('sugarcane_monitoring')
+                .insert(currentPayload)
+                .select('*')
+                .single()
+
+            if (!result.error && result.data) {
+                return {
+                    data: result.data as Record<string, unknown>,
+                    droppedColumns: droppedColumnsForCandidate,
+                }
+            }
+
+            lastError = result.error
+
+            if (!isSugarcaneMonitoringSchemaError(result.error)) {
+                break
+            }
+
+            const missingColumn = extractMissingSugarcaneMonitoringColumn(result.error)
+            if (!missingColumn || !(missingColumn in currentPayload)) {
+                break
+            }
+
+            delete currentPayload[missingColumn]
+            droppedColumnsForCandidate.push(missingColumn)
+        }
+    }
+
+    throw lastError
+}
+
 function normalizeLookupToken(value?: string | null): string {
     return (value ?? '').trim().toLowerCase()
+}
+
+function listOfMaps(value: unknown): Record<string, unknown>[] {
+    if (Array.isArray(value)) {
+        return value
+            .filter((item) => typeof item === 'object' && item !== null)
+            .map((item) => ({ ...(item as Record<string, unknown>) }))
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+        try {
+            return listOfMaps(JSON.parse(value))
+        } catch {
+            return []
+        }
+    }
+
+    return []
+}
+
+function normalizeFertilizerApplication(value: unknown): FertilizerApplication | null {
+    const source = typeof value === 'object' && value !== null
+        ? (value as Record<string, unknown>)
+        : {}
+
+    const normalized: FertilizerApplication = {}
+    const fertilizerType = toNullableString(source.fertilizer_type)
+    const applicationDate = toNullableDateValue(source.application_date)
+    const applicationRate = toNullableNumber(source.application_rate)
+    const foliarSamplingDate = toNullableDateValue(source.foliar_sampling_date)
+
+    if (fertilizerType) normalized.fertilizer_type = fertilizerType
+    if (applicationDate) normalized.application_date = applicationDate
+    if (applicationRate != null) normalized.application_rate = applicationRate
+    if (foliarSamplingDate) normalized.foliar_sampling_date = foliarSamplingDate
+
+    return Object.keys(normalized).length > 0 ? normalized : null
+}
+
+function normalizeHerbicideApplication(value: unknown): HerbicideApplication | null {
+    const source = typeof value === 'object' && value !== null
+        ? (value as Record<string, unknown>)
+        : {}
+
+    const normalized: HerbicideApplication = {}
+    const herbicideName = toNullableString(source.herbicide_name)
+    const applicationDate = toNullableDateValue(source.application_date)
+    const applicationRate = toNullableNumber(source.application_rate)
+
+    if (herbicideName) normalized.herbicide_name = herbicideName
+    if (applicationDate) normalized.application_date = applicationDate
+    if (applicationRate != null) normalized.application_rate = applicationRate
+
+    return Object.keys(normalized).length > 0 ? normalized : null
+}
+
+function normalizeFertilizerApplications(
+    value: unknown,
+    fallback?: {
+        fertilizer_type?: unknown
+        nutrient_application_date?: unknown
+        application_rate?: unknown
+        foliar_sampling_date?: unknown
+    }
+): FertilizerApplication[] {
+    const normalized = listOfMaps(value)
+        .map(normalizeFertilizerApplication)
+        .filter((item): item is FertilizerApplication => item !== null)
+
+    if (normalized.length > 0) {
+        return normalized.slice(0, 10)
+    }
+
+    const single = normalizeFertilizerApplication({
+        fertilizer_type: fallback?.fertilizer_type,
+        application_date: fallback?.nutrient_application_date,
+        application_rate: fallback?.application_rate,
+        foliar_sampling_date: fallback?.foliar_sampling_date,
+    })
+
+    return single ? [single] : []
+}
+
+function normalizeHerbicideApplications(
+    value: unknown,
+    fallback?: {
+        herbicide_name?: unknown
+        weed_application_date?: unknown
+        weed_application_rate?: unknown
+    }
+): HerbicideApplication[] {
+    const normalized = listOfMaps(value)
+        .map(normalizeHerbicideApplication)
+        .filter((item): item is HerbicideApplication => item !== null)
+
+    if (normalized.length > 0) {
+        return normalized.slice(0, 10)
+    }
+
+    const single = normalizeHerbicideApplication({
+        herbicide_name: fallback?.herbicide_name,
+        application_date: fallback?.weed_application_date,
+        application_rate: fallback?.weed_application_rate,
+    })
+
+    return single ? [single] : []
+}
+
+function getCurrentApplicationFromList<T extends { application_date?: string }>(
+    applications: T[]
+): T | null {
+    if (applications.length === 0) {
+        return null
+    }
+
+    let best = applications[0] ?? null
+    let bestDate = best ? new Date(String(best.application_date ?? '')).getTime() : Number.NaN
+
+    for (const application of applications.slice(1)) {
+        const nextDate = new Date(String(application.application_date ?? '')).getTime()
+
+        if (!Number.isFinite(nextDate) && !Number.isFinite(bestDate)) {
+            best = application
+            continue
+        }
+
+        if (Number.isFinite(nextDate) && (!Number.isFinite(bestDate) || nextDate >= bestDate)) {
+            best = application
+            bestDate = nextDate
+        }
+    }
+
+    return best
 }
 
 function extractLookupFieldCode(value?: string | null): string {
@@ -466,6 +667,19 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
     ) ?? undefined
     const weedApplicationDate = toNullableDateValue(row.weed_application_date) ?? undefined
     const harvestDate = toNullableDateValue(row.harvest_date ?? row.actual_cutting_date) ?? undefined
+    const fertilizerApplications = normalizeFertilizerApplications(row.fertilizer_applications, {
+        fertilizer_type: row.fertilizer_type,
+        nutrient_application_date: nutrientApplicationDate,
+        application_rate: row.application_rate,
+        foliar_sampling_date: row.foliar_sampling_date,
+    })
+    const herbicideApplications = normalizeHerbicideApplications(row.herbicide_applications, {
+        herbicide_name: row.herbicide_name ?? row.weed_control,
+        weed_application_date: weedApplicationDate,
+        weed_application_rate: row.weed_application_rate ?? row.herbicide_application_rate,
+    })
+    const currentFertilizerApplication = getCurrentApplicationFromList(fertilizerApplications)
+    const currentHerbicideApplication = getCurrentApplicationFromList(herbicideApplications)
 
     return {
         id: String(row.id || ''),
@@ -503,15 +717,17 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
         trial_name: toNullableString(row.trial_name) ?? undefined,
         contact_person: toNullableString(row.contact_person) ?? undefined,
         field_remarks: firstNonEmptyString(row.field_remarks, row.remarks) ?? undefined,
-        fertilizer_type: toNullableString(row.fertilizer_type) ?? undefined,
-        fertilizer_application_date: nutrientApplicationDate,
-        nutrient_application_date: nutrientApplicationDate,
-        application_rate: toNullableNumber(row.application_rate) ?? undefined,
+        fertilizer_type: currentFertilizerApplication?.fertilizer_type ?? toNullableString(row.fertilizer_type) ?? undefined,
+        fertilizer_application_date: currentFertilizerApplication?.application_date ?? nutrientApplicationDate,
+        nutrient_application_date: currentFertilizerApplication?.application_date ?? nutrientApplicationDate,
+        application_rate: currentFertilizerApplication?.application_rate ?? toNullableNumber(row.application_rate) ?? undefined,
+        fertilizer_applications: fertilizerApplications.length > 0 ? fertilizerApplications : undefined,
         npk_ratio: toNullableString(row.npk_ratio) ?? undefined,
-        foliar_sampling_date: toNullableDateValue(row.foliar_sampling_date) ?? undefined,
-        herbicide_name: firstNonEmptyString(row.herbicide_name, row.weed_control) ?? undefined,
-        weed_application_date: weedApplicationDate,
-        weed_application_rate: firstNumericValue(row.weed_application_rate, row.herbicide_application_rate) ?? undefined,
+        foliar_sampling_date: currentFertilizerApplication?.foliar_sampling_date ?? toNullableDateValue(row.foliar_sampling_date) ?? undefined,
+        herbicide_name: currentHerbicideApplication?.herbicide_name ?? firstNonEmptyString(row.herbicide_name, row.weed_control) ?? undefined,
+        weed_application_date: currentHerbicideApplication?.application_date ?? weedApplicationDate,
+        weed_application_rate: currentHerbicideApplication?.application_rate ?? firstNumericValue(row.weed_application_rate, row.herbicide_application_rate) ?? undefined,
+        herbicide_applications: herbicideApplications.length > 0 ? herbicideApplications : undefined,
         weed_type: toNullableString(row.weed_type) ?? undefined,
         weed_level: toNullableString(row.weed_level) ?? undefined,
         pest_type: toNullableString(row.pest_type) ?? undefined,
@@ -656,6 +872,20 @@ function mapSugarcaneMonitoringRowToEntryForm(
     row: SugarcaneMonitoringRecord,
     linkedField?: PredefinedField | null
 ): ObservationEntryForm {
+    const fertilizerApplications = normalizeFertilizerApplications(row.fertilizer_applications, {
+        fertilizer_type: row.fertilizer_type,
+        nutrient_application_date: row.nutrient_application_date ?? row.fertilizer_application_date,
+        application_rate: row.application_rate,
+        foliar_sampling_date: row.foliar_sampling_date,
+    })
+    const herbicideApplications = normalizeHerbicideApplications(row.herbicide_applications, {
+        herbicide_name: row.herbicide_name ?? row.weed_control,
+        weed_application_date: row.weed_application_date,
+        weed_application_rate: row.weed_application_rate,
+    })
+    const currentFertilizerApplication = getCurrentApplicationFromList(fertilizerApplications)
+    const currentHerbicideApplication = getCurrentApplicationFromList(herbicideApplications)
+
     return {
         id: row.id,
         client_uuid: row.id,
@@ -696,13 +926,15 @@ function mapSugarcaneMonitoringRowToEntryForm(
         residue_type: row.residue_type || '',
         residue_management_method: row.residue_management_method || '',
         residual_management_remarks: row.residual_management_remarks || '',
-        fertilizer_type: row.fertilizer_type || '',
-        nutrient_application_date: row.nutrient_application_date || row.fertilizer_application_date || '',
-        application_rate: row.application_rate ?? undefined,
-        foliar_sampling_date: row.foliar_sampling_date || '',
-        herbicide_name: row.herbicide_name || row.weed_control || '',
-        weed_application_date: row.weed_application_date || '',
-        weed_application_rate: row.weed_application_rate ?? undefined,
+        fertilizer_type: currentFertilizerApplication?.fertilizer_type || row.fertilizer_type || '',
+        nutrient_application_date: currentFertilizerApplication?.application_date || row.nutrient_application_date || row.fertilizer_application_date || '',
+        application_rate: currentFertilizerApplication?.application_rate ?? row.application_rate ?? undefined,
+        fertilizer_applications: fertilizerApplications.length > 0 ? fertilizerApplications : undefined,
+        foliar_sampling_date: currentFertilizerApplication?.foliar_sampling_date || row.foliar_sampling_date || '',
+        herbicide_name: currentHerbicideApplication?.herbicide_name || row.herbicide_name || row.weed_control || '',
+        weed_application_date: currentHerbicideApplication?.application_date || row.weed_application_date || '',
+        weed_application_rate: currentHerbicideApplication?.application_rate ?? row.weed_application_rate ?? undefined,
+        herbicide_applications: herbicideApplications.length > 0 ? herbicideApplications : undefined,
         pest_remarks: row.pest_remarks || row.pest_control || '',
         disease_remarks: row.disease_remarks || row.disease_control || '',
         harvest_date: row.harvest_date || '',
@@ -748,6 +980,20 @@ function buildBaseSugarcaneMonitoringPayload(submission: ObservationEntryFormSub
 }
 
 function buildSugarcaneMonitoringPayload(submission: ObservationEntryFormSubmissionInput) {
+    const fertilizerApplications = normalizeFertilizerApplications(submission.fertilizer_applications, {
+        fertilizer_type: submission.fertilizer_type,
+        nutrient_application_date: submission.nutrient_application_date,
+        application_rate: submission.application_rate,
+        foliar_sampling_date: submission.foliar_sampling_date,
+    })
+    const herbicideApplications = normalizeHerbicideApplications(submission.herbicide_applications, {
+        herbicide_name: submission.herbicide_name,
+        weed_application_date: submission.weed_application_date,
+        weed_application_rate: submission.weed_application_rate,
+    })
+    const currentFertilizerApplication = getCurrentApplicationFromList(fertilizerApplications)
+    const currentHerbicideApplication = getCurrentApplicationFromList(herbicideApplications)
+
     return {
         ...buildBaseSugarcaneMonitoringPayload(submission),
         field_id: toNullableString(submission.field_id || submission.field_name),
@@ -761,11 +1007,29 @@ function buildSugarcaneMonitoringPayload(submission: ObservationEntryFormSubmiss
         tam_mm: toNullableString(submission.tam_mm) || toNullableString(submission.tamm_area),
         field_remarks: toNullableString(submission.remarks || submission.field_remarks),
         residual_management_remarks: toNullableString(submission.residual_management_remarks),
-        nutrient_application_date: toNullableDateValue(submission.nutrient_application_date),
-        foliar_sampling_date: toNullableDateValue(submission.foliar_sampling_date),
-        herbicide_name: toNullableString(submission.herbicide_name),
-        weed_application_date: toNullableDateValue(submission.weed_application_date),
-        weed_application_rate: toNullableNumber(submission.weed_application_rate),
+        nutrient_application_date: toNullableDateValue(
+            currentFertilizerApplication?.application_date ?? submission.nutrient_application_date
+        ),
+        application_rate: toNullableNumber(
+            currentFertilizerApplication?.application_rate ?? submission.application_rate
+        ),
+        fertilizer_type: toNullableString(
+            currentFertilizerApplication?.fertilizer_type ?? submission.fertilizer_type
+        ),
+        fertilizer_applications: fertilizerApplications.length > 0 ? fertilizerApplications : null,
+        foliar_sampling_date: toNullableDateValue(
+            currentFertilizerApplication?.foliar_sampling_date ?? submission.foliar_sampling_date
+        ),
+        herbicide_name: toNullableString(
+            currentHerbicideApplication?.herbicide_name ?? submission.herbicide_name
+        ),
+        weed_application_date: toNullableDateValue(
+            currentHerbicideApplication?.application_date ?? submission.weed_application_date
+        ),
+        weed_application_rate: toNullableNumber(
+            currentHerbicideApplication?.application_rate ?? submission.weed_application_rate
+        ),
+        herbicide_applications: herbicideApplications.length > 0 ? herbicideApplications : null,
         pest_remarks: toNullableString(submission.pest_remarks),
         disease_remarks: toNullableString(submission.disease_remarks),
         harvest_yield: toNullableNumber(submission.yield),
@@ -1292,36 +1556,20 @@ export async function createObservationEntryFormSubmission(
     const { submission: resolvedSubmission, linkedField } = await resolveObservationEntrySubmission(submission, predefinedFields)
     const payload = buildSugarcaneMonitoringPayload(resolvedSubmission)
     const fallbackPayload = buildBaseSugarcaneMonitoringPayload(resolvedSubmission)
+    const { data, droppedColumns } = await insertSugarcaneMonitoringWithSchemaFallback([
+        payload,
+        fallbackPayload,
+    ])
 
-    let data: Record<string, unknown> | null = null
-    let error: any = null
-
-    const primaryResult = await supabase
-        .from('sugarcane_monitoring')
-        .insert(payload)
-        .select('*')
-        .single()
-
-    data = primaryResult.data as Record<string, unknown> | null
-    error = primaryResult.error
-
-    if (error && isSugarcaneMonitoringSchemaError(error)) {
-        const fallbackResult = await supabase
-            .from('sugarcane_monitoring')
-            .insert(fallbackPayload)
-            .select('*')
-            .single()
-
-        data = fallbackResult.data as Record<string, unknown> | null
-        error = fallbackResult.error
-    }
-
-    if (error) {
-        throw error
+    if (droppedColumns.length > 0) {
+        console.warn(
+            'Inserted sugarcane monitoring row after omitting unsupported columns from the live schema:',
+            droppedColumns
+        )
     }
 
     return mapSugarcaneMonitoringRowToEntryForm(
-        normalizeSugarcaneMonitoringRow(data as Record<string, unknown>),
+        normalizeSugarcaneMonitoringRow(data),
         linkedField
     )
 }

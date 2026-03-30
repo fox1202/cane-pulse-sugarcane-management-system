@@ -81,6 +81,19 @@ export interface NutrientManagement {
     npk_ratio: string;
 }
 
+export interface FertilizerApplication {
+    fertilizer_type?: string;
+    application_date?: string;
+    application_rate?: number;
+    foliar_sampling_date?: string;
+}
+
+export interface HerbicideApplication {
+    herbicide_name?: string;
+    application_date?: string;
+    application_rate?: number;
+}
+
 export interface CropProtection {
     id: string;
     observation_id: string;
@@ -204,10 +217,12 @@ export interface ObservationEntryForm {
     fertilizer_type?: string;
     nutrient_application_date?: string;
     application_rate?: number;
+    fertilizer_applications?: FertilizerApplication[];
     foliar_sampling_date?: string;
     herbicide_name?: string;
     weed_application_date?: string;
     weed_application_rate?: number;
+    herbicide_applications?: HerbicideApplication[];
     pest_remarks?: string;
     disease_remarks?: string;
     harvest_date?: string;
@@ -260,11 +275,13 @@ export interface SugarcaneMonitoringRecord {
     fertilizer_application_date?: string;
     nutrient_application_date?: string;
     application_rate?: number;
+    fertilizer_applications?: FertilizerApplication[];
     npk_ratio?: string;
     foliar_sampling_date?: string;
     herbicide_name?: string;
     weed_application_date?: string;
     weed_application_rate?: number;
+    herbicide_applications?: HerbicideApplication[];
     weed_type?: string;
     weed_level?: string;
     pest_type?: string;

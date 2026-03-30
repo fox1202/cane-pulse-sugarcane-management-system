@@ -371,10 +371,12 @@ void main() {
         'fertilizer_type',
         'nutrient_application_date',
         'application_rate',
+        'fertilizer_applications',
         'foliar_sampling_date',
         'herbicide_name',
         'weed_application_date',
         'weed_application_rate',
+        'herbicide_applications',
         'pest_remarks',
         'disease_remarks',
         'harvest_date',
@@ -386,6 +388,122 @@ void main() {
       };
 
       expect(record.keys.every(allowedColumns.contains), isTrue);
+    },
+  );
+
+  test(
+    'repeated fertilizer and herbicide applications keep the latest entry as current',
+    () {
+      final normalized = normalizeObservationPayload({
+        'field_id': 'CP trial loops',
+        'block_id': 'Centre Pivot',
+        'nutrient_management': {
+          'applications': [
+            {
+              'fertilizer_type': 'Compound D',
+              'application_date': '2026-01-12T00:00:00.000',
+              'application_rate': '250',
+            },
+            {
+              'fertilizer_type': 'Urea',
+              'application_date': '2026-02-18T00:00:00.000',
+              'application_rate': 120.5,
+              'foliar_sampling_date': '2026-02-25T00:00:00.000',
+            },
+          ],
+        },
+        'weed_management': {
+          'applications': [
+            {
+              'herbicide_name': 'Atrazine',
+              'application_date': '2026-01-10T00:00:00.000',
+              'application_rate': 2.0,
+            },
+            {
+              'herbicide_name': 'Glyphosate',
+              'application_date': '2026-03-01T00:00:00.000',
+              'application_rate': '2.5',
+            },
+          ],
+        },
+      });
+
+      expect(
+        (normalized['nutrient_management']['applications'] as List).length,
+        2,
+      );
+      expect(normalized['nutrient_management']['fertilizer_type'], 'Urea');
+      expect(
+        normalized['nutrient_management']['application_date'],
+        '2026-02-18T00:00:00.000',
+      );
+      expect(normalized['nutrient_management']['application_rate'], 120.5);
+      expect(
+        normalized['nutrient_management']['foliar_sampling_date'],
+        '2026-02-25T00:00:00.000',
+      );
+      expect((normalized['weed_management']['applications'] as List).length, 2);
+      expect(normalized['weed_management']['herbicide_name'], 'Glyphosate');
+      expect(
+        normalized['weed_management']['application_date'],
+        '2026-03-01T00:00:00.000',
+      );
+      expect(normalized['weed_management']['application_rate'], 2.5);
+    },
+  );
+
+  test(
+    'current schema rows round-trip repeated fertilizer and herbicide applications',
+    () {
+      final payload = normalizeObservationPayload({
+        'field_id': 'CP trial loops',
+        'block_id': 'Centre Pivot',
+        'fertilizer_applications': [
+          {
+            'fertilizer_type': 'Compound D',
+            'application_date': '2026-01-12T00:00:00.000',
+            'application_rate': '250',
+          },
+          {
+            'fertilizer_type': 'Urea',
+            'application_date': '2026-02-18T00:00:00.000',
+            'application_rate': 120.5,
+            'foliar_sampling_date': '2026-02-25T00:00:00.000',
+          },
+        ],
+        'herbicide_applications': [
+          {
+            'herbicide_name': 'Atrazine',
+            'application_date': '2026-01-10T00:00:00.000',
+            'application_rate': 2.0,
+          },
+          {
+            'herbicide_name': 'Glyphosate',
+            'application_date': '2026-03-01T00:00:00.000',
+            'application_rate': '2.5',
+          },
+        ],
+      });
+
+      final record = buildModernSugarcaneMonitoringRecord(payload);
+      expect((record['fertilizer_applications'] as List).length, 2);
+      expect((record['herbicide_applications'] as List).length, 2);
+      expect(record['fertilizer_type'], 'Urea');
+      expect(record['herbicide_name'], 'Glyphosate');
+
+      final rebuiltPayload = buildObservationPayloadFromSugarcaneMonitoringRow(
+        record,
+      );
+      expect(
+        (rebuiltPayload['nutrient_management']['applications'] as List).length,
+        2,
+      );
+      expect(
+        (rebuiltPayload['weed_management']['applications'] as List).length,
+        2,
+      );
+      expect(rebuiltPayload['nutrient_management']['fertilizer_type'], 'Urea');
+      expect(rebuiltPayload['weed_management']['herbicide_name'], 'Glyphosate');
     },
   );
 

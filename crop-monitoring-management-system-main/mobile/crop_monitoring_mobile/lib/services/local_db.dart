@@ -225,9 +225,7 @@ class LocalDB {
         continue;
       }
 
-      final existingFingerprint =
-          payload['record_fingerprint']?.toString() ??
-          buildObservationFingerprint(payload);
+      final existingFingerprint = buildObservationFingerprint(payload);
 
       if (existingFingerprint == fingerprint) {
         return true;

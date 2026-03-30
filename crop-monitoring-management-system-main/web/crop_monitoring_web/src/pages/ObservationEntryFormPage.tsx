@@ -7,7 +7,7 @@ import {
     Button,
     CircularProgress,
     Alert,
-    useTheme,
+    Snackbar,
     Stack,
 } from '@mui/material'
 import { AddCircleOutline, RefreshOutlined, DownloadOutlined } from '@mui/icons-material'
@@ -20,8 +20,8 @@ import {
 } from '@/components/Data/ObservationEntryDataTable'
 
 export function ObservationEntryFormPage() {
-    const theme = useTheme()
     const [intakeOpen, setIntakeOpen] = useState(false)
+    const [saveSuccessMessage, setSaveSuccessMessage] = useState('')
     const {
         data: forms = [],
         isLoading: loading,
@@ -65,12 +65,6 @@ export function ObservationEntryFormPage() {
 
     return (
         <Container maxWidth="xl" sx={{ pb: 6, pt: 4 }}>
-            <Box sx={{ mb: 4 }}>
-                <Typography variant="h3" fontWeight={900} sx={{ color: 'text.primary', mb: 1 }}>
-                    Crop <span style={{ color: theme.palette.primary.light }}>Monitoring Entries</span>
-                </Typography>
-            </Box>
-
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
                 <Button
                     variant="contained"
@@ -124,8 +118,26 @@ export function ObservationEntryFormPage() {
             <ObservationEntryIntakeDialog
                 open={intakeOpen}
                 onClose={() => setIntakeOpen(false)}
-                onSubmitted={() => void refetch()}
+                onSubmitted={async () => {
+                    await refetch()
+                }}
+                onSaved={setSaveSuccessMessage}
+                existingForms={forms}
             />
+            <Snackbar
+                open={!!saveSuccessMessage}
+                autoHideDuration={4000}
+                onClose={() => setSaveSuccessMessage('')}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={() => setSaveSuccessMessage('')}
+                    severity="success"
+                    sx={{ width: '100%' }}
+                >
+                    {saveSuccessMessage}
+                </Alert>
+            </Snackbar>
         </Container>
     )
 }

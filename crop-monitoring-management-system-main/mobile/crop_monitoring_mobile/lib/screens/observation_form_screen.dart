@@ -18,6 +18,104 @@ import '../utils/app_theme.dart';
 import '../widgets/botanical_background.dart';
 import '../utils/geo_utils.dart';
 
+class _FertilizerApplicationEntry {
+  final TextEditingController fertilizerTypeCtrl;
+  final TextEditingController applicationRateCtrl;
+  DateTime? applicationDate;
+  DateTime? foliarSamplingDate;
+
+  _FertilizerApplicationEntry({
+    String fertilizerType = '',
+    String applicationRate = '',
+    this.applicationDate,
+    this.foliarSamplingDate,
+  }) : fertilizerTypeCtrl = TextEditingController(text: fertilizerType),
+       applicationRateCtrl = TextEditingController(text: applicationRate);
+
+  factory _FertilizerApplicationEntry.fromMap(Map<String, dynamic> source) {
+    return _FertilizerApplicationEntry(
+      fertilizerType: source['fertilizer_type']?.toString() ?? '',
+      applicationRate: source['application_rate']?.toString() ?? '',
+      applicationDate: _parseDate(source['application_date']),
+      foliarSamplingDate: _parseDate(source['foliar_sampling_date']),
+    );
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Map<String, dynamic>? toMap() {
+    final fertilizerType = fertilizerTypeCtrl.text.trim();
+    final applicationRate = applicationRateCtrl.text.trim();
+
+    final map = <String, dynamic>{};
+    if (fertilizerType.isNotEmpty) map['fertilizer_type'] = fertilizerType;
+    if (applicationDate != null) {
+      map['application_date'] = applicationDate!.toIso8601String();
+    }
+    if (applicationRate.isNotEmpty) map['application_rate'] = applicationRate;
+    if (foliarSamplingDate != null) {
+      map['foliar_sampling_date'] = foliarSamplingDate!.toIso8601String();
+    }
+
+    return map.isEmpty ? null : map;
+  }
+
+  void dispose() {
+    fertilizerTypeCtrl.dispose();
+    applicationRateCtrl.dispose();
+  }
+}
+
+class _HerbicideApplicationEntry {
+  final TextEditingController herbicideNameCtrl;
+  final TextEditingController applicationRateCtrl;
+  DateTime? applicationDate;
+
+  _HerbicideApplicationEntry({
+    String herbicideName = '',
+    String applicationRate = '',
+    this.applicationDate,
+  }) : herbicideNameCtrl = TextEditingController(text: herbicideName),
+       applicationRateCtrl = TextEditingController(text: applicationRate);
+
+  factory _HerbicideApplicationEntry.fromMap(Map<String, dynamic> source) {
+    return _HerbicideApplicationEntry(
+      herbicideName: source['herbicide_name']?.toString() ?? '',
+      applicationRate: source['application_rate']?.toString() ?? '',
+      applicationDate: _parseDate(source['application_date']),
+    );
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Map<String, dynamic>? toMap() {
+    final herbicideName = herbicideNameCtrl.text.trim();
+    final applicationRate = applicationRateCtrl.text.trim();
+
+    final map = <String, dynamic>{};
+    if (herbicideName.isNotEmpty) map['herbicide_name'] = herbicideName;
+    if (applicationDate != null) {
+      map['application_date'] = applicationDate!.toIso8601String();
+    }
+    if (applicationRate.isNotEmpty) map['application_rate'] = applicationRate;
+
+    return map.isEmpty ? null : map;
+  }
+
+  void dispose() {
+    herbicideNameCtrl.dispose();
+    applicationRateCtrl.dispose();
+  }
+}
+
 class ObservationFormScreen extends StatefulWidget {
   final Map<String, dynamic>? initialObservation;
   final int? initialLocalObservationId;
@@ -36,6 +134,7 @@ class ObservationFormScreen extends StatefulWidget {
 
 class _ObservationFormScreenState extends State<ObservationFormScreen> {
   static const String _datePickerPlaceholder = 'dd/mm/year';
+  static const int _maxApplicationLoops = 10;
   static const LocationSettings _singleFixLocationSettings = LocationSettings(
     accuracy: LocationAccuracy.high,
   );
@@ -80,6 +179,7 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
   ];
   static const List<String> _fallowCropClassOptions = ['None'];
   static const List<String> _residueTypeOptions = [
+    'Sugarcane',
     'Soyabeans',
     'Sugarbeans',
     'Sunnhemp',
@@ -159,10 +259,12 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
   final _residualRemarksCtrl = TextEditingController();
   final _fertilizerTypeCtrl = TextEditingController();
   final _applicationRateCtrl = TextEditingController();
+  final List<_FertilizerApplicationEntry> _extraFertilizerApplications = [];
   DateTime? _applicationDate;
   DateTime? _foliarSamplingDate;
   DateTime? _weedApplicationDate;
   final _weedApplicationRateCtrl = TextEditingController();
+  final List<_HerbicideApplicationEntry> _extraHerbicideApplications = [];
   final _pestControlCtrl = TextEditingController();
   final _diseaseControlCtrl = TextEditingController();
   final _weedControlCtrl = TextEditingController();
@@ -428,6 +530,257 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
     return DateTime.tryParse(raw);
   }
 
+  List<Map<String, dynamic>> _listOfMapsFromDynamic(dynamic value) {
+    if (value is List) {
+      return value
+          .whereType<dynamic>()
+          .map(
+            (item) => item is Map<String, dynamic>
+                ? Map<String, dynamic>.from(item)
+                : item is Map
+                ? Map<String, dynamic>.from(item)
+                : <String, dynamic>{},
+          )
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+
+    if (value is String && value.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is List) {
+          return decoded
+              .whereType<dynamic>()
+              .map(
+                (item) => item is Map<String, dynamic>
+                    ? Map<String, dynamic>.from(item)
+                    : item is Map
+                    ? Map<String, dynamic>.from(item)
+                    : <String, dynamic>{},
+              )
+              .where((item) => item.isNotEmpty)
+              .toList();
+        }
+      } catch (_) {
+        return <Map<String, dynamic>>[];
+      }
+    }
+
+    return <Map<String, dynamic>>[];
+  }
+
+  Map<String, dynamic>? _normalizeFertilizerApplicationMap(
+    Map<String, dynamic> source,
+  ) {
+    final fertilizerType = source['fertilizer_type']?.toString().trim() ?? '';
+    final applicationDate = _tryParseDate(source['application_date']);
+    final applicationRate = source['application_rate']?.toString().trim() ?? '';
+    final foliarSamplingDate = _tryParseDate(source['foliar_sampling_date']);
+
+    final map = <String, dynamic>{};
+    if (fertilizerType.isNotEmpty) map['fertilizer_type'] = fertilizerType;
+    if (applicationDate != null) {
+      map['application_date'] = applicationDate.toIso8601String();
+    }
+    if (applicationRate.isNotEmpty) map['application_rate'] = applicationRate;
+    if (foliarSamplingDate != null) {
+      map['foliar_sampling_date'] = foliarSamplingDate.toIso8601String();
+    }
+
+    return map.isEmpty ? null : map;
+  }
+
+  Map<String, dynamic>? _normalizeHerbicideApplicationMap(
+    Map<String, dynamic> source,
+  ) {
+    final herbicideName = source['herbicide_name']?.toString().trim() ?? '';
+    final applicationDate = _tryParseDate(source['application_date']);
+    final applicationRate = source['application_rate']?.toString().trim() ?? '';
+
+    final map = <String, dynamic>{};
+    if (herbicideName.isNotEmpty) map['herbicide_name'] = herbicideName;
+    if (applicationDate != null) {
+      map['application_date'] = applicationDate.toIso8601String();
+    }
+    if (applicationRate.isNotEmpty) map['application_rate'] = applicationRate;
+
+    return map.isEmpty ? null : map;
+  }
+
+  List<Map<String, dynamic>> _extractFertilizerApplications({
+    dynamic applications,
+    Map<String, dynamic>? fallbackSource,
+  }) {
+    final normalizedApplications = _listOfMapsFromDynamic(applications)
+        .map(_normalizeFertilizerApplicationMap)
+        .whereType<Map<String, dynamic>>()
+        .take(_maxApplicationLoops)
+        .toList();
+
+    if (normalizedApplications.isNotEmpty) {
+      return normalizedApplications;
+    }
+
+    final fallback = fallbackSource ?? const <String, dynamic>{};
+    final single = _normalizeFertilizerApplicationMap({
+      'fertilizer_type':
+          fallback['fertilizer_type'] ?? fallback['fertiliser_type'],
+      'application_date':
+          fallback['nutrient_application_date'] ?? fallback['application_date'],
+      'application_rate': fallback['application_rate'],
+      'foliar_sampling_date': fallback['foliar_sampling_date'],
+    });
+
+    return single == null ? <Map<String, dynamic>>[] : [single];
+  }
+
+  List<Map<String, dynamic>> _extractHerbicideApplications({
+    dynamic applications,
+    Map<String, dynamic>? fallbackSource,
+  }) {
+    final normalizedApplications = _listOfMapsFromDynamic(applications)
+        .map(_normalizeHerbicideApplicationMap)
+        .whereType<Map<String, dynamic>>()
+        .take(_maxApplicationLoops)
+        .toList();
+
+    if (normalizedApplications.isNotEmpty) {
+      return normalizedApplications;
+    }
+
+    final fallback = fallbackSource ?? const <String, dynamic>{};
+    final single = _normalizeHerbicideApplicationMap({
+      'herbicide_name': fallback['herbicide_name'] ?? fallback['weed_control'],
+      'application_date':
+          fallback['weed_application_date'] ??
+          fallback['herbicide_application_date'],
+      'application_rate':
+          fallback['weed_application_rate'] ??
+          fallback['herbicide_application_rate'],
+    });
+
+    return single == null ? <Map<String, dynamic>>[] : [single];
+  }
+
+  void _disposeExtraFertilizerApplications() {
+    for (final entry in _extraFertilizerApplications) {
+      entry.dispose();
+    }
+    _extraFertilizerApplications.clear();
+  }
+
+  void _disposeExtraHerbicideApplications() {
+    for (final entry in _extraHerbicideApplications) {
+      entry.dispose();
+    }
+    _extraHerbicideApplications.clear();
+  }
+
+  void _applyFertilizerApplications(List<Map<String, dynamic>> applications) {
+    _fertilizerTypeCtrl.clear();
+    _applicationRateCtrl.clear();
+    _applicationDate = null;
+    _foliarSamplingDate = null;
+    _disposeExtraFertilizerApplications();
+
+    if (applications.isEmpty) return;
+
+    final first = applications.first;
+    _fertilizerTypeCtrl.text = first['fertilizer_type']?.toString() ?? '';
+    _applicationDate = _tryParseDate(first['application_date']);
+    _applicationRateCtrl.text = first['application_rate']?.toString() ?? '';
+    _foliarSamplingDate = _tryParseDate(first['foliar_sampling_date']);
+
+    for (final application
+        in applications.skip(1).take(_maxApplicationLoops - 1)) {
+      _extraFertilizerApplications.add(
+        _FertilizerApplicationEntry.fromMap(application),
+      );
+    }
+  }
+
+  void _applyHerbicideApplications(List<Map<String, dynamic>> applications) {
+    _weedControlCtrl.clear();
+    _weedApplicationRateCtrl.clear();
+    _weedApplicationDate = null;
+    _disposeExtraHerbicideApplications();
+
+    if (applications.isEmpty) return;
+
+    final first = applications.first;
+    _weedControlCtrl.text = first['herbicide_name']?.toString() ?? '';
+    _weedApplicationDate = _tryParseDate(first['application_date']);
+    _weedApplicationRateCtrl.text = first['application_rate']?.toString() ?? '';
+
+    for (final application
+        in applications.skip(1).take(_maxApplicationLoops - 1)) {
+      _extraHerbicideApplications.add(
+        _HerbicideApplicationEntry.fromMap(application),
+      );
+    }
+  }
+
+  List<Map<String, dynamic>> _collectFertilizerApplications() {
+    final applications = <Map<String, dynamic>>[];
+    final first = _normalizeFertilizerApplicationMap({
+      'fertilizer_type': _fertilizerTypeCtrl.text,
+      'application_date': _applicationDate?.toIso8601String(),
+      'application_rate': _applicationRateCtrl.text,
+      'foliar_sampling_date': _foliarSamplingDate?.toIso8601String(),
+    });
+    if (first != null) {
+      applications.add(first);
+    }
+
+    for (final entry in _extraFertilizerApplications) {
+      final map = entry.toMap();
+      if (map != null) {
+        applications.add(map);
+      }
+    }
+
+    return applications.take(_maxApplicationLoops).toList();
+  }
+
+  List<Map<String, dynamic>> _collectHerbicideApplications() {
+    final applications = <Map<String, dynamic>>[];
+    final first = _normalizeHerbicideApplicationMap({
+      'herbicide_name': _weedControlCtrl.text,
+      'application_date': _weedApplicationDate?.toIso8601String(),
+      'application_rate': _weedApplicationRateCtrl.text,
+    });
+    if (first != null) {
+      applications.add(first);
+    }
+
+    for (final entry in _extraHerbicideApplications) {
+      final map = entry.toMap();
+      if (map != null) {
+        applications.add(map);
+      }
+    }
+
+    return applications.take(_maxApplicationLoops).toList();
+  }
+
+  Map<String, dynamic> _currentNutrientManagementSummary() {
+    final normalized = normalizeObservationPayload({
+      'nutrient_management': {'applications': _collectFertilizerApplications()},
+    });
+
+    return Map<String, dynamic>.from(
+      normalized['nutrient_management'] ?? const {},
+    );
+  }
+
+  Map<String, dynamic> _currentWeedManagementSummary() {
+    final normalized = normalizeObservationPayload({
+      'weed_management': {'applications': _collectHerbicideApplications()},
+    });
+
+    return Map<String, dynamic>.from(normalized['weed_management'] ?? const {});
+  }
+
   double? _toNullableDouble(dynamic value) {
     if (value is num) return value.toDouble();
     final raw = value?.toString().trim() ?? '';
@@ -480,9 +833,8 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
       exactDuplicateCount += 1;
     }
 
-    final shouldShowBlock = sameFieldCount > 1 &&
-        blockId.isNotEmpty &&
-        blockId != fieldId;
+    final shouldShowBlock =
+        sameFieldCount > 1 && blockId.isNotEmpty && blockId != fieldId;
     final baseLabel = shouldShowBlock ? '$fieldId • $blockId' : fieldId;
 
     if (exactDuplicateCount > 1) {
@@ -555,18 +907,27 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
     bool keepDateRecorded = true,
     bool refreshSavedFieldRecord = true,
     bool autoLoadSavedRecord = false,
+    bool adoptRecordIdentity = false,
   }) {
     final fieldId = _monitoringFieldIdLabel(record);
     final blockId = _monitoringFieldBlockId(record);
     final area = _monitoringFieldArea(record);
     final monitoringBlock = _buildMonitoringFieldBlock(record);
+    final normalizedRecord = buildObservationPayloadFromSugarcaneMonitoringRow(
+      record,
+    );
+    final recordMonitoringRowId = _toNullableInt(record['id']);
 
     setState(() {
-      _editingSourceObservation = null;
+      _editingSourceObservation = adoptRecordIdentity ? normalizedRecord : null;
       _editingLocalObservationId = null;
-      _editingMonitoringRowId = null;
-      _editingClientUuid = null;
-      _editingCreatedAt = null;
+      _editingMonitoringRowId = adoptRecordIdentity ? recordMonitoringRowId : null;
+      _editingClientUuid = adoptRecordIdentity
+          ? normalizedRecord['client_uuid']?.toString().trim()
+          : null;
+      _editingCreatedAt = adoptRecordIdentity
+          ? _tryParseDate(normalizedRecord['created_at'])
+          : null;
       _selectedMonitoringFieldRecord = Map<String, dynamic>.from(record);
       _selectedMonitoringFieldRecordId = _monitoringFieldRecordId(record);
       _selectedBlock = monitoringBlock;
@@ -624,16 +985,18 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
         fallback: _residueManagementMethodOptions.last,
       );
       _residualRemarksCtrl.text = record['residue_remarks']?.toString() ?? '';
-      _fertilizerTypeCtrl.text = record['fertiliser_type']?.toString() ?? '';
-      _applicationDate = _tryParseDate(record['application_date']);
-      _applicationRateCtrl.text = record['application_rate']?.toString() ?? '';
-      _foliarSamplingDate = _tryParseDate(record['foliar_sampling_date']);
-      _weedControlCtrl.text = record['herbicide_name']?.toString() ?? '';
-      _weedApplicationDate = _tryParseDate(
-        record['herbicide_application_date'],
+      _applyFertilizerApplications(
+        _extractFertilizerApplications(
+          applications: record['fertilizer_applications'],
+          fallbackSource: record,
+        ),
       );
-      _weedApplicationRateCtrl.text =
-          record['herbicide_application_rate']?.toString() ?? '';
+      _applyHerbicideApplications(
+        _extractHerbicideApplications(
+          applications: record['herbicide_applications'],
+          fallbackSource: record,
+        ),
+      );
       _pestControlCtrl.text = record['pest_remarks']?.toString() ?? '';
       _diseaseControlCtrl.text = record['disease_remarks']?.toString() ?? '';
 
@@ -899,6 +1262,8 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
       _weedApplicationDate = null;
       _applicationRateCtrl.clear();
       _weedApplicationRateCtrl.clear();
+      _disposeExtraFertilizerApplications();
+      _disposeExtraHerbicideApplications();
       _pestControlCtrl.clear();
       _diseaseControlCtrl.clear();
       _weedControlCtrl.clear();
@@ -1100,24 +1465,29 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
       );
       _residualRemarksCtrl.text =
           residualManagement['remarks']?.toString() ?? '';
-      _fertilizerTypeCtrl.text =
-          nutrientManagement['fertilizer_type']?.toString() ?? '';
-      _applicationDate = _tryParseDate(
-        nutrientManagement['application_date'] ??
-            normalized['nutrient_application_date'],
+      _applyFertilizerApplications(
+        _extractFertilizerApplications(
+          applications: nutrientManagement['applications'],
+          fallbackSource: {
+            'fertilizer_type': nutrientManagement['fertilizer_type'],
+            'nutrient_application_date': nutrientManagement['application_date'],
+            'application_rate': nutrientManagement['application_rate'],
+            'foliar_sampling_date': nutrientManagement['foliar_sampling_date'],
+          },
+        ),
       );
-      _applicationRateCtrl.text =
-          nutrientManagement['application_rate']?.toString() ?? '';
-      _foliarSamplingDate = _tryParseDate(
-        nutrientManagement['foliar_sampling_date'],
+      _applyHerbicideApplications(
+        _extractHerbicideApplications(
+          applications: weedManagement['applications'],
+          fallbackSource: {
+            'herbicide_name':
+                weedManagement['herbicide_name'] ??
+                controlMethods['weed_control'],
+            'weed_application_date': weedManagement['application_date'],
+            'weed_application_rate': weedManagement['application_rate'],
+          },
+        ),
       );
-      _weedControlCtrl.text =
-          weedManagement['herbicide_name']?.toString() ??
-          controlMethods['weed_control']?.toString() ??
-          '';
-      _weedApplicationDate = _tryParseDate(weedManagement['application_date']);
-      _weedApplicationRateCtrl.text =
-          weedManagement['application_rate']?.toString() ?? '';
       _pestControlCtrl.text =
           cropProtection['pest_remarks']?.toString() ??
           controlMethods['pest_control']?.toString() ??
@@ -1463,6 +1833,11 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
   }
 
   Future<void> _saveDraft() async {
+    final fertilizerApplications = _collectFertilizerApplications();
+    final herbicideApplications = _collectHerbicideApplications();
+    final currentNutrientManagement = _currentNutrientManagementSummary();
+    final currentWeedManagement = _currentWeedManagementSummary();
+
     final Map<String, dynamic> draft = {
       // Field Identification
       'selected_monitoring_field_id': _selectedMonitoringFieldRecordId,
@@ -1507,17 +1882,30 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
       'residue_management_method': _managementMethodCtrl.text,
       'management_method': _managementMethodCtrl.text,
       'residual_management_remarks': _residualRemarksCtrl.text,
-      'fertilizer_type': _fertilizerTypeCtrl.text,
-      'nutrient_application_date': _applicationDate?.toIso8601String(),
-      'application_date': _applicationDate?.toIso8601String(),
-      'has_application_date': _applicationDate != null,
-      'application_rate': _applicationRateCtrl.text,
-      'foliar_sampling_date': _foliarSamplingDate?.toIso8601String(),
-      'has_foliar_sampling_date': _foliarSamplingDate != null,
-      'herbicide_name': _weedControlCtrl.text,
-      'weed_application_date': _weedApplicationDate?.toIso8601String(),
-      'has_weed_application_date': _weedApplicationDate != null,
-      'weed_application_rate': _weedApplicationRateCtrl.text,
+      'fertilizer_type':
+          currentNutrientManagement['fertilizer_type']?.toString() ?? '',
+      'nutrient_application_date': currentNutrientManagement['application_date']
+          ?.toString(),
+      'application_date': currentNutrientManagement['application_date']
+          ?.toString(),
+      'has_application_date':
+          currentNutrientManagement['application_date'] != null,
+      'application_rate':
+          currentNutrientManagement['application_rate']?.toString() ?? '',
+      'foliar_sampling_date': currentNutrientManagement['foliar_sampling_date']
+          ?.toString(),
+      'has_foliar_sampling_date':
+          currentNutrientManagement['foliar_sampling_date'] != null,
+      'fertilizer_applications': fertilizerApplications,
+      'herbicide_name':
+          currentWeedManagement['herbicide_name']?.toString() ?? '',
+      'weed_application_date': currentWeedManagement['application_date']
+          ?.toString(),
+      'has_weed_application_date':
+          currentWeedManagement['application_date'] != null,
+      'weed_application_rate':
+          currentWeedManagement['application_rate']?.toString() ?? '',
+      'herbicide_applications': herbicideApplications,
       'pest_remarks': _pestControlCtrl.text,
       'disease_remarks': _diseaseControlCtrl.text,
     };
@@ -1550,8 +1938,7 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
         );
         _fieldIdCtrl.text = draft['field_id'] ?? '';
         _blockIdCtrl.text = draft['block_id'] ?? '';
-        _fieldNameCtrl.text =
-            draft['field_name'] ?? draft['field_id'] ?? '';
+        _fieldNameCtrl.text = draft['field_name'] ?? draft['field_id'] ?? '';
         _areaCtrl.text = draft['area'] ?? '';
 
         // Basic Info
@@ -1618,26 +2005,18 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
           fallback: _residueManagementMethodOptions.last,
         );
         _residualRemarksCtrl.text = draft['residual_management_remarks'] ?? '';
-        _fertilizerTypeCtrl.text = draft['fertilizer_type'] ?? '';
-        _applicationDate = _readOptionalDraftDate(
-          draft,
-          'has_application_date',
-          draft['nutrient_application_date'] ?? draft['application_date'],
+        _applyFertilizerApplications(
+          _extractFertilizerApplications(
+            applications: draft['fertilizer_applications'],
+            fallbackSource: draft,
+          ),
         );
-        _applicationRateCtrl.text = draft['application_rate'] ?? '';
-        _foliarSamplingDate = _readOptionalDraftDate(
-          draft,
-          'has_foliar_sampling_date',
-          draft['foliar_sampling_date'],
+        _applyHerbicideApplications(
+          _extractHerbicideApplications(
+            applications: draft['herbicide_applications'],
+            fallbackSource: draft,
+          ),
         );
-        _weedControlCtrl.text =
-            draft['herbicide_name'] ?? draft['weed_control'] ?? '';
-        _weedApplicationDate = _readOptionalDraftDate(
-          draft,
-          'has_weed_application_date',
-          draft['weed_application_date'],
-        );
-        _weedApplicationRateCtrl.text = draft['weed_application_rate'] ?? '';
         _pestControlCtrl.text =
             draft['pest_remarks'] ?? draft['pest_control'] ?? '';
         _diseaseControlCtrl.text =
@@ -1671,10 +2050,6 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
       _caneQualityRemarksCtrl.text,
       _managementMethodCtrl.text,
       _residualRemarksCtrl.text,
-      _fertilizerTypeCtrl.text,
-      _applicationRateCtrl.text,
-      _weedApplicationRateCtrl.text,
-      _weedControlCtrl.text,
       _pestControlCtrl.text,
       _diseaseControlCtrl.text,
     ];
@@ -1698,9 +2073,8 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
         _actualCuttingDate != null ||
         _expectedHarvestDate != null ||
         _harvestDate != null ||
-        _applicationDate != null ||
-        _foliarSamplingDate != null ||
-        _weedApplicationDate != null;
+        _collectFertilizerApplications().isNotEmpty ||
+        _collectHerbicideApplications().isNotEmpty;
   }
 
   bool _validateBusinessRules() {
@@ -1770,7 +2144,6 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
   Map<String, dynamic> _buildObservationData() {
     final now = DateTime.now();
     final remarks = _remarksCtrl.text.trim();
-    final herbicideName = _weedControlCtrl.text.trim();
     final pestRemarks = _pestControlCtrl.text.trim();
     final diseaseRemarks = _diseaseControlCtrl.text.trim();
     final cropClass = _cropClassCtrl.text.trim();
@@ -1779,11 +2152,26 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
     final trialName = _trialNameCtrl.text.trim();
     final trialNumber = _trialNumberCtrl.text.trim();
     final tamMmValue = _tamMmCtrl.text.trim();
-    final nutrientApplicationRate = double.tryParse(
-      _applicationRateCtrl.text.trim(),
+    final fertilizerApplications = _collectFertilizerApplications();
+    final herbicideApplications = _collectHerbicideApplications();
+    final currentNutrientManagement = _currentNutrientManagementSummary();
+    final currentWeedManagement = _currentWeedManagementSummary();
+    final currentNutrientApplicationDate = _tryParseDate(
+      currentNutrientManagement['application_date'],
     );
-    final weedApplicationRate = double.tryParse(
-      _weedApplicationRateCtrl.text.trim(),
+    final currentFoliarSamplingDate = _tryParseDate(
+      currentNutrientManagement['foliar_sampling_date'],
+    );
+    final currentNutrientApplicationRate = double.tryParse(
+      currentNutrientManagement['application_rate']?.toString() ?? '',
+    );
+    final currentHerbicideName =
+        currentWeedManagement['herbicide_name']?.toString().trim() ?? '';
+    final currentWeedApplicationDate = _tryParseDate(
+      currentWeedManagement['application_date'],
+    );
+    final currentWeedApplicationRate = double.tryParse(
+      currentWeedManagement['application_rate']?.toString() ?? '',
     );
     final harvestYieldAmount = double.tryParse(_harvestYieldCtrl.text.trim());
     final calculatedBlockSize =
@@ -1846,8 +2234,10 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
               waterSourceType: _waterSourceCtrl.text.trim(),
             ),
             nutrient: NutrientManagement(
-              fertilizerType: _fertilizerTypeCtrl.text.trim(),
-              applicationDate: _applicationDate,
+              fertilizerType:
+                  currentNutrientManagement['fertilizer_type']?.toString() ??
+                  '',
+              applicationDate: currentNutrientApplicationDate,
               applicationRate: 0,
               macronutrientNpk: '',
             ),
@@ -2024,43 +2414,92 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
     irrigationManagement['irrigation_type'] = _irrigationTypeCtrl.text.trim();
     irrigationManagement['water_source'] = _waterSourceCtrl.text.trim();
     irrigationManagement.remove('irrigation_date');
-    nutrientManagement['fertilizer_type'] = _fertilizerTypeCtrl.text.trim();
-    if (_applicationDate != null) {
-      nutrientManagement['application_date'] = _applicationDate!
+    nutrientManagement['fertilizer_type'] =
+        currentNutrientManagement['fertilizer_type']?.toString() ?? '';
+    if (currentNutrientApplicationDate != null) {
+      nutrientManagement['application_date'] = currentNutrientApplicationDate
           .toIso8601String();
-      observationData['nutrient_application_date'] = _applicationDate!
-          .toIso8601String();
+      observationData['nutrient_application_date'] =
+          currentNutrientApplicationDate.toIso8601String();
     } else {
       nutrientManagement.remove('application_date');
       observationData.remove('nutrient_application_date');
     }
-    if (nutrientApplicationRate != null) {
-      nutrientManagement['application_rate'] = nutrientApplicationRate;
+    if (currentNutrientApplicationRate != null) {
+      nutrientManagement['application_rate'] = currentNutrientApplicationRate;
     } else {
       nutrientManagement.remove('application_rate');
     }
-    if (_foliarSamplingDate != null) {
-      nutrientManagement['foliar_sampling_date'] = _foliarSamplingDate!
+    if (currentFoliarSamplingDate != null) {
+      nutrientManagement['foliar_sampling_date'] = currentFoliarSamplingDate
           .toIso8601String();
     } else {
       nutrientManagement.remove('foliar_sampling_date');
     }
+    if (fertilizerApplications.isNotEmpty) {
+      nutrientManagement['applications'] = fertilizerApplications;
+      observationData['fertilizer_applications'] = fertilizerApplications;
+    } else {
+      nutrientManagement.remove('applications');
+      observationData.remove('fertilizer_applications');
+    }
 
-    if (herbicideName.isNotEmpty) {
-      weedManagement['herbicide_name'] = herbicideName;
+    if (currentHerbicideName.isNotEmpty) {
+      weedManagement['herbicide_name'] = currentHerbicideName;
     } else {
       weedManagement.remove('herbicide_name');
     }
-    if (_weedApplicationDate != null) {
-      weedManagement['application_date'] = _weedApplicationDate!
+    if (currentWeedApplicationDate != null) {
+      weedManagement['application_date'] = currentWeedApplicationDate
           .toIso8601String();
     } else {
       weedManagement.remove('application_date');
     }
-    if (weedApplicationRate != null) {
-      weedManagement['application_rate'] = weedApplicationRate;
+    if (currentWeedApplicationRate != null) {
+      weedManagement['application_rate'] = currentWeedApplicationRate;
     } else {
       weedManagement.remove('application_rate');
+    }
+    if (herbicideApplications.isNotEmpty) {
+      weedManagement['applications'] = herbicideApplications;
+      observationData['herbicide_applications'] = herbicideApplications;
+    } else {
+      weedManagement.remove('applications');
+      observationData.remove('herbicide_applications');
+    }
+    if (currentHerbicideName.isNotEmpty) {
+      observationData['herbicide_name'] = currentHerbicideName;
+    } else {
+      observationData.remove('herbicide_name');
+    }
+    if (currentWeedApplicationDate != null) {
+      observationData['weed_application_date'] = currentWeedApplicationDate
+          .toIso8601String();
+    } else {
+      observationData.remove('weed_application_date');
+    }
+    if (currentWeedApplicationRate != null) {
+      observationData['weed_application_rate'] = currentWeedApplicationRate;
+    } else {
+      observationData.remove('weed_application_rate');
+    }
+    if ((nutrientManagement['fertilizer_type']?.toString().trim() ?? '')
+        .isNotEmpty) {
+      observationData['fertilizer_type'] =
+          nutrientManagement['fertilizer_type'];
+    } else {
+      observationData.remove('fertilizer_type');
+    }
+    if (currentNutrientApplicationRate != null) {
+      observationData['application_rate'] = currentNutrientApplicationRate;
+    } else {
+      observationData.remove('application_rate');
+    }
+    if (currentFoliarSamplingDate != null) {
+      observationData['foliar_sampling_date'] = currentFoliarSamplingDate
+          .toIso8601String();
+    } else {
+      observationData.remove('foliar_sampling_date');
     }
 
     if (pestRemarks.isNotEmpty) {
@@ -2346,6 +2785,8 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
     _residueTypeCtrl.dispose();
     _managementMethodCtrl.dispose();
     _residualRemarksCtrl.dispose();
+    _disposeExtraFertilizerApplications();
+    _disposeExtraHerbicideApplications();
     _fertilizerTypeCtrl.dispose();
     _applicationRateCtrl.dispose();
     _weedApplicationRateCtrl.dispose();
@@ -2580,6 +3021,400 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
     );
   }
 
+  Widget _buildCurrentApplicationSummaryCard({
+    required String title,
+    required IconData icon,
+    required String emptyText,
+    required String primaryValue,
+    required DateTime? applicationDate,
+    String? rateText,
+    String? secondaryText,
+  }) {
+    final details = <String>[
+      if (primaryValue.trim().isNotEmpty) primaryValue.trim(),
+      if (applicationDate != null)
+        'Date: ${_formatDatePickerText(applicationDate)}',
+      if ((rateText?.trim().isNotEmpty ?? false)) 'Rate: ${rateText!.trim()}',
+      if ((secondaryText?.trim().isNotEmpty ?? false)) secondaryText!.trim(),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: _buildCard(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: AppColors.coolGradient),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: AppColors.forestGreen, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    details.isEmpty ? emptyText : details.join(' • '),
+                    style: const TextStyle(
+                      color: AppColors.textGray,
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildApplicationLoopFooter({
+    required int count,
+    required String addLabel,
+    required VoidCallback? onAdd,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.borderSoft),
+            ),
+            child: Text(
+              '$count / $_maxApplicationLoops applications',
+              style: const TextStyle(
+                color: AppColors.forestGreen,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_rounded),
+            label: Text(addLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFertilizerApplicationCard({
+    required int index,
+    required TextEditingController fertilizerTypeCtrl,
+    required TextEditingController applicationRateCtrl,
+    required DateTime? applicationDate,
+    required ValueChanged<DateTime> onApplicationDateChanged,
+    required DateTime? foliarSamplingDate,
+    required ValueChanged<DateTime> onFoliarSamplingDateChanged,
+    VoidCallback? onRemove,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: _buildCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: AppColors.primaryGradient,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.compost_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Fertilizer Application $index',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+                if (onRemove != null)
+                  TextButton.icon(
+                    onPressed: onRemove,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                    label: const Text('Remove'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildStyledTextField(
+              label: 'Fertilizer Type',
+              controller: fertilizerTypeCtrl,
+              icon: Icons.compost_rounded,
+            ),
+            _buildStyledDatePicker(
+              label: 'Nutrient Application Date',
+              current: applicationDate,
+              onChanged: onApplicationDateChanged,
+            ),
+            _buildResponsivePair(
+              _buildStyledTextField(
+                label: 'Application Rate',
+                controller: applicationRateCtrl,
+                icon: Icons.scale_rounded,
+                isNumber: true,
+              ),
+              _buildStyledDatePicker(
+                label: 'Foliar Sampling Date',
+                current: foliarSamplingDate,
+                onChanged: onFoliarSamplingDateChanged,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHerbicideApplicationCard({
+    required int index,
+    required TextEditingController herbicideNameCtrl,
+    required TextEditingController applicationRateCtrl,
+    required DateTime? applicationDate,
+    required ValueChanged<DateTime> onApplicationDateChanged,
+    VoidCallback? onRemove,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: _buildCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: AppColors.coolGradient,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.grass_rounded,
+                    color: AppColors.forestGreen,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Herbicide Application $index',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+                if (onRemove != null)
+                  TextButton.icon(
+                    onPressed: onRemove,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                    label: const Text('Remove'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildStyledTextField(
+              label: 'Herbicide Name',
+              controller: herbicideNameCtrl,
+              icon: Icons.grass_rounded,
+            ),
+            _buildResponsivePair(
+              _buildStyledDatePicker(
+                label: 'Weed Application Date',
+                current: applicationDate,
+                onChanged: onApplicationDateChanged,
+              ),
+              _buildStyledTextField(
+                label: 'Weed Application Rate',
+                controller: applicationRateCtrl,
+                icon: Icons.straighten_rounded,
+                isNumber: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFertilizerApplicationsSection() {
+    final currentNutrientManagement = _currentNutrientManagementSummary();
+    final currentApplicationDate = _tryParseDate(
+      currentNutrientManagement['application_date'],
+    );
+    final currentFoliarSamplingDate = _tryParseDate(
+      currentNutrientManagement['foliar_sampling_date'],
+    );
+    final totalApplications = 1 + _extraFertilizerApplications.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCurrentApplicationSummaryCard(
+          title: 'Current Fertilizer Application',
+          icon: Icons.compost_rounded,
+          emptyText: 'No fertilizer application added yet.',
+          primaryValue:
+              currentNutrientManagement['fertilizer_type']?.toString() ?? '',
+          applicationDate: currentApplicationDate,
+          rateText: currentNutrientManagement['application_rate']?.toString(),
+          secondaryText: currentFoliarSamplingDate == null
+              ? null
+              : 'Foliar: ${_formatDatePickerText(currentFoliarSamplingDate)}',
+        ),
+        _buildFertilizerApplicationCard(
+          index: 1,
+          fertilizerTypeCtrl: _fertilizerTypeCtrl,
+          applicationRateCtrl: _applicationRateCtrl,
+          applicationDate: _applicationDate,
+          onApplicationDateChanged: (date) =>
+              setState(() => _applicationDate = date),
+          foliarSamplingDate: _foliarSamplingDate,
+          onFoliarSamplingDateChanged: (date) =>
+              setState(() => _foliarSamplingDate = date),
+        ),
+        for (var i = 0; i < _extraFertilizerApplications.length; i++)
+          _buildFertilizerApplicationCard(
+            index: i + 2,
+            fertilizerTypeCtrl:
+                _extraFertilizerApplications[i].fertilizerTypeCtrl,
+            applicationRateCtrl:
+                _extraFertilizerApplications[i].applicationRateCtrl,
+            applicationDate: _extraFertilizerApplications[i].applicationDate,
+            onApplicationDateChanged: (date) => setState(
+              () => _extraFertilizerApplications[i].applicationDate = date,
+            ),
+            foliarSamplingDate:
+                _extraFertilizerApplications[i].foliarSamplingDate,
+            onFoliarSamplingDateChanged: (date) => setState(
+              () => _extraFertilizerApplications[i].foliarSamplingDate = date,
+            ),
+            onRemove: () {
+              final removed = _extraFertilizerApplications.removeAt(i);
+              removed.dispose();
+              setState(() {});
+              unawaited(_saveDraft());
+            },
+          ),
+        _buildApplicationLoopFooter(
+          count: totalApplications,
+          addLabel: 'Add Fertilizer Application',
+          onAdd: totalApplications >= _maxApplicationLoops
+              ? null
+              : () {
+                  setState(
+                    () => _extraFertilizerApplications.add(
+                      _FertilizerApplicationEntry(),
+                    ),
+                  );
+                  unawaited(_saveDraft());
+                },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHerbicideApplicationsSection() {
+    final currentWeedManagement = _currentWeedManagementSummary();
+    final currentApplicationDate = _tryParseDate(
+      currentWeedManagement['application_date'],
+    );
+    final totalApplications = 1 + _extraHerbicideApplications.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCurrentApplicationSummaryCard(
+          title: 'Current Herbicide Application',
+          icon: Icons.grass_rounded,
+          emptyText: 'No herbicide application added yet.',
+          primaryValue:
+              currentWeedManagement['herbicide_name']?.toString() ?? '',
+          applicationDate: currentApplicationDate,
+          rateText: currentWeedManagement['application_rate']?.toString(),
+        ),
+        _buildHerbicideApplicationCard(
+          index: 1,
+          herbicideNameCtrl: _weedControlCtrl,
+          applicationRateCtrl: _weedApplicationRateCtrl,
+          applicationDate: _weedApplicationDate,
+          onApplicationDateChanged: (date) =>
+              setState(() => _weedApplicationDate = date),
+        ),
+        for (var i = 0; i < _extraHerbicideApplications.length; i++)
+          _buildHerbicideApplicationCard(
+            index: i + 2,
+            herbicideNameCtrl: _extraHerbicideApplications[i].herbicideNameCtrl,
+            applicationRateCtrl:
+                _extraHerbicideApplications[i].applicationRateCtrl,
+            applicationDate: _extraHerbicideApplications[i].applicationDate,
+            onApplicationDateChanged: (date) => setState(
+              () => _extraHerbicideApplications[i].applicationDate = date,
+            ),
+            onRemove: () {
+              final removed = _extraHerbicideApplications.removeAt(i);
+              removed.dispose();
+              setState(() {});
+              unawaited(_saveDraft());
+            },
+          ),
+        _buildApplicationLoopFooter(
+          count: totalApplications,
+          addLabel: 'Add Herbicide Application',
+          onAdd: totalApplications >= _maxApplicationLoops
+              ? null
+              : () {
+                  setState(
+                    () => _extraHerbicideApplications.add(
+                      _HerbicideApplicationEntry(),
+                    ),
+                  );
+                  unawaited(_saveDraft());
+                },
+        ),
+      ],
+    );
+  }
+
   List<Widget> _buildContinuousObservationChildren() {
     return [
       _buildContinuousSectionTitle('1. Field Information'),
@@ -2599,7 +3434,12 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
               onChanged: (value) {
                 final selectedRecord = _findMonitoringFieldRecordById(value);
                 if (selectedRecord == null) return;
-                _applyMonitoringFieldSelection(selectedRecord);
+                _applyMonitoringFieldRecord(
+                  selectedRecord,
+                  keepDateRecorded: false,
+                  autoLoadSavedRecord: true,
+                  adoptRecordIdentity: true,
+                );
               },
             ),
       _buildResponsivePair(
@@ -2740,45 +3580,16 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
         icon: Icons.sticky_note_2_rounded,
         maxLines: 3,
       ),
-      _buildContinuousSectionTitle('5. Nutrient Management'),
-      _buildStyledTextField(
-        label: 'Fertilizer Type',
-        controller: _fertilizerTypeCtrl,
-        icon: Icons.compost_rounded,
+      _buildContinuousSectionTitle(
+        '5. Nutrient Management',
+        'Add up to $_maxApplicationLoops fertilizer applications for the same field. The latest one is shown as the current application.',
       ),
-      _buildStyledDatePicker(
-        label: 'Nutrient Application Date',
-        current: _applicationDate,
-        onChanged: (d) => setState(() => _applicationDate = d),
+      _buildFertilizerApplicationsSection(),
+      _buildContinuousSectionTitle(
+        '6. Weed Management',
+        'Add up to $_maxApplicationLoops herbicide applications for the same field. The latest one is shown as the current application.',
       ),
-      _buildStyledTextField(
-        label: 'Application Rate',
-        controller: _applicationRateCtrl,
-        icon: Icons.scale_rounded,
-        isNumber: true,
-      ),
-      _buildStyledDatePicker(
-        label: 'Foliar Sampling Date',
-        current: _foliarSamplingDate,
-        onChanged: (d) => setState(() => _foliarSamplingDate = d),
-      ),
-      _buildContinuousSectionTitle('6. Weed Management'),
-      _buildStyledTextField(
-        label: 'Herbicide Name',
-        controller: _weedControlCtrl,
-        icon: Icons.grass_rounded,
-      ),
-      _buildStyledDatePicker(
-        label: 'Weed Application Date',
-        current: _weedApplicationDate,
-        onChanged: (d) => setState(() => _weedApplicationDate = d),
-      ),
-      _buildStyledTextField(
-        label: 'Weed Application Rate',
-        controller: _weedApplicationRateCtrl,
-        icon: Icons.straighten_rounded,
-        isNumber: true,
-      ),
+      _buildHerbicideApplicationsSection(),
       _buildContinuousSectionTitle('7. Crop Protection'),
       _buildStyledTextField(
         label: 'Pest Remarks',
@@ -3254,7 +4065,9 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
                       child: Transform.translate(
                         offset: const Offset(42, -24),
                         child: const Image(
-                          image: AssetImage('assets/images/tropical_leaves.png'),
+                          image: AssetImage(
+                            'assets/images/tropical_leaves.png',
+                          ),
                           fit: BoxFit.cover,
                         ),
                       ),

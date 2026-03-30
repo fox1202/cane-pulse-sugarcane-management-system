@@ -55,6 +55,7 @@ create table if not exists public.sugarcane_monitoring (
     fertilizer_type text,
     fertilizer_application_date date,
     application_rate numeric,
+    fertilizer_applications jsonb,
     npk_ratio text,
     
     -- Crop Protection
@@ -67,6 +68,7 @@ create table if not exists public.sugarcane_monitoring (
     
     -- Control Methods
     weed_control text,
+    herbicide_applications jsonb,
     pest_control text,
     disease_control text,
     

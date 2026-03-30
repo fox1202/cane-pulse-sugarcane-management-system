@@ -20,7 +20,7 @@ import {
     TimelineRounded,
 } from '@mui/icons-material'
 import { FARMING_CALENDAR_TEMPLATES, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
-import { formatDateOnlyLabel } from '@/utils/dateOnly'
+import { formatDateOnlyLabel, getDateOnlyTimestamp } from '@/utils/dateOnly'
 import {
     buildAnchoredCalendarTaskDate,
     resolveFarmingCalendarRouteContext,
@@ -30,8 +30,17 @@ const DISPLAY_FONT = '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Ge
 const BODY_FONT = '"Avenir Next", "Trebuchet MS", "Gill Sans", sans-serif'
 
 type TemplateTask = FarmingCalendarTemplate['tasks'][number]
+type TemplateGrowthStage = FarmingCalendarTemplate['growthStages'][number]
 type ScheduledTemplateTask = TemplateTask & { dueDate: string | null }
 type ActivityKind = 'Nutrient' | 'Herbicide'
+
+function getTodayDateOnly(): string {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
 
 function getMonthTitle(month: number): string {
     return month === 0 ? 'Kickoff' : `Month ${month}`
@@ -57,6 +66,65 @@ function getActivityTone(kind: ActivityKind) {
             border: 'rgba(47,127,79,0.18)',
             labelBg: 'rgba(86,184,112,0.22)',
         }
+}
+
+function buildAnchoredWeekDate(
+    template: FarmingCalendarTemplate,
+    weekNumber: number,
+    anchorDate: string
+): string | null {
+    const anchorTimestamp = getDateOnlyTimestamp(anchorDate)
+    if (!anchorTimestamp) {
+        return null
+    }
+
+    const daysFromAnchor = (weekNumber - template.anchorWeekNumber) * 7
+    const nextDate = new Date(anchorTimestamp)
+    nextDate.setDate(nextDate.getDate() + daysFromAnchor)
+
+    const year = nextDate.getFullYear()
+    const month = String(nextDate.getMonth() + 1).padStart(2, '0')
+    const day = String(nextDate.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
+function getCurrentCalendarWeek(template: FarmingCalendarTemplate, anchorDate: string, referenceDate: string): number | null {
+    const anchorTimestamp = getDateOnlyTimestamp(anchorDate)
+    const referenceTimestamp = getDateOnlyTimestamp(referenceDate)
+
+    if (!anchorTimestamp || !referenceTimestamp) {
+        return null
+    }
+
+    const daysElapsed = Math.floor((referenceTimestamp - anchorTimestamp) / (24 * 60 * 60 * 1000))
+    return template.anchorWeekNumber + Math.floor(daysElapsed / 7)
+}
+
+function getGrowthStageForWeek(
+    stages: TemplateGrowthStage[],
+    weekNumber: number
+): TemplateGrowthStage | null {
+    if (stages.length === 0) {
+        return null
+    }
+
+    const exactMatch = stages.find((stage) => weekNumber >= stage.startWeek && weekNumber <= stage.endWeek)
+    if (exactMatch) {
+        return exactMatch
+    }
+
+    if (weekNumber < stages[0].startWeek) {
+        return stages[0]
+    }
+
+    return stages[stages.length - 1]
+}
+
+function formatDueLabel(daysUntil: number): string {
+    if (daysUntil === 0) return 'Today'
+    if (daysUntil === 1) return 'Tomorrow'
+    if (daysUntil < 0) return `${Math.abs(daysUntil)} day${Math.abs(daysUntil) === 1 ? '' : 's'} overdue`
+    return `In ${daysUntil} days`
 }
 
 function SeasonStatCard({
@@ -436,41 +504,105 @@ export function FarmingCalendarPage() {
     const linkedTemplateMatchesSelection = routeContext.templateId === selectedTemplate.id
     const linkedTaskDatesEnabled = linkedTemplateMatchesSelection && Boolean(routeContext.anchorDate)
     const contextLabel = routeContext.trialLabel || routeContext.fieldLabel || ''
+    const todayIso = useMemo(() => getTodayDateOnly(), [])
+
+    const allScheduledTasks = useMemo(
+        () => selectedTemplate.tasks
+            .slice()
+            .sort((left, right) => left.month - right.month || left.weekNumber - right.weekNumber)
+            .map((task) => ({
+                ...task,
+                dueDate: linkedTaskDatesEnabled && routeContext.anchorDate
+                    ? buildAnchoredCalendarTaskDate(selectedTemplate, task, routeContext.anchorDate)
+                    : null,
+            })),
+        [linkedTaskDatesEnabled, routeContext.anchorDate, selectedTemplate]
+    )
 
     const monthSections = useMemo(() => {
         const grouped = new Map<number, ScheduledTemplateTask[]>()
 
-        selectedTemplate.tasks
-            .slice()
-            .sort((left, right) => left.month - right.month || left.weekNumber - right.weekNumber)
-            .forEach((task) => {
-                const dueDate = linkedTaskDatesEnabled && routeContext.anchorDate
-                    ? buildAnchoredCalendarTaskDate(selectedTemplate, task, routeContext.anchorDate)
-                    : null
-                const items = grouped.get(task.month) ?? []
-                items.push({
-                    ...task,
-                    dueDate,
-                })
-                grouped.set(task.month, items)
-            })
+        allScheduledTasks.forEach((task) => {
+            const items = grouped.get(task.month) ?? []
+            items.push(task)
+            grouped.set(task.month, items)
+        })
 
         return Array.from(grouped.entries()).sort((left, right) => left[0] - right[0])
-    }, [linkedTaskDatesEnabled, routeContext.anchorDate, selectedTemplate])
+    }, [allScheduledTasks])
 
     const seasonSummary = useMemo(() => {
-        const allTasks = monthSections.flatMap(([, items]) => items)
-        const nutrientCount = allTasks.filter((task) => getActivityKind(task.activity) === 'Nutrient').length
-        const herbicideCount = allTasks.length - nutrientCount
+        const nutrientCount = allScheduledTasks.filter((task) => getActivityKind(task.activity) === 'Nutrient').length
+        const herbicideCount = allScheduledTasks.length - nutrientCount
 
         return {
-            totalTasks: allTasks.length,
+            totalTasks: allScheduledTasks.length,
             totalMonths: monthSections.length,
             nutrientCount,
             herbicideCount,
             monthLabels: monthSections.map(([month]) => getMonthTitle(month)),
         }
-    }, [monthSections])
+    }, [allScheduledTasks, monthSections])
+
+    const currentCalendarWeek = useMemo(
+        () => linkedTaskDatesEnabled && routeContext.anchorDate
+            ? getCurrentCalendarWeek(selectedTemplate, routeContext.anchorDate, todayIso)
+            : null,
+        [linkedTaskDatesEnabled, routeContext.anchorDate, selectedTemplate, todayIso]
+    )
+
+    const currentGrowthStage = useMemo(
+        () => currentCalendarWeek == null
+            ? null
+            : getGrowthStageForWeek(selectedTemplate.growthStages, currentCalendarWeek),
+        [currentCalendarWeek, selectedTemplate]
+    )
+
+    const currentGrowthStageWindow = useMemo(
+        () => currentGrowthStage && routeContext.anchorDate
+            ? {
+                startDate: buildAnchoredWeekDate(selectedTemplate, currentGrowthStage.startWeek, routeContext.anchorDate),
+                endDate: buildAnchoredWeekDate(selectedTemplate, currentGrowthStage.endWeek, routeContext.anchorDate),
+            }
+            : null,
+        [currentGrowthStage, routeContext.anchorDate, selectedTemplate]
+    )
+
+    const stageTasks = useMemo(
+        () => currentGrowthStage
+            ? allScheduledTasks.filter((task) =>
+                task.weekNumber >= currentGrowthStage.startWeek && task.weekNumber <= currentGrowthStage.endWeek
+            )
+            : [],
+        [allScheduledTasks, currentGrowthStage]
+    )
+
+    const datedActionItems = useMemo(() => {
+        if (!linkedTaskDatesEnabled) {
+            return []
+        }
+
+        return allScheduledTasks
+            .filter((task): task is ScheduledTemplateTask & { dueDate: string } => Boolean(task.dueDate))
+            .map((task) => {
+                const daysUntil = Math.round(
+                    (getDateOnlyTimestamp(task.dueDate) - getDateOnlyTimestamp(todayIso)) / (24 * 60 * 60 * 1000)
+                )
+
+                return {
+                    ...task,
+                    daysUntil,
+                }
+            })
+            .filter((task) => task.daysUntil <= 21)
+            .sort((left, right) => left.daysUntil - right.daysUntil)
+            .slice(0, 4)
+    }, [allScheduledTasks, linkedTaskDatesEnabled, todayIso])
+
+    const stageActivityKinds = useMemo(
+        () => Array.from(new Set(stageTasks.map((task) => getActivityKind(task.activity)))),
+        [stageTasks]
+    )
 
     return (
         <Box
@@ -807,6 +939,323 @@ export function FarmingCalendarPage() {
                                                     ? formatDateOnlyLabel(routeContext.anchorDate) || routeContext.anchorDate
                                                     : 'Not linked to a recorded date yet.'}
                                             </Typography>
+                                        </Stack>
+                                    </Paper>
+
+                                    <Paper
+                                        sx={{
+                                            p: 1.6,
+                                            borderRadius: '22px',
+                                            border: '1px solid rgba(86,184,112,0.22)',
+                                            bgcolor: 'rgba(247,252,248,0.96)',
+                                            boxShadow: 'none',
+                                        }}
+                                    >
+                                        <Stack spacing={1.25}>
+                                            <Stack direction="row" spacing={1.1} alignItems="center">
+                                                <Box
+                                                    sx={{
+                                                        width: 38,
+                                                        height: 38,
+                                                        borderRadius: '14px',
+                                                        display: 'grid',
+                                                        placeItems: 'center',
+                                                        bgcolor: 'rgba(86,184,112,0.14)',
+                                                        color: 'var(--calendar-green)',
+                                                    }}
+                                                >
+                                                    <TimelineRounded fontSize="small" />
+                                                </Box>
+                                                <Box>
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: '0.72rem',
+                                                            letterSpacing: '0.14em',
+                                                            textTransform: 'uppercase',
+                                                            fontWeight: 800,
+                                                            color: 'rgba(35,64,52,0.7)',
+                                                            fontFamily: BODY_FONT,
+                                                        }}
+                                                    >
+                                                        Growth Stage
+                                                    </Typography>
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: '1rem',
+                                                            fontWeight: 800,
+                                                            color: 'var(--calendar-ink)',
+                                                            fontFamily: DISPLAY_FONT,
+                                                        }}
+                                                    >
+                                                        {currentGrowthStage?.title || 'Stage not dated yet'}
+                                                    </Typography>
+                                                </Box>
+                                            </Stack>
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '0.88rem',
+                                                    lineHeight: 1.7,
+                                                    color: 'rgba(32,56,45,0.68)',
+                                                    fontFamily: BODY_FONT,
+                                                }}
+                                            >
+                                                {linkedTaskDatesEnabled && currentGrowthStage
+                                                    ? currentGrowthStage.summary
+                                                    : `Link ${selectedTemplate.referenceLabel.toLowerCase()} to calculate the crop growth stage from the saved dates.`}
+                                            </Typography>
+                                            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
+                                                {currentCalendarWeek != null && (
+                                                    <Chip
+                                                        label={`Week ${Math.max(currentCalendarWeek, 0)}`}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 24,
+                                                            borderRadius: '999px',
+                                                            bgcolor: 'rgba(86,184,112,0.18)',
+                                                            color: 'var(--calendar-green)',
+                                                            fontWeight: 800,
+                                                            fontFamily: BODY_FONT,
+                                                        }}
+                                                    />
+                                                )}
+                                                {currentGrowthStageWindow?.startDate && currentGrowthStageWindow?.endDate && (
+                                                    <Chip
+                                                        label={`${formatDateOnlyLabel(currentGrowthStageWindow.startDate, { day: '2-digit', month: 'short' }) || currentGrowthStageWindow.startDate} to ${formatDateOnlyLabel(currentGrowthStageWindow.endDate, { day: '2-digit', month: 'short' }) || currentGrowthStageWindow.endDate}`}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 24,
+                                                            borderRadius: '999px',
+                                                            bgcolor: 'rgba(35,64,52,0.08)',
+                                                            color: 'var(--calendar-ink)',
+                                                            fontWeight: 700,
+                                                            fontFamily: BODY_FONT,
+                                                        }}
+                                                    />
+                                                )}
+                                            </Stack>
+                                            <Stack spacing={0.85}>
+                                                {selectedTemplate.growthStages.map((stage) => {
+                                                    const isActive = currentGrowthStage?.key === stage.key && linkedTaskDatesEnabled
+
+                                                    return (
+                                                        <Box
+                                                            key={stage.key}
+                                                            sx={{
+                                                                p: 1.05,
+                                                                borderRadius: '16px',
+                                                                border: `1px solid ${isActive ? 'rgba(86,184,112,0.28)' : 'rgba(35,64,52,0.1)'}`,
+                                                                bgcolor: isActive ? 'rgba(86,184,112,0.12)' : 'rgba(255,255,255,0.74)',
+                                                            }}
+                                                        >
+                                                            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                                                                <Typography
+                                                                    sx={{
+                                                                        fontSize: '0.9rem',
+                                                                        fontWeight: 800,
+                                                                        color: 'var(--calendar-ink)',
+                                                                        fontFamily: BODY_FONT,
+                                                                    }}
+                                                                >
+                                                                    {stage.title}
+                                                                </Typography>
+                                                                <Chip
+                                                                    label={`Weeks ${stage.startWeek}-${stage.endWeek}`}
+                                                                    size="small"
+                                                                    sx={{
+                                                                        height: 22,
+                                                                        borderRadius: '999px',
+                                                                        bgcolor: isActive ? 'rgba(255,255,255,0.86)' : 'rgba(35,64,52,0.08)',
+                                                                        color: 'rgba(32,56,45,0.76)',
+                                                                        fontWeight: 700,
+                                                                        fontFamily: BODY_FONT,
+                                                                    }}
+                                                                />
+                                                            </Stack>
+                                                        </Box>
+                                                    )
+                                                })}
+                                            </Stack>
+                                        </Stack>
+                                    </Paper>
+
+                                    <Paper
+                                        sx={{
+                                            p: 1.6,
+                                            borderRadius: '22px',
+                                            border: '1px solid rgba(47,127,79,0.2)',
+                                            bgcolor: 'rgba(255,255,255,0.92)',
+                                            boxShadow: 'none',
+                                        }}
+                                    >
+                                        <Stack spacing={1.15}>
+                                            <Stack direction="row" spacing={1.1} alignItems="center">
+                                                <Box
+                                                    sx={{
+                                                        width: 38,
+                                                        height: 38,
+                                                        borderRadius: '14px',
+                                                        display: 'grid',
+                                                        placeItems: 'center',
+                                                        bgcolor: 'rgba(47,127,79,0.12)',
+                                                        color: 'var(--calendar-green)',
+                                                    }}
+                                                >
+                                                    <TaskAltRounded fontSize="small" />
+                                                </Box>
+                                                <Box>
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: '0.72rem',
+                                                            letterSpacing: '0.14em',
+                                                            textTransform: 'uppercase',
+                                                            fontWeight: 800,
+                                                            color: 'rgba(35,64,52,0.7)',
+                                                            fontFamily: BODY_FONT,
+                                                        }}
+                                                    >
+                                                        Activities To Do
+                                                    </Typography>
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: '1rem',
+                                                            fontWeight: 800,
+                                                            color: 'var(--calendar-ink)',
+                                                            fontFamily: DISPLAY_FONT,
+                                                        }}
+                                                    >
+                                                        {datedActionItems.length > 0
+                                                            ? 'Priority actions from the dates'
+                                                            : currentGrowthStage
+                                                                ? `${currentGrowthStage.title} focus`
+                                                                : 'Link dates to date the work'}
+                                                    </Typography>
+                                                </Box>
+                                            </Stack>
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '0.88rem',
+                                                    lineHeight: 1.7,
+                                                    color: 'rgba(32,56,45,0.68)',
+                                                    fontFamily: BODY_FONT,
+                                                }}
+                                            >
+                                                {datedActionItems.length > 0
+                                                    ? 'These are the dated activities that need attention soonest from the linked crop schedule.'
+                                                    : currentGrowthStage
+                                                        ? 'These are the main activity types and field actions for the current growth stage.'
+                                                        : 'Once a planting date or cut date is linked, the calendar will show the current activity priorities here.'}
+                                            </Typography>
+                                            {stageActivityKinds.length > 0 && (
+                                                <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
+                                                    {stageActivityKinds.map((kind) => (
+                                                        <Chip
+                                                            key={kind}
+                                                            label={kind}
+                                                            size="small"
+                                                            sx={{
+                                                                height: 24,
+                                                                borderRadius: '999px',
+                                                                bgcolor: kind === 'Nutrient'
+                                                                    ? 'rgba(86,184,112,0.18)'
+                                                                    : 'rgba(244, 202, 173, 0.32)',
+                                                                color: kind === 'Nutrient' ? '#2f7f4f' : '#c26b42',
+                                                                fontWeight: 700,
+                                                                fontFamily: BODY_FONT,
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </Stack>
+                                            )}
+                                            <Stack spacing={0.9}>
+                                                {datedActionItems.length > 0 ? (
+                                                    datedActionItems.map((task) => (
+                                                        <Box
+                                                            key={`${task.weekNumber}-${task.activity}`}
+                                                            sx={{
+                                                                p: 1.05,
+                                                                borderRadius: '16px',
+                                                                border: '1px solid rgba(35,64,52,0.1)',
+                                                                bgcolor: 'rgba(247,252,248,0.86)',
+                                                            }}
+                                                        >
+                                                            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" sx={{ mb: 0.55 }}>
+                                                                <Chip
+                                                                    label={formatDueLabel(task.daysUntil)}
+                                                                    size="small"
+                                                                    sx={{
+                                                                        height: 22,
+                                                                        borderRadius: '999px',
+                                                                        bgcolor: task.daysUntil < 0
+                                                                            ? 'rgba(210,127,82,0.18)'
+                                                                            : task.daysUntil <= 7
+                                                                                ? 'rgba(214,176,44,0.2)'
+                                                                                : 'rgba(35,64,52,0.08)',
+                                                                        color: task.daysUntil < 0 ? '#b25b34' : 'var(--calendar-ink)',
+                                                                        fontWeight: 700,
+                                                                        fontFamily: BODY_FONT,
+                                                                    }}
+                                                                />
+                                                                <Chip
+                                                                    label={task.weekLabel}
+                                                                    size="small"
+                                                                    sx={{
+                                                                        height: 22,
+                                                                        borderRadius: '999px',
+                                                                        bgcolor: 'rgba(86,184,112,0.14)',
+                                                                        color: 'var(--calendar-green)',
+                                                                        fontWeight: 700,
+                                                                        fontFamily: BODY_FONT,
+                                                                    }}
+                                                                />
+                                                            </Stack>
+                                                            <Typography
+                                                                sx={{
+                                                                    fontSize: '0.9rem',
+                                                                    lineHeight: 1.65,
+                                                                    color: 'var(--calendar-ink)',
+                                                                    fontFamily: BODY_FONT,
+                                                                }}
+                                                            >
+                                                                {task.activity}
+                                                            </Typography>
+                                                        </Box>
+                                                    ))
+                                                ) : currentGrowthStage ? (
+                                                    currentGrowthStage.activityFocus.map((activity) => (
+                                                        <Box
+                                                            key={activity}
+                                                            sx={{
+                                                                p: 1.05,
+                                                                borderRadius: '16px',
+                                                                border: '1px solid rgba(35,64,52,0.1)',
+                                                                bgcolor: 'rgba(247,252,248,0.86)',
+                                                            }}
+                                                        >
+                                                            <Typography
+                                                                sx={{
+                                                                    fontSize: '0.9rem',
+                                                                    lineHeight: 1.65,
+                                                                    color: 'var(--calendar-ink)',
+                                                                    fontFamily: BODY_FONT,
+                                                                }}
+                                                            >
+                                                                {activity}
+                                                            </Typography>
+                                                        </Box>
+                                                    ))
+                                                ) : (
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: '0.9rem',
+                                                            lineHeight: 1.7,
+                                                            color: 'rgba(32,56,45,0.66)',
+                                                            fontFamily: BODY_FONT,
+                                                        }}
+                                                    >
+                                                        Save a planting date or cut date on the monitoring record to unlock stage-based activity guidance.
+                                                    </Typography>
+                                                )}
+                                            </Stack>
                                         </Stack>
                                     </Paper>
 

@@ -56,6 +56,12 @@ class _ObservationDetailScreenState extends State<ObservationDetailScreen> {
   Map<String, dynamic> get _irrigationManagement =>
       Map<String, dynamic>.from(_detail?['irrigation_management'] ?? const {});
 
+  Map<String, dynamic> get _nutrientManagement =>
+      Map<String, dynamic>.from(_detail?['nutrient_management'] ?? const {});
+
+  Map<String, dynamic> get _weedManagement =>
+      Map<String, dynamic>.from(_detail?['weed_management'] ?? const {});
+
   Map<String, dynamic> get _harvestInformation =>
       Map<String, dynamic>.from(_detail?['harvest_information'] ?? const {});
 
@@ -276,6 +282,8 @@ class _ObservationDetailScreenState extends State<ObservationDetailScreen> {
                         icon: Icons.water_drop_rounded,
                         data: _observationData,
                       ),
+                      _buildFertilizerApplicationsSection(),
+                      _buildHerbicideApplicationsSection(),
                       _buildDataSection(
                         title: 'More details',
                         icon: Icons.info_outline_rounded,
@@ -753,6 +761,331 @@ class _ObservationDetailScreenState extends State<ObservationDetailScreen> {
           }).toList(),
         ),
       ),
+    );
+  }
+
+  List<Map<String, dynamic>> _applicationList(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .whereType<dynamic>()
+          .map(_normalizeMap)
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+
+    if (raw is String && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded
+              .whereType<dynamic>()
+              .map(_normalizeMap)
+              .where((item) => item.isNotEmpty)
+              .toList();
+        }
+      } catch (_) {
+        return <Map<String, dynamic>>[];
+      }
+    }
+
+    return <Map<String, dynamic>>[];
+  }
+
+  Map<String, dynamic>? _currentFertilizerApplication() {
+    final fertilizerType = _textOrNull(_nutrientManagement['fertilizer_type']);
+    final applicationDate = _textOrNull(
+      _nutrientManagement['application_date'],
+    );
+    final applicationRate = _nutrientManagement['application_rate'];
+    final foliarSamplingDate = _textOrNull(
+      _nutrientManagement['foliar_sampling_date'],
+    );
+
+    if (fertilizerType == null &&
+        applicationDate == null &&
+        applicationRate == null &&
+        foliarSamplingDate == null) {
+      return null;
+    }
+
+    return {
+      'fertilizer_type': fertilizerType,
+      'application_date': applicationDate,
+      'application_rate': applicationRate,
+      'foliar_sampling_date': foliarSamplingDate,
+    };
+  }
+
+  Map<String, dynamic>? _currentHerbicideApplication() {
+    final herbicideName = _textOrNull(_weedManagement['herbicide_name']);
+    final applicationDate = _textOrNull(_weedManagement['application_date']);
+    final applicationRate = _weedManagement['application_rate'];
+
+    if (herbicideName == null &&
+        applicationDate == null &&
+        applicationRate == null) {
+      return null;
+    }
+
+    return {
+      'herbicide_name': herbicideName,
+      'application_date': applicationDate,
+      'application_rate': applicationRate,
+    };
+  }
+
+  String _applicationSignature(
+    Map<String, dynamic> application,
+    List<String> keys,
+  ) {
+    return keys
+        .map((key) => application[key]?.toString().trim().toLowerCase() ?? '')
+        .join('|');
+  }
+
+  Widget _buildApplicationEntryCard({
+    required String title,
+    required Map<String, dynamic> application,
+    required String nameKey,
+    required String nameLabel,
+    required String dateLabel,
+    required String rateLabel,
+    String? extraKey,
+    String? extraLabel,
+    bool isCurrent = false,
+    bool highlight = false,
+  }) {
+    final rows = <MapEntry<String, dynamic>>[];
+    if (_textOrNull(application[nameKey]) != null) {
+      rows.add(MapEntry(nameLabel, application[nameKey]));
+    }
+    if (_textOrNull(application['application_date']) != null) {
+      rows.add(MapEntry(dateLabel, application['application_date']));
+    }
+    if (application['application_rate'] != null) {
+      rows.add(MapEntry(rateLabel, application['application_rate']));
+    }
+    if (extraKey != null &&
+        extraLabel != null &&
+        _textOrNull(application[extraKey]) != null) {
+      rows.add(MapEntry(extraLabel, application[extraKey]));
+    }
+
+    if (rows.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: highlight
+              ? [
+                  AppColors.softCream.withValues(alpha: 0.96),
+                  Colors.white.withValues(alpha: 0.98),
+                ]
+              : [
+                  Colors.white.withValues(alpha: 0.94),
+                  AppColors.inputFieldGray.withValues(alpha: 0.70),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: highlight ? AppColors.borderSoft : Colors.white,
+        ),
+        boxShadow: AppTheme.softShadow(
+          highlight ? AppColors.lightGreen : AppColors.peach,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textDark,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (isCurrent)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.coolGradient.first.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'Current',
+                    style: TextStyle(
+                      color: AppColors.forestGreen,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...rows.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      entry.key,
+                      style: const TextStyle(
+                        color: AppColors.textGray,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 5,
+                    child: Text(
+                      _formatValue(entry.value),
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        color: AppColors.textDark,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApplicationSection({
+    required String title,
+    required IconData icon,
+    required List<Map<String, dynamic>> applications,
+    required Map<String, dynamic>? currentApplication,
+    required List<String> signatureKeys,
+    required String nameKey,
+    required String nameLabel,
+    required String dateLabel,
+    required String rateLabel,
+    String? extraKey,
+    String? extraLabel,
+  }) {
+    if (applications.isEmpty && currentApplication == null) {
+      return const SizedBox.shrink();
+    }
+
+    final currentSignature = currentApplication == null
+        ? null
+        : _applicationSignature(currentApplication, signatureKeys);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: _SectionShell(
+        title: title,
+        icon: icon,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (currentApplication != null) ...[
+              _buildApplicationEntryCard(
+                title: 'Current application',
+                application: currentApplication,
+                nameKey: nameKey,
+                nameLabel: nameLabel,
+                dateLabel: dateLabel,
+                rateLabel: rateLabel,
+                extraKey: extraKey,
+                extraLabel: extraLabel,
+                isCurrent: true,
+                highlight: true,
+              ),
+              if (applications.isNotEmpty) const SizedBox(height: 14),
+            ],
+            if (applications.isNotEmpty) ...[
+              const Text(
+                'Saved applications',
+                style: TextStyle(
+                  color: AppColors.textGray,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...List.generate(applications.length, (index) {
+                final application = applications[index];
+                final isCurrent =
+                    currentSignature != null &&
+                    _applicationSignature(application, signatureKeys) ==
+                        currentSignature;
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index == applications.length - 1 ? 0 : 12,
+                  ),
+                  child: _buildApplicationEntryCard(
+                    title: 'Application ${index + 1}',
+                    application: application,
+                    nameKey: nameKey,
+                    nameLabel: nameLabel,
+                    dateLabel: dateLabel,
+                    rateLabel: rateLabel,
+                    extraKey: extraKey,
+                    extraLabel: extraLabel,
+                    isCurrent: isCurrent,
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFertilizerApplicationsSection() {
+    return _buildApplicationSection(
+      title: 'Fertilizer Applications',
+      icon: Icons.compost_rounded,
+      applications: _applicationList(_nutrientManagement['applications']),
+      currentApplication: _currentFertilizerApplication(),
+      signatureKeys: const [
+        'fertilizer_type',
+        'application_date',
+        'application_rate',
+        'foliar_sampling_date',
+      ],
+      nameKey: 'fertilizer_type',
+      nameLabel: 'Fertilizer',
+      dateLabel: 'Application date',
+      rateLabel: 'Rate',
+      extraKey: 'foliar_sampling_date',
+      extraLabel: 'Foliar sampling',
+    );
+  }
+
+  Widget _buildHerbicideApplicationsSection() {
+    return _buildApplicationSection(
+      title: 'Herbicide Applications',
+      icon: Icons.grass_rounded,
+      applications: _applicationList(_weedManagement['applications']),
+      currentApplication: _currentHerbicideApplication(),
+      signatureKeys: const [
+        'herbicide_name',
+        'application_date',
+        'application_rate',
+      ],
+      nameKey: 'herbicide_name',
+      nameLabel: 'Herbicide',
+      dateLabel: 'Application date',
+      rateLabel: 'Rate',
     );
   }
 

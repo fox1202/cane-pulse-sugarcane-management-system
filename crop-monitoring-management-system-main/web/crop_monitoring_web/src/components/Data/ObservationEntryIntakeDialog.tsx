@@ -25,11 +25,23 @@ import {
     type PredefinedField,
 } from '@/services/database.service';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+    SATELLITE_HYBRID_LABELS_SOURCE,
+    SATELLITE_TILE_SOURCES,
+} from '@/pages/mapView.utils';
+import type {
+    FertilizerApplication,
+    HerbicideApplication,
+    ObservationEntryForm,
+} from '@/types/database.types';
+import { buildObservationCalendarSearch } from '@/utils/farmingCalendarLinks';
 
 interface ObservationEntryIntakeDialogProps {
     open: boolean;
     onClose: () => void;
     onSubmitted: () => Promise<void> | void;
+    onSaved?: (message: string) => void;
+    existingForms: ObservationEntryForm[];
 }
 
 const IRRIGATION_TYPE_OPTIONS = [
@@ -59,10 +71,11 @@ const SUGARCANE_CROP_CLASS_OPTIONS = [
 ];
 const BREAK_CROP_CLASS_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Maize'];
 const FALLOW_CROP_CLASS_OPTIONS = ['None'];
-const RESIDUE_TYPE_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'None'];
+const RESIDUE_TYPE_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Sugarcane', 'None'];
 const RESIDUE_MANAGEMENT_METHOD_OPTIONS = ['Ploughed in', 'Parting', 'Broadcasting', 'None'];
 const DRAW_NEW_FIELD_VALUE = '__draw_new_field__';
 const DEFAULT_DRAW_CENTER: [number, number] = [-18.922, 31.134];
+const MAX_APPLICATION_LOOPS = 10;
 const WHITE_SELECT_MENU_PROPS = {
     PaperProps: {
         sx: {
@@ -209,10 +222,12 @@ function createEmptySubmission(collectorId: string): ObservationEntryFormSubmiss
         fertilizer_type: '',
         nutrient_application_date: '',
         application_rate: undefined,
+        fertilizer_applications: [],
         foliar_sampling_date: '',
         herbicide_name: '',
         weed_application_date: '',
         weed_application_rate: undefined,
+        herbicide_applications: [],
         pest_remarks: '',
         disease_remarks: '',
         harvest_date: '',
@@ -422,23 +437,269 @@ function buildFollowUpTrialUpdateData(
     collectorId: string,
     matchedField?: PredefinedField
 ): ObservationEntryFormSubmissionInput {
-    const preserved = buildFreshFormData(currentSubmission, collectorId, matchedField);
-
     return {
-        ...preserved,
+        ...buildFreshFormData(currentSubmission, collectorId, matchedField),
         date_recorded: '',
+    };
+}
+
+function buildEmptyFertilizerApplication(): FertilizerApplication {
+    return {
         fertilizer_type: '',
-        nutrient_application_date: '',
+        application_date: '',
         application_rate: undefined,
         foliar_sampling_date: '',
+    };
+}
+
+function buildEmptyHerbicideApplication(): HerbicideApplication {
+    return {
         herbicide_name: '',
-        weed_application_date: '',
-        weed_application_rate: undefined,
-        pest_remarks: '',
-        disease_remarks: '',
-        harvest_date: '',
-        yield: undefined,
-        quality_remarks: '',
+        application_date: '',
+        application_rate: undefined,
+    };
+}
+
+function normalizeDateInputValue(value?: string | null): string {
+    if (!value) return '';
+
+    const directDate = value.trim().slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(directDate)) {
+        return directDate;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return value;
+    }
+
+    return parsed.toISOString().slice(0, 10);
+}
+
+function normalizeFertilizerApplicationInput(value: FertilizerApplication | null | undefined): FertilizerApplication | null {
+    if (!value) return null;
+
+    const fertilizerType = String(value.fertilizer_type ?? '').trim();
+    const applicationDate = normalizeDateInputValue(value.application_date);
+    const applicationRate = typeof value.application_rate === 'number' && Number.isFinite(value.application_rate)
+        ? value.application_rate
+        : undefined;
+    const foliarSamplingDate = normalizeDateInputValue(value.foliar_sampling_date);
+
+    if (!fertilizerType && !applicationDate && applicationRate == null && !foliarSamplingDate) {
+        return null;
+    }
+
+    return {
+        fertilizer_type: fertilizerType,
+        application_date: applicationDate || undefined,
+        application_rate: applicationRate,
+        foliar_sampling_date: foliarSamplingDate || undefined,
+    };
+}
+
+function normalizeHerbicideApplicationInput(value: HerbicideApplication | null | undefined): HerbicideApplication | null {
+    if (!value) return null;
+
+    const herbicideName = String(value.herbicide_name ?? '').trim();
+    const applicationDate = normalizeDateInputValue(value.application_date);
+    const applicationRate = typeof value.application_rate === 'number' && Number.isFinite(value.application_rate)
+        ? value.application_rate
+        : undefined;
+
+    if (!herbicideName && !applicationDate && applicationRate == null) {
+        return null;
+    }
+
+    return {
+        herbicide_name: herbicideName,
+        application_date: applicationDate || undefined,
+        application_rate: applicationRate,
+    };
+}
+
+function getCurrentFertilizerApplication(
+    applications: FertilizerApplication[]
+): FertilizerApplication | null {
+    if (applications.length === 0) {
+        return null;
+    }
+
+    let best = applications[0] ?? null;
+    let bestDate = best ? new Date(String(best.application_date ?? '')).getTime() : Number.NaN;
+
+    for (const application of applications.slice(1)) {
+        const nextDate = new Date(String(application.application_date ?? '')).getTime();
+
+        if (!Number.isFinite(nextDate) && !Number.isFinite(bestDate)) {
+            best = application;
+            continue;
+        }
+
+        if (Number.isFinite(nextDate) && (!Number.isFinite(bestDate) || nextDate >= bestDate)) {
+            best = application;
+            bestDate = nextDate;
+        }
+    }
+
+    return best;
+}
+
+function getCurrentHerbicideApplication(
+    applications: HerbicideApplication[]
+): HerbicideApplication | null {
+    if (applications.length === 0) {
+        return null;
+    }
+
+    let best = applications[0] ?? null;
+    let bestDate = best ? new Date(String(best.application_date ?? '')).getTime() : Number.NaN;
+
+    for (const application of applications.slice(1)) {
+        const nextDate = new Date(String(application.application_date ?? '')).getTime();
+
+        if (!Number.isFinite(nextDate) && !Number.isFinite(bestDate)) {
+            best = application;
+            continue;
+        }
+
+        if (Number.isFinite(nextDate) && (!Number.isFinite(bestDate) || nextDate >= bestDate)) {
+            best = application;
+            bestDate = nextDate;
+        }
+    }
+
+    return best;
+}
+
+function normalizeLookupValue(value?: string | number | null): string {
+    return String(value ?? '').trim().toLowerCase();
+}
+
+function getEntryTimestamp(entry: ObservationEntryForm): number {
+    const candidate = entry.date_recorded || entry.updated_at || entry.created_at;
+    if (!candidate) {
+        return 0;
+    }
+
+    const timestamp = new Date(candidate).getTime();
+    return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function matchesFieldObservation(field: PredefinedField, entry: ObservationEntryForm): boolean {
+    const fieldName = normalizeLookupValue(field.field_name);
+    const blockId = normalizeLookupValue(field.block_id);
+    const sectionName = normalizeLookupValue(field.section_name);
+
+    const entryFieldNames = [
+        entry.field_name,
+        entry.selected_field,
+        entry.field_id,
+    ].map((value) => normalizeLookupValue(value));
+
+    const hasFieldNameMatch = entryFieldNames.some((value) => value && value === fieldName);
+    const entryBlockId = normalizeLookupValue(entry.block_id);
+    const entrySectionName = normalizeLookupValue(entry.section_name);
+
+    if (blockId && entryBlockId && blockId === entryBlockId) {
+        if (!fieldName) {
+            return true;
+        }
+
+        return hasFieldNameMatch;
+    }
+
+    if (!hasFieldNameMatch) {
+        return false;
+    }
+
+    if (sectionName && entrySectionName && sectionName !== entrySectionName) {
+        return false;
+    }
+
+    return true;
+}
+
+function findLatestRecordForField(
+    field: PredefinedField,
+    forms: ObservationEntryForm[]
+): ObservationEntryForm | null {
+    return forms
+        .filter((entry) => matchesFieldObservation(field, entry))
+        .sort((left, right) => getEntryTimestamp(right) - getEntryTimestamp(left))[0] ?? null;
+}
+
+function buildLoadedSavedRecordData(
+    savedEntry: ObservationEntryForm,
+    collectorId: string,
+    matchedField?: PredefinedField
+): ObservationEntryFormSubmissionInput {
+    const loaded = buildFreshFormData(
+        {
+            ...savedEntry,
+            collector_id: collectorId || savedEntry.collector_id || '',
+        },
+        collectorId,
+        matchedField
+    );
+
+    return {
+        ...loaded,
+        collector_id: collectorId || savedEntry.collector_id || '',
+        selected_field: matchedField?.field_name || savedEntry.selected_field || savedEntry.field_name || savedEntry.field_id || '',
+        field_id: savedEntry.field_id || matchedField?.field_name || savedEntry.field_name || '',
+        field_name: matchedField?.field_name || savedEntry.field_name || savedEntry.field_id || '',
+        section_name: matchedField?.section_name || savedEntry.section_name || '',
+        block_id: matchedField?.block_id || savedEntry.block_id || '',
+        area: savedEntry.area ?? savedEntry.block_size ?? loaded.area,
+        block_size: savedEntry.block_size ?? savedEntry.area ?? loaded.block_size,
+        spatial_data: savedEntry.spatial_data ?? savedEntry.geom_polygon ?? loaded.spatial_data,
+        geom_polygon: savedEntry.geom_polygon ?? savedEntry.spatial_data ?? loaded.geom_polygon,
+        latitude: savedEntry.latitude ?? loaded.latitude,
+        longitude: savedEntry.longitude ?? loaded.longitude,
+        gps_accuracy: savedEntry.gps_accuracy ?? loaded.gps_accuracy ?? 0,
+        date_recorded: savedEntry.date_recorded || '',
+        trial_number: savedEntry.trial_number ?? '',
+        trial_name: savedEntry.trial_name || '',
+        contact_person: savedEntry.contact_person || '',
+        phone_country_code: savedEntry.phone_country_code || '',
+        phone_number: savedEntry.phone_number || '',
+        crop_type: savedEntry.crop_type || loaded.crop_type,
+        crop_class: savedEntry.crop_class || '',
+        variety: savedEntry.variety || '',
+        planting_date: savedEntry.planting_date || '',
+        previous_cutting_date: savedEntry.previous_cutting_date || savedEntry.cutting_date || '',
+        cutting_date: savedEntry.cutting_date || savedEntry.previous_cutting_date || '',
+        expected_harvest_date: savedEntry.expected_harvest_date || '',
+        irrigation_type: savedEntry.irrigation_type || '',
+        water_source: savedEntry.water_source || '',
+        tam_mm: savedEntry.tam_mm || '',
+        tamm_area: savedEntry.tamm_area,
+        soil_type: savedEntry.soil_type || '',
+        soil_ph: savedEntry.soil_ph,
+        field_remarks: savedEntry.field_remarks || savedEntry.remarks || '',
+        residue_type: savedEntry.residue_type || '',
+        residue_management_method: savedEntry.residue_management_method || '',
+        residual_management_remarks: savedEntry.residual_management_remarks || '',
+        fertilizer_type: savedEntry.fertilizer_type || '',
+        nutrient_application_date: savedEntry.nutrient_application_date || '',
+        application_rate: savedEntry.application_rate,
+        fertilizer_applications: (savedEntry.fertilizer_applications ?? [])
+            .map((item) => normalizeFertilizerApplicationInput(item))
+            .filter((item): item is FertilizerApplication => item !== null),
+        foliar_sampling_date: savedEntry.foliar_sampling_date || '',
+        herbicide_name: savedEntry.herbicide_name || '',
+        weed_application_date: savedEntry.weed_application_date || '',
+        weed_application_rate: savedEntry.weed_application_rate,
+        herbicide_applications: (savedEntry.herbicide_applications ?? [])
+            .map((item) => normalizeHerbicideApplicationInput(item))
+            .filter((item): item is HerbicideApplication => item !== null),
+        pest_remarks: savedEntry.pest_remarks || '',
+        disease_remarks: savedEntry.disease_remarks || '',
+        harvest_date: savedEntry.harvest_date || '',
+        yield: savedEntry.yield,
+        quality_remarks: savedEntry.quality_remarks || '',
+        remarks: savedEntry.remarks || savedEntry.field_remarks || '',
     };
 }
 
@@ -446,6 +707,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     open,
     onClose,
     onSubmitted,
+    onSaved,
+    existingForms,
 }) => {
     const { user } = useAuth();
     const dialogContentRef = useRef<HTMLDivElement | null>(null);
@@ -505,6 +768,85 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         [predefinedFields, formData.field_name]
     );
 
+    const fertilizerApplicationRows = useMemo(() => {
+        const rows = Array.isArray(formData.fertilizer_applications)
+            ? formData.fertilizer_applications.slice(0, MAX_APPLICATION_LOOPS)
+            : [];
+
+        if (rows.length > 0) {
+            return rows;
+        }
+
+        if (
+            formData.fertilizer_type ||
+            formData.nutrient_application_date ||
+            formData.application_rate != null ||
+            formData.foliar_sampling_date
+        ) {
+            return [{
+                fertilizer_type: formData.fertilizer_type || '',
+                application_date: normalizeDateInputValue(formData.nutrient_application_date),
+                application_rate: formData.application_rate,
+                foliar_sampling_date: normalizeDateInputValue(formData.foliar_sampling_date),
+            }];
+        }
+
+        return [buildEmptyFertilizerApplication()];
+    }, [
+        formData.application_rate,
+        formData.fertilizer_applications,
+        formData.fertilizer_type,
+        formData.foliar_sampling_date,
+        formData.nutrient_application_date,
+    ]);
+
+    const herbicideApplicationRows = useMemo(() => {
+        const rows = Array.isArray(formData.herbicide_applications)
+            ? formData.herbicide_applications.slice(0, MAX_APPLICATION_LOOPS)
+            : [];
+
+        if (rows.length > 0) {
+            return rows;
+        }
+
+        if (
+            formData.herbicide_name ||
+            formData.weed_application_date ||
+            formData.weed_application_rate != null
+        ) {
+            return [{
+                herbicide_name: formData.herbicide_name || '',
+                application_date: normalizeDateInputValue(formData.weed_application_date),
+                application_rate: formData.weed_application_rate,
+            }];
+        }
+
+        return [buildEmptyHerbicideApplication()];
+    }, [
+        formData.herbicide_applications,
+        formData.herbicide_name,
+        formData.weed_application_date,
+        formData.weed_application_rate,
+    ]);
+
+    const currentFertilizerApplication = useMemo(
+        () => getCurrentFertilizerApplication(
+            fertilizerApplicationRows
+                .map((item) => normalizeFertilizerApplicationInput(item))
+                .filter((item): item is FertilizerApplication => item !== null)
+        ),
+        [fertilizerApplicationRows]
+    );
+
+    const currentHerbicideApplication = useMemo(
+        () => getCurrentHerbicideApplication(
+            herbicideApplicationRows
+                .map((item) => normalizeHerbicideApplicationInput(item))
+                .filter((item): item is HerbicideApplication => item !== null)
+        ),
+        [herbicideApplicationRows]
+    );
+
     const drawingMapCenter = useMemo<[number, number]>(() => {
         const coordinateFields = predefinedFields.filter((field) =>
             Number.isFinite(field.latitude) &&
@@ -561,8 +903,143 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         return options;
     }, [formData.crop_class, formData.crop_type]);
 
+    const plantingCalendarSearch = useMemo(
+        () => buildObservationCalendarSearch(formData, 'planting'),
+        [
+            formData.block_id,
+            formData.crop_class,
+            formData.field_name,
+            formData.planting_date,
+            formData.previous_cutting_date,
+            formData.section_name,
+            formData.selected_field,
+            formData.trial_name,
+            formData.trial_number,
+        ]
+    );
+
+    const cuttingCalendarSearch = useMemo(
+        () => buildObservationCalendarSearch(formData, 'cutting'),
+        [
+            formData.block_id,
+            formData.crop_class,
+            formData.cutting_date,
+            formData.field_name,
+            formData.previous_cutting_date,
+            formData.section_name,
+            formData.selected_field,
+            formData.trial_name,
+            formData.trial_number,
+        ]
+    );
+
     const updateField = (field: keyof ObservationEntryFormSubmissionInput, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const applyFertilizerApplicationRows = (rows: FertilizerApplication[]) => {
+        const limitedRows = rows.slice(0, MAX_APPLICATION_LOOPS);
+        const current = getCurrentFertilizerApplication(
+            limitedRows
+                .map((item) => normalizeFertilizerApplicationInput(item))
+                .filter((item): item is FertilizerApplication => item !== null)
+        );
+
+        setFormData((prev) => ({
+            ...prev,
+            fertilizer_applications: limitedRows,
+            fertilizer_type: current?.fertilizer_type || '',
+            nutrient_application_date: current?.application_date || '',
+            application_rate: current?.application_rate,
+            foliar_sampling_date: current?.foliar_sampling_date || '',
+        }));
+    };
+
+    const applyHerbicideApplicationRows = (rows: HerbicideApplication[]) => {
+        const limitedRows = rows.slice(0, MAX_APPLICATION_LOOPS);
+        const current = getCurrentHerbicideApplication(
+            limitedRows
+                .map((item) => normalizeHerbicideApplicationInput(item))
+                .filter((item): item is HerbicideApplication => item !== null)
+        );
+
+        setFormData((prev) => ({
+            ...prev,
+            herbicide_applications: limitedRows,
+            herbicide_name: current?.herbicide_name || '',
+            weed_application_date: current?.application_date || '',
+            weed_application_rate: current?.application_rate,
+        }));
+    };
+
+    const handleFertilizerApplicationChange = (
+        index: number,
+        field: keyof FertilizerApplication,
+        value: string | number | undefined
+    ) => {
+        const nextRows = fertilizerApplicationRows.map((item) => ({ ...item }));
+        while (nextRows.length <= index) {
+            nextRows.push(buildEmptyFertilizerApplication());
+        }
+
+        nextRows[index] = {
+            ...nextRows[index],
+            [field]: value,
+        };
+
+        applyFertilizerApplicationRows(nextRows);
+    };
+
+    const handleHerbicideApplicationChange = (
+        index: number,
+        field: keyof HerbicideApplication,
+        value: string | number | undefined
+    ) => {
+        const nextRows = herbicideApplicationRows.map((item) => ({ ...item }));
+        while (nextRows.length <= index) {
+            nextRows.push(buildEmptyHerbicideApplication());
+        }
+
+        nextRows[index] = {
+            ...nextRows[index],
+            [field]: value,
+        };
+
+        applyHerbicideApplicationRows(nextRows);
+    };
+
+    const handleAddFertilizerApplication = () => {
+        if (fertilizerApplicationRows.length >= MAX_APPLICATION_LOOPS) {
+            return;
+        }
+
+        applyFertilizerApplicationRows([
+            ...fertilizerApplicationRows,
+            buildEmptyFertilizerApplication(),
+        ]);
+    };
+
+    const handleAddHerbicideApplication = () => {
+        if (herbicideApplicationRows.length >= MAX_APPLICATION_LOOPS) {
+            return;
+        }
+
+        applyHerbicideApplicationRows([
+            ...herbicideApplicationRows,
+            buildEmptyHerbicideApplication(),
+        ]);
+    };
+
+    const handleRemoveFertilizerApplication = (index: number) => {
+        applyFertilizerApplicationRows(
+            fertilizerApplicationRows.filter((_, currentIndex) => currentIndex !== index)
+        );
+    };
+
+    const handleRemoveHerbicideApplication = (index: number) => {
+        applyHerbicideApplicationRows(
+            herbicideApplicationRows.filter((_, currentIndex) => currentIndex !== index)
+        );
     };
 
     useEffect(() => {
@@ -604,6 +1081,18 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         }
 
         setParseSummary(null);
+        const latestRecord = findLatestRecordForField(match, existingForms);
+
+        if (latestRecord) {
+            const collectorId = user?.id || latestRecord.collector_id || '';
+            setParseSummary('Current database information was loaded for this field. Enter a new date and update anything that changed, then save.');
+            setFormData(() => ({
+                ...buildLoadedSavedRecordData(latestRecord, collectorId, match),
+                date_recorded: '',
+            }));
+            return;
+        }
+
         setFormData(() => buildFreshFormData(
             createEmptySubmission(user?.id || ''),
             user?.id || '',
@@ -721,15 +1210,16 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 longitude: formData.longitude ?? resolvedField.longitude ?? 0,
             };
 
-            await createObservationEntryFormSubmission(submission, registryFields);
+            const savedEntry = await createObservationEntryFormSubmission(submission, registryFields);
 
             await onSubmitted();
+            onSaved?.('Successfully saved to the database.');
 
             if (mode === 'add_another') {
                 const collectorId = user?.id || submission.collector_id || '';
 
-                setParseSummary('Saved update. The same trial is still selected so you can add the next nutrient or herbicide date.');
-                setFormData(buildFollowUpTrialUpdateData(submission, collectorId, resolvedField));
+                setParseSummary('Successfully saved to the database. Current values stay visible for the next entry. Enter the next record date and adjust anything that changed, then save again.');
+                setFormData(buildFollowUpTrialUpdateData(savedEntry, collectorId, resolvedField));
                 setIsCreatingCustomField(false);
                 setDrawPoints([]);
                 dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -739,6 +1229,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             onClose();
         } catch (err: any) {
             setError(err.message || 'Failed to save the observation entry form.');
+            dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setSaving(false);
             setSaveMode(null);
@@ -778,8 +1269,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                             scrollWheelZoom
                                         >
                                             <TileLayer
-                                                attribution="&copy; OpenStreetMap contributors"
-                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                attribution={SATELLITE_TILE_SOURCES[0].attribution}
+                                                url={SATELLITE_TILE_SOURCES[0].url}
+                                            />
+                                            <TileLayer
+                                                attribution={SATELLITE_HYBRID_LABELS_SOURCE.attribution}
+                                                url={SATELLITE_HYBRID_LABELS_SOURCE.url}
+                                                opacity={0.72}
                                             />
                                             <DrawingMapClickCapture onAddPoint={handleAddDrawPoint} />
                                             <DrawingMapViewport points={drawPoints} fallbackCenter={drawingMapCenter} />
@@ -1107,6 +1603,38 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 onChange={(e) => updateField('expected_harvest_date', e.target.value)}
                             />
                         </Grid>
+                        {(plantingCalendarSearch || cuttingCalendarSearch) && (
+                            <Grid size={{ xs: 12 }}>
+                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} useFlexGap flexWrap="wrap">
+                                    {plantingCalendarSearch && (
+                                        <Button
+                                            component="a"
+                                            href={`/calendar?${plantingCalendarSearch}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            variant="outlined"
+                                            size="small"
+                                            sx={{ alignSelf: 'flex-start', textTransform: 'none', fontWeight: 700 }}
+                                        >
+                                            Open Planting Calendar
+                                        </Button>
+                                    )}
+                                    {cuttingCalendarSearch && (
+                                        <Button
+                                            component="a"
+                                            href={`/calendar?${cuttingCalendarSearch}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            variant="outlined"
+                                            size="small"
+                                            sx={{ alignSelf: 'flex-start', textTransform: 'none', fontWeight: 700 }}
+                                        >
+                                            Open Cutting Calendar
+                                        </Button>
+                                    )}
+                                </Stack>
+                            </Grid>
+                        )}
                     </Grid>
                     </Box>
 
@@ -1158,78 +1686,215 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
                     <Box>
                     <SectionHeading title="5. Nutrient Management" />
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                fullWidth
-                                label="Fertilizer Type"
-                                value={formData.fertilizer_type || ''}
-                                onChange={(e) => updateField('fertilizer_type', e.target.value)}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
-                                label="Nutrient Application Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.nutrient_application_date || ''}
-                                onChange={(e) => updateField('nutrient_application_date', e.target.value)}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="number"
-                                fullWidth
-                                label="Application Rate"
-                                value={formData.application_rate ?? ''}
-                                onChange={(e) => updateField('application_rate', parseOptionalNumericInput(e.target.value))}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
-                                label="Foliar Sampling Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.foliar_sampling_date || ''}
-                                onChange={(e) => updateField('foliar_sampling_date', e.target.value)}
-                            />
-                        </Grid>
-                    </Grid>
+                    <Stack spacing={2}>
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                borderRadius: 3,
+                                p: 2,
+                                borderColor: 'rgba(86,184,112,0.2)',
+                                bgcolor: 'rgba(255,255,255,0.78)',
+                            }}
+                        >
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', mb: 0.5 }}>
+                                Current Fertilizer Application
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                {currentFertilizerApplication
+                                    ? [
+                                        currentFertilizerApplication.fertilizer_type || '',
+                                        currentFertilizerApplication.application_date || '',
+                                        currentFertilizerApplication.application_rate != null
+                                            ? `Rate ${currentFertilizerApplication.application_rate}`
+                                            : '',
+                                        currentFertilizerApplication.foliar_sampling_date
+                                            ? `Foliar ${currentFertilizerApplication.foliar_sampling_date}`
+                                            : '',
+                                    ].filter(Boolean).join(' | ')
+                                    : 'No fertilizer application added yet.'}
+                            </Typography>
+                        </Paper>
+
+                        {fertilizerApplicationRows.map((application, index) => (
+                            <Paper
+                                key={`fertilizer-application-${index}`}
+                                variant="outlined"
+                                sx={{
+                                    borderRadius: 3,
+                                    p: 2,
+                                    borderColor: 'rgba(86,184,112,0.18)',
+                                    bgcolor: 'rgba(255,255,255,0.82)',
+                                }}
+                            >
+                                <Stack spacing={2}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                                            Fertilizer Application {index + 1}
+                                        </Typography>
+                                        {index > 0 && (
+                                            <Button
+                                                size="small"
+                                                variant="text"
+                                                color="inherit"
+                                                onClick={() => handleRemoveFertilizerApplication(index)}
+                                            >
+                                                Remove
+                                            </Button>
+                                        )}
+                                    </Stack>
+                                    <Grid container spacing={2}>
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                fullWidth
+                                                label="Fertilizer Type"
+                                                value={application.fertilizer_type || ''}
+                                                onChange={(e) => handleFertilizerApplicationChange(index, 'fertilizer_type', e.target.value)}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                type="date"
+                                                fullWidth
+                                                label="Application Date"
+                                                InputLabelProps={{ shrink: true }}
+                                                value={normalizeDateInputValue(application.application_date)}
+                                                onChange={(e) => handleFertilizerApplicationChange(index, 'application_date', e.target.value)}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                type="number"
+                                                fullWidth
+                                                label="Application Rate"
+                                                value={application.application_rate ?? ''}
+                                                onChange={(e) => handleFertilizerApplicationChange(index, 'application_rate', parseOptionalNumericInput(e.target.value))}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                type="date"
+                                                fullWidth
+                                                label="Foliar Sampling Date"
+                                                InputLabelProps={{ shrink: true }}
+                                                value={normalizeDateInputValue(application.foliar_sampling_date)}
+                                                onChange={(e) => handleFertilizerApplicationChange(index, 'foliar_sampling_date', e.target.value)}
+                                            />
+                                        </Grid>
+                                    </Grid>
+                                </Stack>
+                            </Paper>
+                        ))}
+
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="flex-end">
+                            <Button
+                                variant="outlined"
+                                onClick={handleAddFertilizerApplication}
+                                disabled={fertilizerApplicationRows.length >= MAX_APPLICATION_LOOPS}
+                            >
+                                Add Fertilizer Application
+                            </Button>
+                        </Stack>
+                    </Stack>
                     </Box>
 
                     <Box>
                     <SectionHeading title="6. Weed Management" />
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                fullWidth
-                                label="Herbicide Name"
-                                value={formData.herbicide_name || ''}
-                                onChange={(e) => updateField('herbicide_name', e.target.value)}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
-                                label="Weed Application Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.weed_application_date || ''}
-                                onChange={(e) => updateField('weed_application_date', e.target.value)}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="number"
-                                fullWidth
-                                label="Weed Application Rate"
-                                value={formData.weed_application_rate ?? ''}
-                                onChange={(e) => updateField('weed_application_rate', parseOptionalNumericInput(e.target.value))}
-                            />
-                        </Grid>
-                    </Grid>
+                    <Stack spacing={2}>
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                borderRadius: 3,
+                                p: 2,
+                                borderColor: 'rgba(86,184,112,0.2)',
+                                bgcolor: 'rgba(255,255,255,0.78)',
+                            }}
+                        >
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', mb: 0.5 }}>
+                                Current Herbicide Application
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                {currentHerbicideApplication
+                                    ? [
+                                        currentHerbicideApplication.herbicide_name || '',
+                                        currentHerbicideApplication.application_date || '',
+                                        currentHerbicideApplication.application_rate != null
+                                            ? `Rate ${currentHerbicideApplication.application_rate}`
+                                            : '',
+                                    ].filter(Boolean).join(' | ')
+                                    : 'No herbicide application added yet.'}
+                            </Typography>
+                        </Paper>
+
+                        {herbicideApplicationRows.map((application, index) => (
+                            <Paper
+                                key={`herbicide-application-${index}`}
+                                variant="outlined"
+                                sx={{
+                                    borderRadius: 3,
+                                    p: 2,
+                                    borderColor: 'rgba(86,184,112,0.18)',
+                                    bgcolor: 'rgba(255,255,255,0.82)',
+                                }}
+                            >
+                                <Stack spacing={2}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                                            Herbicide Application {index + 1}
+                                        </Typography>
+                                        {index > 0 && (
+                                            <Button
+                                                size="small"
+                                                variant="text"
+                                                color="inherit"
+                                                onClick={() => handleRemoveHerbicideApplication(index)}
+                                            >
+                                                Remove
+                                            </Button>
+                                        )}
+                                    </Stack>
+                                    <Grid container spacing={2}>
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                fullWidth
+                                                label="Herbicide Name"
+                                                value={application.herbicide_name || ''}
+                                                onChange={(e) => handleHerbicideApplicationChange(index, 'herbicide_name', e.target.value)}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                type="date"
+                                                fullWidth
+                                                label="Application Date"
+                                                InputLabelProps={{ shrink: true }}
+                                                value={normalizeDateInputValue(application.application_date)}
+                                                onChange={(e) => handleHerbicideApplicationChange(index, 'application_date', e.target.value)}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                type="number"
+                                                fullWidth
+                                                label="Application Rate"
+                                                value={application.application_rate ?? ''}
+                                                onChange={(e) => handleHerbicideApplicationChange(index, 'application_rate', parseOptionalNumericInput(e.target.value))}
+                                            />
+                                        </Grid>
+                                    </Grid>
+                                </Stack>
+                            </Paper>
+                        ))}
+
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="flex-end">
+                            <Button
+                                variant="outlined"
+                                onClick={handleAddHerbicideApplication}
+                                disabled={herbicideApplicationRows.length >= MAX_APPLICATION_LOOPS}
+                            >
+                                Add Herbicide Application
+                            </Button>
+                        </Stack>
+                    </Stack>
                     </Box>
 
                     <Box>

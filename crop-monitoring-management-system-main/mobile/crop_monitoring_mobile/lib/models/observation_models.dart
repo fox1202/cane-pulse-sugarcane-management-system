@@ -11,6 +11,22 @@ Map<String, dynamic> normalizeObservationPayload(Map<String, dynamic> source) {
   final irrigationManagement = _mapFrom(payload['irrigation_management']);
   final nutrientManagement = _mapFrom(payload['nutrient_management']);
   final weedManagement = _mapFrom(payload['weed_management']);
+  final fertilizerApplications = _normalizeFertilizerApplications(
+    payload,
+    nutrientManagement,
+  );
+  final currentFertilizerApplication = _currentApplicationFromList(
+    fertilizerApplications,
+    dateKey: 'application_date',
+  );
+  final herbicideApplications = _normalizeHerbicideApplications(
+    payload,
+    weedManagement,
+  );
+  final currentHerbicideApplication = _currentApplicationFromList(
+    herbicideApplications,
+    dateKey: 'application_date',
+  );
   final cropProtection = _mapFrom(payload['crop_protection']);
   final controlMethods = _mapFrom(payload['control_methods']);
   final harvestInformation = _mapFrom(payload['harvest_information']);
@@ -131,6 +147,7 @@ Map<String, dynamic> normalizeObservationPayload(Map<String, dynamic> source) {
   );
   final nutrientApplicationDate = _stringOrNull(
     _firstPresent([
+      currentFertilizerApplication?['application_date'],
       nutrientManagement['application_date'],
       payload['nutrient_application_date'],
       payload['application_date'],
@@ -138,12 +155,14 @@ Map<String, dynamic> normalizeObservationPayload(Map<String, dynamic> source) {
   );
   final foliarSamplingDate = _stringOrNull(
     _firstPresent([
+      currentFertilizerApplication?['foliar_sampling_date'],
       nutrientManagement['foliar_sampling_date'],
       payload['foliar_sampling_date'],
     ]),
   );
   final weedApplicationDate = _stringOrNull(
     _firstPresent([
+      currentHerbicideApplication?['application_date'],
       weedManagement['application_date'],
       payload['weed_application_date'],
     ]),
@@ -352,6 +371,7 @@ Map<String, dynamic> normalizeObservationPayload(Map<String, dynamic> source) {
       'fertilizer_type':
           _stringOrNull(
             _firstPresent([
+              currentFertilizerApplication?['fertilizer_type'],
               nutrientManagement['fertilizer_type'],
               payload['fertilizer_type'],
             ]),
@@ -361,12 +381,15 @@ Map<String, dynamic> normalizeObservationPayload(Map<String, dynamic> source) {
         'application_date': nutrientApplicationDate,
       'application_rate': _toDouble(
         _firstPresent([
+          currentFertilizerApplication?['application_rate'],
           nutrientManagement['application_rate'],
           payload['application_rate'],
         ]),
       ),
       if (foliarSamplingDate != null)
         'foliar_sampling_date': foliarSamplingDate,
+      if (fertilizerApplications.isNotEmpty)
+        'applications': fertilizerApplications,
       'npk_ratio':
           _stringOrNull(
             _firstPresent([
@@ -382,6 +405,7 @@ Map<String, dynamic> normalizeObservationPayload(Map<String, dynamic> source) {
       'herbicide_name':
           _stringOrNull(
             _firstPresent([
+              currentHerbicideApplication?['herbicide_name'],
               weedManagement['herbicide_name'],
               payload['herbicide_name'],
             ]),
@@ -389,16 +413,20 @@ Map<String, dynamic> normalizeObservationPayload(Map<String, dynamic> source) {
           '',
       if (weedApplicationDate != null) 'application_date': weedApplicationDate,
       if (_firstPresent([
+            currentHerbicideApplication?['application_rate'],
             weedManagement['application_rate'],
             payload['weed_application_rate'],
           ]) !=
           null)
         'application_rate': _toDouble(
           _firstPresent([
+            currentHerbicideApplication?['application_rate'],
             weedManagement['application_rate'],
             payload['weed_application_rate'],
           ]),
         ),
+      if (herbicideApplications.isNotEmpty)
+        'applications': herbicideApplications,
     },
     'crop_protection': <String, dynamic>{
       'weed_type':
@@ -568,9 +596,9 @@ Map<String, dynamic> normalizeObservationPayload(Map<String, dynamic> source) {
   if (blockSize != null) {
     normalized['block_size'] = blockSize;
   }
-  normalized['record_fingerprint'] =
-      _stringOrNull(payload['record_fingerprint']) ??
-      _observationFingerprintFromNormalized(normalized);
+  normalized['record_fingerprint'] = _observationFingerprintFromNormalized(
+    normalized,
+  );
 
   return normalized;
 }
@@ -710,6 +738,10 @@ Map<String, dynamic> buildModernSugarcaneMonitoringRecord(
   final irrigationManagement = _mapFrom(payload['irrigation_management']);
   final nutrientManagement = _mapFrom(payload['nutrient_management']);
   final weedManagement = _mapFrom(payload['weed_management']);
+  final fertilizerApplications = _listOfMaps(
+    nutrientManagement['applications'],
+  );
+  final herbicideApplications = _listOfMaps(weedManagement['applications']);
   final harvestInformation = _mapFrom(payload['harvest_information']);
   final residualManagement = _mapFrom(payload['residual_management']);
   final monitoringRowId = _toIntOrNull(
@@ -790,6 +822,8 @@ Map<String, dynamic> buildModernSugarcaneMonitoringRecord(
       nutrientManagement['application_date'],
     ),
     'application_rate': _toDoubleOrNull(nutrientManagement['application_rate']),
+    if (fertilizerApplications.isNotEmpty)
+      'fertilizer_applications': fertilizerApplications,
     'foliar_sampling_date': _stringOrNull(
       nutrientManagement['foliar_sampling_date'],
     ),
@@ -798,6 +832,8 @@ Map<String, dynamic> buildModernSugarcaneMonitoringRecord(
     'weed_application_rate': _toDoubleOrNull(
       weedManagement['application_rate'],
     ),
+    if (herbicideApplications.isNotEmpty)
+      'herbicide_applications': herbicideApplications,
     'pest_remarks': _stringOrNull(cropProtection['pest_remarks']),
     'disease_remarks': _stringOrNull(cropProtection['disease_remarks']),
     'harvest_date':
@@ -865,6 +901,7 @@ Map<String, dynamic> buildObservationPayloadFromSugarcaneMonitoringRow(
     row['nutrient_application_date'],
     row['application_date'],
   ]);
+  final fertilizerApplications = row['fertilizer_applications'];
   final weedApplicationDate = _firstPresent([
     row['weed_application_date'],
     row['herbicide_application_date'],
@@ -873,6 +910,7 @@ Map<String, dynamic> buildObservationPayloadFromSugarcaneMonitoringRow(
     row['weed_application_rate'],
     row['herbicide_application_rate'],
   ]);
+  final herbicideApplications = row['herbicide_applications'];
 
   final payload = <String, dynamic>{
     if (rowId != null) 'id': rowId,
@@ -907,10 +945,12 @@ Map<String, dynamic> buildObservationPayloadFromSugarcaneMonitoringRow(
     'fertilizer_type': fertilizerType,
     'application_date': nutrientApplicationDate,
     'application_rate': row['application_rate'],
+    'fertilizer_applications': fertilizerApplications,
     'foliar_sampling_date': row['foliar_sampling_date'],
     'herbicide_name': row['herbicide_name'],
     'weed_application_date': weedApplicationDate,
     'weed_application_rate': weedApplicationRate,
+    'herbicide_applications': herbicideApplications,
     'pest_remarks': row['pest_remarks'],
     'disease_remarks': row['disease_remarks'],
     'created_at': row['created_at'],
@@ -959,11 +999,13 @@ String _observationFingerprintFromNormalized(Map<String, dynamic> normalized) {
   final irrigationManagement = _mapFrom(normalized['irrigation_management']);
   final nutrientManagement = _mapFrom(normalized['nutrient_management']);
   final weedManagement = _mapFrom(normalized['weed_management']);
+  final nutrientApplications = _listOfMaps(nutrientManagement['applications']);
+  final weedApplications = _listOfMaps(weedManagement['applications']);
   final controlMethods = _mapFrom(normalized['control_methods']);
   final harvestInformation = _mapFrom(normalized['harvest_information']);
   final residualManagement = _mapFrom(normalized['residual_management']);
   final pieces = <String>[
-    'v3',
+    'v4',
     _normalizeFingerprintDate(fieldIdentification['date_recorded']),
     _normalizeFingerprintText(fieldIdentification['field_id']),
     _normalizeFingerprintText(fieldIdentification['block_id']),
@@ -1005,9 +1047,20 @@ String _observationFingerprintFromNormalized(Map<String, dynamic> normalized) {
     _normalizeFingerprintDate(nutrientManagement['application_date']),
     _normalizeFingerprintText(nutrientManagement['application_rate']),
     _normalizeFingerprintDate(nutrientManagement['foliar_sampling_date']),
+    _normalizeApplicationFingerprint(nutrientApplications, const [
+      'fertilizer_type',
+      'application_date',
+      'application_rate',
+      'foliar_sampling_date',
+    ]),
     _normalizeFingerprintText(weedManagement['herbicide_name']),
     _normalizeFingerprintDate(weedManagement['application_date']),
     _normalizeFingerprintText(weedManagement['application_rate']),
+    _normalizeApplicationFingerprint(weedApplications, const [
+      'herbicide_name',
+      'application_date',
+      'application_rate',
+    ]),
     _normalizeFingerprintText(cropProtection['remarks']),
     _normalizeFingerprintText(cropProtection['pest_remarks']),
     _normalizeFingerprintText(cropProtection['disease_remarks']),
@@ -1055,6 +1108,210 @@ Map<String, dynamic> _mapFrom(dynamic value) {
     return Map<String, dynamic>.from(value);
   }
   return <String, dynamic>{};
+}
+
+List<Map<String, dynamic>> _listOfMaps(dynamic value) {
+  if (value is List) {
+    return value
+        .whereType<dynamic>()
+        .map(_mapFrom)
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  if (value is String && value.trim().isNotEmpty) {
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is List) {
+        return decoded
+            .whereType<dynamic>()
+            .map(_mapFrom)
+            .where((item) => item.isNotEmpty)
+            .toList();
+      }
+    } catch (_) {
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  return <Map<String, dynamic>>[];
+}
+
+List<Map<String, dynamic>> _normalizeFertilizerApplications(
+  Map<String, dynamic> payload,
+  Map<String, dynamic> nutrientManagement,
+) {
+  for (final candidate in [
+    nutrientManagement['applications'],
+    payload['fertilizer_applications'],
+  ]) {
+    final normalized = _listOfMaps(candidate)
+        .map(_normalizeFertilizerApplication)
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    if (normalized.isNotEmpty) {
+      return normalized;
+    }
+  }
+
+  final single = _normalizeFertilizerApplication({
+    'fertilizer_type': _firstPresent([
+      nutrientManagement['fertilizer_type'],
+      payload['fertilizer_type'],
+      payload['fertiliser_type'],
+    ]),
+    'application_date': _firstPresent([
+      nutrientManagement['application_date'],
+      payload['nutrient_application_date'],
+      payload['application_date'],
+    ]),
+    'application_rate': _firstPresent([
+      nutrientManagement['application_rate'],
+      payload['application_rate'],
+    ]),
+    'foliar_sampling_date': _firstPresent([
+      nutrientManagement['foliar_sampling_date'],
+      payload['foliar_sampling_date'],
+    ]),
+  });
+
+  return single == null ? <Map<String, dynamic>>[] : [single];
+}
+
+List<Map<String, dynamic>> _normalizeHerbicideApplications(
+  Map<String, dynamic> payload,
+  Map<String, dynamic> weedManagement,
+) {
+  for (final candidate in [
+    weedManagement['applications'],
+    payload['herbicide_applications'],
+  ]) {
+    final normalized = _listOfMaps(candidate)
+        .map(_normalizeHerbicideApplication)
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    if (normalized.isNotEmpty) {
+      return normalized;
+    }
+  }
+
+  final single = _normalizeHerbicideApplication({
+    'herbicide_name': _firstPresent([
+      weedManagement['herbicide_name'],
+      payload['herbicide_name'],
+    ]),
+    'application_date': _firstPresent([
+      weedManagement['application_date'],
+      payload['weed_application_date'],
+      payload['herbicide_application_date'],
+    ]),
+    'application_rate': _firstPresent([
+      weedManagement['application_rate'],
+      payload['weed_application_rate'],
+      payload['herbicide_application_rate'],
+    ]),
+  });
+
+  return single == null ? <Map<String, dynamic>>[] : [single];
+}
+
+Map<String, dynamic>? _normalizeFertilizerApplication(dynamic value) {
+  final source = _mapFrom(value);
+  final normalized = <String, dynamic>{};
+
+  final fertilizerType = _stringOrNull(source['fertilizer_type']);
+  final applicationDate = _stringOrNull(source['application_date']);
+  final applicationRate = _toDoubleOrNull(source['application_rate']);
+  final foliarSamplingDate = _stringOrNull(source['foliar_sampling_date']);
+
+  if (fertilizerType != null) normalized['fertilizer_type'] = fertilizerType;
+  if (applicationDate != null) normalized['application_date'] = applicationDate;
+  if (applicationRate != null) normalized['application_rate'] = applicationRate;
+  if (foliarSamplingDate != null) {
+    normalized['foliar_sampling_date'] = foliarSamplingDate;
+  }
+
+  return normalized.isEmpty ? null : normalized;
+}
+
+Map<String, dynamic>? _normalizeHerbicideApplication(dynamic value) {
+  final source = _mapFrom(value);
+  final normalized = <String, dynamic>{};
+
+  final herbicideName = _stringOrNull(source['herbicide_name']);
+  final applicationDate = _stringOrNull(source['application_date']);
+  final applicationRate = _toDoubleOrNull(source['application_rate']);
+
+  if (herbicideName != null) normalized['herbicide_name'] = herbicideName;
+  if (applicationDate != null) normalized['application_date'] = applicationDate;
+  if (applicationRate != null) normalized['application_rate'] = applicationRate;
+
+  return normalized.isEmpty ? null : normalized;
+}
+
+Map<String, dynamic>? _currentApplicationFromList(
+  List<Map<String, dynamic>> applications, {
+  required String dateKey,
+}) {
+  if (applications.isEmpty) return null;
+
+  Map<String, dynamic>? best;
+  DateTime? bestDate;
+
+  for (final application in applications) {
+    final dateText = application[dateKey]?.toString().trim() ?? '';
+    final parsedDate = dateText.isEmpty ? null : DateTime.tryParse(dateText);
+
+    if (best == null) {
+      best = application;
+      bestDate = parsedDate;
+      continue;
+    }
+
+    if (parsedDate != null && bestDate != null) {
+      if (!parsedDate.isBefore(bestDate)) {
+        best = application;
+        bestDate = parsedDate;
+      }
+      continue;
+    }
+
+    if (parsedDate != null && bestDate == null) {
+      best = application;
+      bestDate = parsedDate;
+      continue;
+    }
+
+    if (parsedDate == null && bestDate == null) {
+      best = application;
+    }
+  }
+
+  return best;
+}
+
+String _normalizeApplicationFingerprint(
+  List<Map<String, dynamic>> applications,
+  List<String> keys,
+) {
+  if (applications.isEmpty) return '';
+
+  final entries =
+      applications
+          .map((application) {
+            final values = keys.map((key) {
+              if (key.contains('date')) {
+                return _normalizeFingerprintDate(application[key]);
+              }
+              return _normalizeFingerprintText(application[key]);
+            }).toList();
+            return values.join('^');
+          })
+          .where((entry) => entry.replaceAll('^', '').isNotEmpty)
+          .toList()
+        ..sort();
+
+  return entries.join('~');
 }
 
 dynamic _firstPresent(Iterable<dynamic> values) {

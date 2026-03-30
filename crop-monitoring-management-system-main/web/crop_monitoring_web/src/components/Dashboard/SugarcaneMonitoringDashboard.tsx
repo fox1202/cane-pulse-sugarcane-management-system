@@ -61,22 +61,6 @@ function isMeaningfulStress(stress?: string | null): boolean {
     return Boolean(normalized) && !['none', 'no', 'normal', 'healthy', 'optimal', 'n/a', 'na'].includes(normalized)
 }
 
-function getStressTone(stress?: string | null): 'success' | 'info' | 'warning' | 'error' | 'default' {
-    const normalized = (stress ?? '').trim().toLowerCase()
-
-    if (!normalized || ['none', 'no', 'normal', 'healthy', 'optimal'].includes(normalized)) {
-        return 'success'
-    }
-    if (normalized === 'low') {
-        return 'info'
-    }
-    if (normalized === 'medium' || normalized === 'moderate') {
-        return 'warning'
-    }
-
-    return 'error'
-}
-
 function SummaryCard({
     icon,
     label,
@@ -390,7 +374,6 @@ export function SugarcaneMonitoringDashboard() {
                                         <TableCell>Date</TableCell>
                                         <TableCell>Field</TableCell>
                                         <TableCell>Crop Stage</TableCell>
-                                        <TableCell>Condition</TableCell>
                                         <TableCell>Irrigation</TableCell>
                                         <TableCell align="right">Yield</TableCell>
                                     </TableRow>
@@ -418,15 +401,6 @@ export function SugarcaneMonitoringDashboard() {
                                                 <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
                                                     {normalizeText(record.crop_stage, 'Stage not set')}
                                                 </Typography>
-                                            </TableCell>
-                                            <TableCell sx={{ minWidth: 190 }}>
-                                                <Chip
-                                                    size="small"
-                                                    label={`Stress: ${normalizeText(record.stress, 'None')}`}
-                                                    color={getStressTone(record.stress)}
-                                                    variant="outlined"
-                                                    sx={{ fontWeight: 700, width: 'fit-content' }}
-                                                />
                                             </TableCell>
                                             <TableCell sx={{ minWidth: 150 }}>
                                                 <Typography sx={{ fontWeight: 700, fontSize: 13 }}>

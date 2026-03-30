@@ -38,6 +38,22 @@ export interface FarmingCalendarRouteContext {
     anchorDate: string | null
 }
 
+export interface ObservationCalendarSource {
+    selected_field?: string
+    field_name?: string
+    section_name?: string
+    block_id?: string
+    trial_name?: string
+    trial_number?: string | number
+    crop_type?: string
+    crop_class?: string
+    planting_date?: string
+    previous_cutting_date?: string
+    cutting_date?: string
+}
+
+export type ObservationCalendarAnchor = 'planting' | 'cutting'
+
 function normalizeValue(value?: string | number | null): string {
     return String(value ?? '').trim().replace(/\s+/g, ' ')
 }
@@ -83,6 +99,27 @@ function buildTrialIdentity(record: SugarcaneMonitoringRecord): string {
         normalizeToken(record.block_id),
         normalizeToken(record.field_name),
     ].join('|')
+}
+
+function buildObservationFieldLabel(record: ObservationCalendarSource): string {
+    return [record.selected_field || record.field_name, record.section_name, record.block_id]
+        .map((value) => normalizeValue(value))
+        .filter(Boolean)
+        .join(' / ') || 'Unknown field'
+}
+
+function buildObservationTrialLabel(record: ObservationCalendarSource): string {
+    const trialName = normalizeValue(record.trial_name)
+    if (trialName) {
+        return trialName
+    }
+
+    const trialNumber = normalizeValue(record.trial_number)
+    if (trialNumber) {
+        return `Trial ${trialNumber}`
+    }
+
+    return buildObservationFieldLabel(record)
 }
 
 function resolveTemplateId(seed: TrialCalendarSeed): FarmingCalendarTemplate['id'] | null {
@@ -207,6 +244,35 @@ export function buildMonitoringCalendarSearch(link: MonitoringTrialCalendarLink)
     if (link.fieldLabel) params.set('field', link.fieldLabel)
     if (link.cropClass) params.set('cropClass', link.cropClass)
     if (link.anchorDate) params.set('anchorDate', link.anchorDate)
+
+    return params.toString()
+}
+
+export function buildObservationCalendarSearch(
+    record: ObservationCalendarSource,
+    anchor: ObservationCalendarAnchor
+): string {
+    const anchorDate = normalizeDateOnlyValue(
+        anchor === 'planting'
+            ? record.planting_date
+            : record.cutting_date || record.previous_cutting_date
+    )
+
+    if (!anchorDate) {
+        return ''
+    }
+
+    const params = new URLSearchParams()
+    params.set('template', anchor === 'planting' ? 'plant' : 'ratoon')
+
+    const trialLabel = buildObservationTrialLabel(record)
+    const fieldLabel = buildObservationFieldLabel(record)
+    const cropClass = normalizeValue(record.crop_class)
+
+    if (trialLabel) params.set('trial', trialLabel)
+    if (fieldLabel) params.set('field', fieldLabel)
+    if (cropClass) params.set('cropClass', cropClass)
+    params.set('anchorDate', anchorDate)
 
     return params.toString()
 }
