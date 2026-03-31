@@ -12,11 +12,12 @@ import {
 } from '@mui/material'
 import { AddCircleOutline, RefreshOutlined, DownloadOutlined } from '@mui/icons-material'
 import { useObservationEntryForms } from '@/hooks/useObservationEntryForms'
+import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
 import { ObservationEntryIntakeDialog } from '@/components/Data/ObservationEntryIntakeDialog'
 import {
     ObservationEntryDataTable,
-    OBSERVATION_ENTRY_SHEET_COLUMNS,
-    buildObservationEntrySheetRow,
+    SUGARCANE_MONITORING_SHEET_COLUMNS,
+    buildSugarcaneMonitoringSheetRow,
 } from '@/components/Data/ObservationEntryDataTable'
 
 export function ObservationEntryFormPage() {
@@ -24,22 +25,40 @@ export function ObservationEntryFormPage() {
     const [saveSuccessMessage, setSaveSuccessMessage] = useState('')
     const {
         data: forms = [],
-        isLoading: loading,
-        error,
-        refetch,
-        isFetching,
+        isLoading: formsLoading,
+        error: formsError,
+        refetch: refetchForms,
+        isFetching: isFetchingForms,
     } = useObservationEntryForms()
+    const {
+        data: monitoringRows = [],
+        isLoading: monitoringLoading,
+        error: monitoringError,
+        refetch: refetchMonitoring,
+        isFetching: isFetchingMonitoring,
+    } = useSugarcaneMonitoring()
+
+    const loading = formsLoading || monitoringLoading
+    const error = monitoringError ?? formsError
+    const isFetching = isFetchingForms || isFetchingMonitoring
+
+    const handleRefresh = async () => {
+        await Promise.all([
+            refetchForms(),
+            refetchMonitoring(),
+        ])
+    }
 
     const handleExportCSV = () => {
-        if (forms.length === 0) {
+        if (monitoringRows.length === 0) {
             alert('No data to export')
             return
         }
 
-        const headers = OBSERVATION_ENTRY_SHEET_COLUMNS.map((column) => column.label)
-        const rows = forms.map((form) => {
-            const row = buildObservationEntrySheetRow(form)
-            return OBSERVATION_ENTRY_SHEET_COLUMNS.map((column) => row[column.key])
+        const headers = SUGARCANE_MONITORING_SHEET_COLUMNS.map((column) => column.label)
+        const rows = monitoringRows.map((record) => {
+            const row = buildSugarcaneMonitoringSheetRow(record)
+            return SUGARCANE_MONITORING_SHEET_COLUMNS.map((column) => row[column.key])
         })
 
         const csv = [headers, ...rows]
@@ -50,7 +69,7 @@ export function ObservationEntryFormPage() {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `crop-monitoring-entries-${new Date().toISOString().split('T')[0]}.csv`
+        a.download = `sugarcane-monitoring-${new Date().toISOString().split('T')[0]}.csv`
         a.click()
         window.URL.revokeObjectURL(url)
     }
@@ -76,7 +95,7 @@ export function ObservationEntryFormPage() {
                 <Button
                     variant="outlined"
                     startIcon={<RefreshOutlined />}
-                    onClick={() => void refetch()}
+                    onClick={() => void handleRefresh()}
                     disabled={loading || isFetching}
                 >
                     Refresh
@@ -85,7 +104,7 @@ export function ObservationEntryFormPage() {
                     variant="outlined"
                     startIcon={<DownloadOutlined />}
                     onClick={handleExportCSV}
-                    disabled={forms.length === 0}
+                    disabled={monitoringRows.length === 0}
                 >
                     Export CSV
                 </Button>
@@ -97,10 +116,10 @@ export function ObservationEntryFormPage() {
                 </Alert>
             )}
 
-            {forms.length > 0 ? (
+            {monitoringRows.length > 0 ? (
                 <Box>
                     <ObservationEntryDataTable
-                        forms={forms}
+                        records={monitoringRows}
                         emptyMessage="No monitoring rows match the current filter."
                     />
                 </Box>
@@ -119,7 +138,7 @@ export function ObservationEntryFormPage() {
                 open={intakeOpen}
                 onClose={() => setIntakeOpen(false)}
                 onSubmitted={async () => {
-                    await refetch()
+                    await handleRefresh()
                 }}
                 onSaved={setSaveSuccessMessage}
                 existingForms={forms}

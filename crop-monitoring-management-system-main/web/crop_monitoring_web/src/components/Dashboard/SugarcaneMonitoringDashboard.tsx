@@ -29,6 +29,7 @@ import {
     buildMonitoringCalendarSearch,
     buildMonitoringTrialCalendarLinks,
 } from '@/utils/farmingCalendarLinks'
+import type { SugarcaneMonitoringRecord } from '@/types/database.types'
 
 function formatDate(value?: string | null, includeTime = false): string {
     if (!value) return 'N/A'
@@ -42,7 +43,6 @@ function formatDate(value?: string | null, includeTime = false): string {
         ? date.toLocaleString()
         : date.toLocaleDateString()
 }
-
 function formatNumber(value?: number | null, digits = 1): string {
     if (value === null || value === undefined || !Number.isFinite(value)) {
         return 'N/A'
@@ -59,6 +59,14 @@ function normalizeText(value?: string | null, fallback = 'N/A'): string {
 function isMeaningfulStress(stress?: string | null): boolean {
     const normalized = (stress ?? '').trim().toLowerCase()
     return Boolean(normalized) && !['none', 'no', 'normal', 'healthy', 'optimal', 'n/a', 'na'].includes(normalized)
+}
+
+function getSelectedFieldLabel(record: SugarcaneMonitoringRecord): string {
+    return normalizeText(record.field_name || record.field_id, 'Field not set')
+}
+
+function getFieldIdLabel(record: SugarcaneMonitoringRecord): string {
+    return normalizeText(record.field_id || record.field_name, 'Field ID not set')
 }
 
 function SummaryCard({
@@ -365,58 +373,82 @@ export function SugarcaneMonitoringDashboard() {
                 <Grid size={{ xs: 12 }}>
                     <InsightPanel
                         title="Recent Monitoring Records"
-                        subtitle="Latest entries from the live table, ready for web-based review and agronomic analysis."
+                        subtitle="Latest entries from the crop monitoring table, shown in the field register format from your reference."
                     >
-                        <TableContainer>
-                            <Table sx={{ minWidth: 760 }}>
+                        <TableContainer
+                            sx={{
+                                borderRadius: '32px',
+                                border: '1px solid rgba(127, 148, 118, 0.18)',
+                                bgcolor: 'rgba(243, 247, 237, 0.92)',
+                                backgroundImage: `
+                                    radial-gradient(circle at top left, rgba(255,255,255,0.75), transparent 40%),
+                                    linear-gradient(135deg, rgba(226,234,214,0.98), rgba(243,246,238,0.96))
+                                `,
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.72), 0 20px 44px rgba(58, 84, 45, 0.08)',
+                                overflowX: 'auto',
+                            }}
+                        >
+                            <Table
+                                sx={{
+                                    minWidth: 520,
+                                    borderCollapse: 'separate',
+                                    borderSpacing: 0,
+                                }}
+                            >
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>Date</TableCell>
-                                        <TableCell>Field</TableCell>
-                                        <TableCell>Crop Stage</TableCell>
-                                        <TableCell>Irrigation</TableCell>
-                                        <TableCell align="right">Yield</TableCell>
+                                        {['Selected Field', 'Field Name', 'Field ID'].map((label, index, list) => (
+                                            <TableCell
+                                                key={label}
+                                                sx={{
+                                                    px: 2.2,
+                                                    py: 2.3,
+                                                    borderBottom: '1px solid rgba(127, 148, 118, 0.22)',
+                                                    bgcolor: 'rgba(213, 225, 204, 0.88)',
+                                                    color: '#5f7064',
+                                                    fontSize: 11,
+                                                    fontWeight: 800,
+                                                    letterSpacing: '0.18em',
+                                                    textTransform: 'uppercase',
+                                                    whiteSpace: 'nowrap',
+                                                    ...(index === 0 && {
+                                                        borderTopLeftRadius: '32px',
+                                                    }),
+                                                    ...(index === list.length - 1 && {
+                                                        borderTopRightRadius: '32px',
+                                                    }),
+                                                }}
+                                            >
+                                                {label}
+                                            </TableCell>
+                                        ))}
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {monitoring.slice(0, 12).map((record) => (
-                                        <TableRow key={record.id} hover>
-                                            <TableCell sx={{ minWidth: 118 }}>
-                                                <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
-                                                    {formatDate(record.date_recorded)}
-                                                </Typography>
-                                                <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                                                    {formatDate(record.date_recorded, true)}
-                                                </Typography>
+                                        <TableRow
+                                            key={record.id}
+                                            hover
+                                            sx={{
+                                                '&:hover td': {
+                                                    bgcolor: 'rgba(255,255,255,0.34)',
+                                                },
+                                                '&:last-child td:first-of-type': {
+                                                    borderBottomLeftRadius: '32px',
+                                                },
+                                                '&:last-child td:last-of-type': {
+                                                    borderBottomRightRadius: '32px',
+                                                },
+                                            }}
+                                        >
+                                            <TableCell sx={monitoringCellStyles}>
+                                                {getSelectedFieldLabel(record)}
                                             </TableCell>
-                                            <TableCell sx={{ minWidth: 180 }}>
-                                                <Typography sx={{ fontWeight: 700, fontSize: 13.5 }}>
-                                                    {normalizeText(record.field_name, 'Unknown field')}
-                                                </Typography>
-                                                <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                                                    {record.block_id || 'Block not set'}
-                                                </Typography>
+                                            <TableCell sx={monitoringCellStyles}>
+                                                {normalizeText(record.field_name, 'Field name not set')}
                                             </TableCell>
-                                            <TableCell sx={{ minWidth: 180 }}>
-                                                <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
-                                                    {normalizeText(record.crop_stage, 'Stage not set')}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell sx={{ minWidth: 150 }}>
-                                                <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
-                                                    {normalizeText(record.irrigation_type, 'Not recorded')}
-                                                </Typography>
-                                                <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                                                    Moisture: {record.soil_moisture_percentage == null ? 'N/A' : `${formatNumber(record.soil_moisture_percentage)}%`}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ minWidth: 110 }}>
-                                                <Typography sx={{ fontWeight: 800, fontSize: 13.5 }}>
-                                                    {record.yield == null ? 'N/A' : `${formatNumber(record.yield)} t/ha`}
-                                                </Typography>
-                                                <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                                                    pH {record.soil_ph == null ? 'N/A' : formatNumber(record.soil_ph, 2)}
-                                                </Typography>
+                                            <TableCell sx={monitoringCellStyles}>
+                                                {getFieldIdLabel(record)}
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -428,4 +460,15 @@ export function SugarcaneMonitoringDashboard() {
             </Grid>
         </Box>
     )
+}
+
+const monitoringCellStyles = {
+    px: 2.2,
+    py: 2,
+    minWidth: 150,
+    borderBottom: '1px solid rgba(127, 148, 118, 0.14)',
+    color: '#32453a',
+    fontSize: 15,
+    fontWeight: 500,
+    bgcolor: 'transparent',
 }
