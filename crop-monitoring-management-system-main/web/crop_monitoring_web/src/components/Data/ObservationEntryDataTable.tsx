@@ -49,35 +49,6 @@ function formatNumericValue(value?: number | null, maximumFractionDigits = 2) {
     })
 }
 
-function formatApplicationListSummary(
-    value: unknown,
-    typeKey: 'fertilizer_type' | 'herbicide_name',
-    includeFoliar = false
-) {
-    if (!Array.isArray(value) || value.length === 0) {
-        return '-'
-    }
-
-    const parts = value
-        .filter((item) => typeof item === 'object' && item !== null)
-        .map((item, index) => {
-            const application = item as Record<string, unknown>
-            const values = [
-                String(application[typeKey] ?? '').trim(),
-                String(application.application_date ?? '').trim(),
-                application.application_rate != null ? `Rate ${application.application_rate}` : '',
-                includeFoliar && application.foliar_sampling_date
-                    ? `Foliar ${String(application.foliar_sampling_date).trim()}`
-                    : '',
-            ].filter(Boolean)
-
-            return values.length > 0 ? `${index + 1}. ${values.join(' | ')}` : ''
-        })
-        .filter(Boolean)
-
-    return parts.length > 0 ? parts.join('; ') : '-'
-}
-
 function formatDateValue(value?: string | null) {
     if (!value) return '-'
 
@@ -98,67 +69,44 @@ function formatDateValue(value?: string | null) {
     })
 }
 
-function formatDateTimeValue(value?: string | null) {
-    if (!value) return '-'
-
-    const parsed = new Date(value)
-    if (Number.isNaN(parsed.getTime())) {
-        return formatDateValue(value)
-    }
-
-    return parsed.toLocaleString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    })
-}
-
 function isHttpUrl(value: string) {
     return /^https?:\/\//i.test(value)
 }
 
 export const SUGARCANE_MONITORING_SHEET_COLUMNS: SugarcaneMonitoringSheetColumn[] = [
-    { key: 'field_id', label: 'TRIAL', minWidth: 180, wrap: true, getValue: (record) => formatTextValue(record.field_id) },
+    { key: 'field_id', label: 'Trial', minWidth: 180, wrap: true, getValue: (record) => formatTextValue(record.field_id) },
     { key: 'block_id', label: 'block_id', minWidth: 140, getValue: (record) => formatTextValue(record.block_id) },
     { key: 'area', label: 'area', minWidth: 110, getValue: (record) => formatNumericValue(record.area) },
-    { key: 'date_recorded', label: 'date_recorded', minWidth: 170, getValue: (record) => formatDateValue(record.date_recorded) },
-    { key: 'crop_type', label: 'crop_type', minWidth: 140, getValue: (record) => formatTextValue(record.crop_type) },
-    { key: 'crop_class', label: 'crop_class', minWidth: 150, getValue: (record) => formatTextValue(record.crop_class) },
-    { key: 'planting_date', label: 'planting_date', minWidth: 160, calendarAnchor: 'planting', getValue: (record) => formatDateValue(record.planting_date) },
-    { key: 'previous_cutting_date', label: 'previous_cutting_date', minWidth: 190, calendarAnchor: 'cutting', getValue: (record) => formatDateValue(record.previous_cutting_date ?? record.previous_cutting) },
-    { key: 'expected_harvest_date', label: 'expected_harvest_date', minWidth: 210, getValue: (record) => formatDateValue(record.expected_harvest_date) },
-    { key: 'tam_mm', label: 'tam_mm', minWidth: 110, getValue: (record) => formatTextValue(record.tam_mm) },
-    { key: 'soil_type', label: 'soil_type', minWidth: 130, getValue: (record) => formatTextValue(record.soil_type) },
-    { key: 'soil_ph', label: 'soil_ph', minWidth: 110, getValue: (record) => formatNumericValue(record.soil_ph) },
     { key: 'irrigation_type', label: 'irrigation_type', minWidth: 160, getValue: (record) => formatTextValue(record.irrigation_type) },
     { key: 'water_source', label: 'water_source', minWidth: 150, getValue: (record) => formatTextValue(record.water_source) },
+    { key: 'tam_mm', label: 'tam', minWidth: 110, getValue: (record) => formatTextValue(record.tam_mm) },
+    { key: 'soil_type', label: 'soil_type', minWidth: 130, getValue: (record) => formatTextValue(record.soil_type) },
+    { key: 'soil_ph', label: 'soil_ph', minWidth: 110, getValue: (record) => formatNumericValue(record.soil_ph) },
+    { key: 'field_remarks', label: 'remarks', minWidth: 240, wrap: true, getValue: (record) => formatTextValue(record.field_remarks) },
+    { key: 'date_recorded', label: 'date_recorded', minWidth: 170, getValue: (record) => formatDateValue(record.date_recorded) },
     { key: 'trial_number', label: 'trial_number', minWidth: 140, getValue: (record) => formatTextValue(record.trial_number) },
     { key: 'trial_name', label: 'trial_name', minWidth: 180, wrap: true, getValue: (record) => formatTextValue(record.trial_name) },
-    { key: 'contact_person', label: 'contact_person', minWidth: 180, wrap: true, getValue: (record) => formatTextValue(record.contact_person) },
-    { key: 'field_remarks', label: 'field_remarks', minWidth: 240, wrap: true, getValue: (record) => formatTextValue(record.field_remarks) },
+    { key: 'contact_person', label: 'contact_person_scientist', minWidth: 210, wrap: true, getValue: (record) => formatTextValue(record.contact_person) },
+    { key: 'crop_type', label: 'crop_type', minWidth: 140, getValue: (record) => formatTextValue(record.crop_type) },
+    { key: 'crop_class', label: 'crop_class', minWidth: 150, getValue: (record) => formatTextValue(record.crop_class) },
+    { key: 'variety', label: 'variety', minWidth: 150, getValue: (record) => formatTextValue(record.variety) },
+    { key: 'planting_date', label: 'planting_date', minWidth: 160, calendarAnchor: 'planting', getValue: (record) => formatDateValue(record.planting_date) },
+    { key: 'previous_cutting_date', label: 'cutting_date', minWidth: 190, calendarAnchor: 'cutting', getValue: (record) => formatDateValue(record.previous_cutting_date ?? record.previous_cutting) },
+    { key: 'expected_harvest_date', label: 'expected_harvest_date', minWidth: 210, getValue: (record) => formatDateValue(record.expected_harvest_date) },
+    { key: 'residue_type', label: 'residue_type', minWidth: 150, getValue: (record) => formatTextValue(record.residue_type) },
+    { key: 'residue_management_method', label: 'management_method', minWidth: 240, wrap: true, getValue: (record) => formatTextValue(record.residue_management_method) },
+    { key: 'residual_management_remarks', label: 'residue_remarks', minWidth: 240, wrap: true, getValue: (record) => formatTextValue(record.residual_management_remarks) },
     { key: 'fertilizer_type', label: 'fertilizer_type', minWidth: 170, getValue: (record) => formatTextValue(record.fertilizer_type) },
-    { key: 'nutrient_application_date', label: 'nutrient_application_date', minWidth: 220, getValue: (record) => formatDateValue(record.nutrient_application_date ?? record.fertilizer_application_date) },
+    { key: 'nutrient_application_date', label: 'application_date', minWidth: 190, getValue: (record) => formatDateValue(record.nutrient_application_date ?? record.fertilizer_application_date) },
     { key: 'application_rate', label: 'application_rate', minWidth: 140, getValue: (record) => formatNumericValue(record.application_rate) },
-    { key: 'fertilizer_applications', label: 'fertilizer_applications', minWidth: 300, wrap: true, getValue: (record) => formatApplicationListSummary(record.fertilizer_applications, 'fertilizer_type', true) },
-    { key: 'npk_ratio', label: 'npk_ratio', minWidth: 130, getValue: (record) => formatTextValue(record.npk_ratio) },
-    { key: 'foliar_sampling_date', label: 'foliar_sampling_date', minWidth: 190, getValue: (record) => formatDateValue(record.foliar_sampling_date) },
     { key: 'herbicide_name', label: 'herbicide_name', minWidth: 170, getValue: (record) => formatTextValue(record.herbicide_name) },
     { key: 'weed_application_date', label: 'weed_application_date', minWidth: 190, getValue: (record) => formatDateValue(record.weed_application_date) },
     { key: 'weed_application_rate', label: 'weed_application_rate', minWidth: 180, getValue: (record) => formatNumericValue(record.weed_application_rate) },
-    { key: 'herbicide_applications', label: 'herbicide_applications', minWidth: 300, wrap: true, getValue: (record) => formatApplicationListSummary(record.herbicide_applications, 'herbicide_name') },
-    { key: 'pest_remarks', label: 'pest_remarks', minWidth: 220, wrap: true, getValue: (record) => formatTextValue(record.pest_remarks) },
-    { key: 'disease_remarks', label: 'disease_remarks', minWidth: 220, wrap: true, getValue: (record) => formatTextValue(record.disease_remarks) },
+    { key: 'pest_remarks', label: 'pest_control', minWidth: 220, wrap: true, getValue: (record) => formatTextValue(record.pest_remarks) },
+    { key: 'disease_remarks', label: 'disease_control', minWidth: 220, wrap: true, getValue: (record) => formatTextValue(record.disease_remarks) },
     { key: 'harvest_date', label: 'harvest_date', minWidth: 160, getValue: (record) => formatDateValue(record.harvest_date) },
     { key: 'yield', label: 'yield', minWidth: 120, getValue: (record) => formatNumericValue(record.yield) },
-    { key: 'harvest_method', label: 'harvest_method', minWidth: 170, wrap: true, getValue: (record) => formatTextValue(record.harvest_method) },
-    { key: 'quality_remarks', label: 'quality_remarks', minWidth: 220, wrap: true, getValue: (record) => formatTextValue(record.quality_remarks) },
-    { key: 'residue_type', label: 'residue_type', minWidth: 150, getValue: (record) => formatTextValue(record.residue_type) },
-    { key: 'residue_management_method', label: 'residue_management_method', minWidth: 240, wrap: true, getValue: (record) => formatTextValue(record.residue_management_method) },
-    { key: 'residual_management_remarks', label: 'residual_management_remarks', minWidth: 240, wrap: true, getValue: (record) => formatTextValue(record.residual_management_remarks) },
-    { key: 'created_at', label: 'created_at', minWidth: 190, getValue: (record) => formatDateTimeValue(record.created_at) },
-    { key: 'updated_at', label: 'updated_at', minWidth: 190, getValue: (record) => formatDateTimeValue(record.updated_at) },
+    { key: 'quality_remarks', label: 'cane_quality_remarks', minWidth: 220, wrap: true, getValue: (record) => formatTextValue(record.quality_remarks) },
 ]
 
 export function buildSugarcaneMonitoringSheetRow(record: SugarcaneMonitoringRecord) {

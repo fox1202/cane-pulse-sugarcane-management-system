@@ -53,7 +53,7 @@ const PAGE_META: Record<string, { eyebrow: string; title: string; note: string; 
   '/': {
     eyebrow: 'Overview',
     title: 'Field Pulse',
-    note: 'Monitor alerts, form flow, calendar work, and mapped field activity from one place.',
+    note: 'Monitor alerts, form flow, calendar work, and mapped field activity from sugarcane_field_management.',
     icon: <HomeRounded fontSize="small" />,
   },
   '/data': {
@@ -71,7 +71,7 @@ const PAGE_META: Record<string, { eyebrow: string; title: string; note: string; 
   '/field-statistics': {
     eyebrow: 'Analytics',
     title: 'Field Statistics',
-    note: 'Read mapped area, crop coverage, and chart summaries with more visual breathing room.',
+    note: 'Read mapped area, crop coverage, and chart summaries from sugarcane_field_management.',
     icon: <InsightsRounded fontSize="small" />,
   },
   '/map': {

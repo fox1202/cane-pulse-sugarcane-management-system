@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import {
     Alert,
     Box,
@@ -26,7 +25,6 @@ import {
 } from 'recharts'
 import { getFarmingCalendarTemplate, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
-import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
 import type { SugarcaneMonitoringRecord } from '@/types/database.types'
 import { formatDateOnlyLabel, getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
 
@@ -140,11 +138,6 @@ function StatusBadge({ text, tone = 'mint' }: { text: string; tone?: 'mint' | 'p
     )
 }
 
-interface MonitoringFieldLookups {
-    byIdentity: Map<string, PredefinedField>
-    byName: Map<string, PredefinedField[]>
-}
-
 interface FieldSnapshot {
     fieldKey: string
     fieldLabel: string
@@ -161,7 +154,7 @@ interface AreaFieldSnapshot {
     areaHa: number
 }
 
-type AreaCropGroup = 'Sugarcane' | 'Break Crop' | 'Fallow Period' | 'Unspecified'
+type AreaCropGroup = 'Sugarcane' | 'Break Crop' | 'Furrow Period' | 'Unspecified'
 
 interface AreaOverviewDatum {
     label: string
@@ -223,42 +216,6 @@ function buildFieldLabel(fieldName?: string | null, sectionName?: string | null,
         .map((value) => (value ?? '').trim())
         .filter(Boolean)
         .join(' / ') || 'Unknown field'
-}
-
-function buildMonitoringFieldLookups(fields: PredefinedField[]): MonitoringFieldLookups {
-    const byIdentity = new Map<string, PredefinedField>()
-    const byName = new Map<string, PredefinedField[]>()
-
-    fields.forEach((field) => {
-        const identity = buildFieldIdentity(field.field_name, field.section_name, field.block_id)
-        if (identity !== '||' && !byIdentity.has(identity)) {
-            byIdentity.set(identity, field)
-        }
-
-        const nameKey = normalizeFieldToken(field.field_name)
-        if (!nameKey) {
-            return
-        }
-
-        const group = byName.get(nameKey) ?? []
-        group.push(field)
-        byName.set(nameKey, group)
-    })
-
-    return { byIdentity, byName }
-}
-
-function resolveMonitoringField(
-    record: Pick<SugarcaneMonitoringRecord, 'field_name' | 'section_name' | 'block_id'>,
-    lookups: MonitoringFieldLookups
-): PredefinedField | null {
-    const exact = lookups.byIdentity.get(buildFieldIdentity(record.field_name, record.section_name, record.block_id))
-    if (exact) {
-        return exact
-    }
-
-    const nameMatches = lookups.byName.get(normalizeFieldToken(record.field_name)) ?? []
-    return nameMatches.length === 1 ? nameMatches[0] : null
 }
 
 function normalizeGeometry(value: any): any | null {
@@ -357,7 +314,7 @@ function getGeometryAreaHa(geometry: any): number | null {
     return Number((areaSqMeters / 10_000).toFixed(2))
 }
 
-function resolveMonitoringAreaHa(record: SugarcaneMonitoringRecord, linkedField: PredefinedField | null): number | null {
+function resolveMonitoringAreaHa(record: SugarcaneMonitoringRecord): number | null {
     if (typeof record.area === 'number' && Number.isFinite(record.area) && record.area > 0) {
         return Number(record.area.toFixed(2))
     }
@@ -367,7 +324,7 @@ function resolveMonitoringAreaHa(record: SugarcaneMonitoringRecord, linkedField:
         return recordGeometryArea
     }
 
-    return getGeometryAreaHa(linkedField?.geom)
+    return null
 }
 
 function getTodayDateOnly(): string {
@@ -387,7 +344,7 @@ function getAreaCropGroup(value?: string | null): AreaCropGroup {
 
     if (!normalized) return 'Unspecified'
     if (/break\s*crop|breakcrop/.test(normalized)) return 'Break Crop'
-    if (/fallow|fullow/.test(normalized)) return 'Fallow Period'
+    if (/fallow|furrow|fullow/.test(normalized)) return 'Furrow Period'
     if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
     return 'Unspecified'
 }
@@ -783,7 +740,7 @@ function AreaPieChart({
                 }}
             >
                 <Typography sx={{ fontSize: '0.9rem', color: TEXT_MID, lineHeight: 1.7, maxWidth: 300 }}>
-                    Mapped area was found, but those fields are not yet classified as Sugarcane, Break Crop, or Fallow Period.
+                    Mapped area was found, but those fields are not yet classified as Sugarcane, Break Crop, or Furrow Period.
                 </Typography>
             </Box>
         )
@@ -1160,60 +1117,51 @@ export function HomePage() {
         isLoading: monitoringLoading,
         error: monitoringError,
     } = useSugarcaneMonitoring()
-    const {
-        data: predefinedFields = [],
-        isLoading: fieldsLoading,
-        error: fieldsError,
-    } = useQuery<PredefinedField[], Error>({
-        queryKey: ['overview-predefined-fields'],
-        queryFn: fetchLivePredefinedFields,
-        staleTime: 60_000,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: true,
-    })
-
-    const fieldLookups = useMemo(
-        () => buildMonitoringFieldLookups(predefinedFields),
-        [predefinedFields]
-    )
 
     const fieldSnapshots = useMemo<FieldSnapshot[]>(() => {
+        const sortedMonitoring = [...monitoring].sort(
+            (left, right) => getDateOnlyTimestamp(normalizeDateOnlyValue(right.date_recorded) || '')
+                - getDateOnlyTimestamp(normalizeDateOnlyValue(left.date_recorded) || '')
+        )
         const latestByField = new Map<string, FieldSnapshot>()
 
-        monitoring.forEach((record) => {
+        sortedMonitoring.forEach((record) => {
             const fieldKey = buildFieldIdentity(record.field_name, record.section_name, record.block_id)
-            const linkedField = resolveMonitoringField(record, fieldLookups)
-            const cropType = (record.crop_type ?? record.crop_class ?? linkedField?.crop_type ?? '').trim() || 'Unspecified'
-            const snapshot: FieldSnapshot = {
-                fieldKey,
-                fieldLabel: buildFieldLabel(record.field_name, record.section_name, record.block_id),
-                cropType,
-                areaHa: resolveMonitoringAreaHa(record, linkedField),
-                isTrial: [record.field_name, record.section_name, record.block_id].some((value) => isTrialLike(value)),
-                recordedDate: normalizeDateOnlyValue(record.date_recorded) || '',
+            if (!fieldKey || fieldKey === '||') {
+                return
             }
 
+            const cropType = (record.crop_type ?? record.crop_class ?? '').trim() || 'Unspecified'
+            const areaHa = resolveMonitoringAreaHa(record)
+            const recordedDate = normalizeDateOnlyValue(record.date_recorded) || ''
             const existing = latestByField.get(fieldKey)
-            if (!existing || getDateOnlyTimestamp(snapshot.recordedDate) >= getDateOnlyTimestamp(existing.recordedDate)) {
-                latestByField.set(fieldKey, snapshot)
+
+            if (!existing) {
+                latestByField.set(fieldKey, {
+                    fieldKey,
+                    fieldLabel: buildFieldLabel(record.field_name, record.section_name, record.block_id),
+                    cropType,
+                    areaHa,
+                    isTrial: [record.field_name, record.section_name, record.block_id].some((value) => isTrialLike(value)),
+                    recordedDate,
+                })
+                return
+            }
+
+            if ((existing.cropType === 'Unspecified' || !existing.cropType) && cropType !== 'Unspecified') {
+                existing.cropType = cropType
+            }
+            if ((existing.areaHa === null || existing.areaHa <= 0) && areaHa !== null && areaHa > 0) {
+                existing.areaHa = areaHa
+            }
+            if (!existing.recordedDate && recordedDate) {
+                existing.recordedDate = recordedDate
             }
         })
 
         return Array.from(latestByField.values())
             .sort((left, right) => getDateOnlyTimestamp(right.recordedDate) - getDateOnlyTimestamp(left.recordedDate))
-    }, [fieldLookups, monitoring])
-
-    const latestMonitoringCropTypeByField = useMemo(() => {
-        const latestByField = new Map<string, string>()
-
-        fieldSnapshots.forEach((snapshot) => {
-            if (snapshot.cropType && snapshot.cropType !== 'Unspecified') {
-                latestByField.set(snapshot.fieldKey, snapshot.cropType)
-            }
-        })
-
-        return latestByField
-    }, [fieldSnapshots])
+    }, [monitoring])
 
     const calendarFieldSeeds = useMemo<CalendarFieldSeed[]>(() => {
         const sortedMonitoring = [...monitoring].sort(
@@ -1228,9 +1176,8 @@ export function HomePage() {
             }
 
             const existing = byField.get(fieldKey)
-            const linkedField = resolveMonitoringField(record, fieldLookups)
-            const cropType = (record.crop_type ?? linkedField?.crop_type ?? '').trim()
-            const cropClass = (record.crop_class ?? record.crop_type ?? linkedField?.crop_type ?? '').trim()
+            const cropType = (record.crop_type ?? '').trim()
+            const cropClass = (record.crop_class ?? record.crop_type ?? '').trim()
             const plantingDate = normalizeDateOnlyValue(record.planting_date) || ''
             const cutDate = normalizeDateOnlyValue(record.previous_cutting_date ?? record.previous_cutting) || ''
             const recordedDate = normalizeDateOnlyValue(record.date_recorded) || ''
@@ -1258,7 +1205,7 @@ export function HomePage() {
         return Array.from(byField.values())
             .filter((seed) => isCalendarRelevantCrop(seed.cropType, seed.cropClass))
             .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
-    }, [fieldLookups, monitoring])
+    }, [monitoring])
 
     const upcomingTaskItems = useMemo<UpcomingTask[]>(() => {
         const todayIso = getTodayDateOnly()
@@ -1326,67 +1273,16 @@ export function HomePage() {
     }, [calendarFieldSeeds])
 
     const mappedAreaFields = useMemo<AreaFieldSnapshot[]>(() => {
-        const snapshots: AreaFieldSnapshot[] = []
-        const seen = new Set<string>()
-
-        predefinedFields.forEach((field) => {
-            const fieldKey = buildFieldIdentity(field.field_name, field.section_name, field.block_id)
-            if (!fieldKey || fieldKey === '||' || seen.has(fieldKey)) {
-                return
-            }
-
-            const areaHa = getGeometryAreaHa(field.geom)
-            if (areaHa === null || areaHa <= 0) {
-                return
-            }
-
-            const cropType = (field.crop_type ?? latestMonitoringCropTypeByField.get(fieldKey) ?? '').trim() || 'Unspecified'
-
-            snapshots.push({
-                fieldKey,
-                fieldLabel: buildFieldLabel(field.field_name, field.section_name, field.block_id),
-                cropType,
-                areaHa,
-            })
-
-            seen.add(fieldKey)
-        })
-
-        const latestUnmatchedMonitoring = new Map<string, SugarcaneMonitoringRecord>()
-
-        monitoring.forEach((record) => {
-            const fieldKey = buildFieldIdentity(record.field_name, record.section_name, record.block_id)
-            if (!fieldKey || fieldKey === '||' || seen.has(fieldKey)) {
-                return
-            }
-
-            const existing = latestUnmatchedMonitoring.get(fieldKey)
-            const recordTimestamp = getDateOnlyTimestamp(normalizeDateOnlyValue(record.date_recorded) || '')
-            const existingTimestamp = existing
-                ? getDateOnlyTimestamp(normalizeDateOnlyValue(existing.date_recorded) || '')
-                : Number.NEGATIVE_INFINITY
-
-            if (!existing || recordTimestamp >= existingTimestamp) {
-                latestUnmatchedMonitoring.set(fieldKey, record)
-            }
-        })
-
-        latestUnmatchedMonitoring.forEach((record, fieldKey) => {
-            const areaHa = resolveMonitoringAreaHa(record, null)
-            if (areaHa === null || areaHa <= 0) {
-                return
-            }
-
-            snapshots.push({
-                fieldKey,
-                fieldLabel: buildFieldLabel(record.field_name, record.section_name, record.block_id),
-                cropType: (record.crop_type ?? record.crop_class ?? '').trim() || 'Unspecified',
-                areaHa,
-            })
-        })
-
-        return snapshots.sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
-    }, [latestMonitoringCropTypeByField, monitoring, predefinedFields])
+        return fieldSnapshots
+            .filter((snapshot) => snapshot.areaHa !== null && snapshot.areaHa > 0)
+            .map((snapshot) => ({
+                fieldKey: snapshot.fieldKey,
+                fieldLabel: snapshot.fieldLabel,
+                cropType: snapshot.cropType,
+                areaHa: snapshot.areaHa as number,
+            }))
+            .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
+    }, [fieldSnapshots])
     const areaSummary = useMemo(
         () => mappedAreaFields.reduce(
             (summary, snapshot) => {
@@ -1403,7 +1299,7 @@ export function HomePage() {
                         summary.totalBreakCropArea += areaHa
                         summary.breakCropFieldCount += 1
                         break
-                    case 'Fallow Period':
+                    case 'Furrow Period':
                         summary.totalFallowArea += areaHa
                         summary.fallowFieldCount += 1
                         break
@@ -1440,7 +1336,7 @@ export function HomePage() {
                 fieldCount: areaSummary.breakCropFieldCount,
             },
             {
-                label: 'Fallow Period',
+                label: 'Furrow Period',
                 areaHa: Number(areaSummary.totalFallowArea.toFixed(2)),
                 color: PEACH,
                 fieldCount: areaSummary.fallowFieldCount,
@@ -1463,7 +1359,7 @@ export function HomePage() {
     const nextCalendarWarning = calendarWarnings[0] ?? null
     const secondaryCalendarWarning = calendarWarnings.find((warning) => warning.key !== nextCalendarWarning?.key) ?? nextCalendarWarning
     const calendarWarningsPreview = calendarWarnings.slice(0, 3)
-    const isOverviewLoading = monitoringLoading || fieldsLoading
+    const isOverviewLoading = monitoringLoading
 
     const protocolRef = useRef(null)
     const protocolInView = useInView(protocolRef, { once: true, margin: '-80px' })
@@ -1502,11 +1398,6 @@ export function HomePage() {
                         {monitoringError.message}
                     </Alert>
                 )}
-                {fieldsError && (
-                    <Alert severity="warning" sx={{ mb: 3 }}>
-                        Live field geometry could not be loaded from the database, so mapped area totals may be incomplete.
-                    </Alert>
-                )}
 
                 {isOverviewLoading ? (
                     <Box sx={{ minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 8 }}>
@@ -1521,7 +1412,7 @@ export function HomePage() {
                                     title="Mapped Area Overview"
                                 >
                                     <Typography sx={{ fontSize: '0.95rem', color: TEXT_MID, lineHeight: 1.8, maxWidth: 540, mb: 2.4 }}>
-                                        Latest hectares for mapped fields grouped by crop type: sugarcane, break crop, and fallow period.
+                                        Latest hectares from sugarcane_field_management, grouped by crop type: sugarcane, break crop, and furrow period.
                                     </Typography>
                                     <AreaPieChart
                                         data={areaOverviewData}

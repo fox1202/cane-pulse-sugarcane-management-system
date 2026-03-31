@@ -65,7 +65,7 @@ export default function SupabaseConnectionTest() {
         'blocks',
         'fields',
         'profiles',
-        'sugarcane_monitoring',
+        'sugarcane_field_management',
     ]
 
     async function runTests() {

@@ -49,12 +49,13 @@ type AnalyticsObservation = (FullObservation | MobileObservationRecord) & {
 type AreaCropGroup =
   | 'Sugarcane'
   | 'Break Crop'
-  | 'Fallow Period'
+  | 'Furrow Period'
   | 'Unspecified'
 
 type AnalyticsRecord = {
   id: string
   field: string
+  trialName: string
   section: string
   block: string
   fieldKey: string
@@ -76,6 +77,7 @@ type AnalyticsRecord = {
 type FieldSnapshot = {
   fieldKey: string
   field: string
+  trialName: string
   fieldLabel: string
   section: string
   block: string
@@ -767,9 +769,9 @@ function CoverageRows({
 
   return (
     <Stack spacing={1.3} sx={{ height: '100%', overflowY: 'auto', pr: 0.3 }}>
-      {items.map((item) => (
+      {items.map((item, index) => (
         <Paper
-          key={item.label}
+          key={`${item.label}-${item.helper ?? 'row'}-${index}`}
           onClick={onSelectItem ? () => onSelectItem(item) : undefined}
           onKeyDown={onSelectItem ? (event) => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -1045,7 +1047,7 @@ function getAreaCropGroup(value?: string | null): AreaCropGroup {
 
   if (!normalized) return 'Unspecified'
   if (/break\s*crop|breakcrop/.test(normalized)) return 'Break Crop'
-  if (/fallow|fullow/.test(normalized)) return 'Fallow Period'
+  if (/fallow|furrow|fullow/.test(normalized)) return 'Furrow Period'
   if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
   return 'Unspecified'
 }
@@ -1233,6 +1235,10 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         entryForm?.selected_field,
         monitoring?.field_name
       ) || 'Unknown field'
+      const trialName = pickText(
+        entryForm?.trial_name,
+        monitoring?.trial_name
+      )
       const section = pickText(
         observation.section_name,
         monitoring?.section_name
@@ -1261,6 +1267,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
       return {
         id: pickText(observation.client_uuid, String(observation.id)) || String(observation.id),
         field,
+        trialName: trialName || field,
         section,
         block,
         fieldKey: [section.toLowerCase(), block.toLowerCase(), field.toLowerCase()].join('|'),
@@ -1303,6 +1310,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         byField.set(record.fieldKey, {
           fieldKey: record.fieldKey,
           field: record.field,
+          trialName: record.trialName,
           fieldLabel: record.fieldLabel,
           section: record.section,
           block: record.block,
@@ -1332,6 +1340,10 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
 
       if (!existing.block && record.block) {
         existing.block = record.block
+      }
+
+      if (isFallbackLabel(existing.trialName) && !isFallbackLabel(record.trialName)) {
+        existing.trialName = record.trialName
       }
 
       if (existing.cropGroup === 'Unspecified' && record.cropGroup !== 'Unspecified') {
@@ -1390,7 +1402,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
   )
 
   const fallowFields = useMemo(
-    () => measuredFields.filter((field) => field.cropGroup === 'Fallow Period'),
+    () => measuredFields.filter((field) => field.cropGroup === 'Furrow Period'),
     [measuredFields]
   )
 
@@ -1466,13 +1478,13 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         },
       },
       {
-        label: 'Fallow Period',
+        label: 'Furrow Period',
         value: Number(totalFallowArea.toFixed(2)),
         fieldCount: fallowFields.length,
         color: AREA_COLORS.fallow,
         navigation: {
           searchParams: {
-            cropType: 'Fallow Period',
+            cropType: 'Furrow Period',
           },
         },
       },
@@ -1639,21 +1651,22 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     () => fallowFields
       .slice()
       .sort((left, right) => (right.areaHa ?? 0) - (left.areaHa ?? 0))
-      .slice(0, 5)
       .map((field, index) => ({
-        label: field.fieldLabel,
+        label: field.trialName || field.fieldLabel,
         value: Number((field.areaHa ?? 0).toFixed(2)),
         color: PALETTE[index % PALETTE.length],
-        helper: field.sectionBlock,
+        helper: field.trialName && field.trialName !== field.fieldLabel
+          ? `${field.fieldLabel} • ${field.sectionBlock}`
+          : field.sectionBlock,
         navigation: {
           searchParams: {
-            cropType: 'Fallow Period',
+            cropType: 'Furrow Period',
           },
           focusField: {
             fieldName: field.field,
             sectionName: field.section || undefined,
             blockId: field.block || undefined,
-            cropType: 'Fallow Period',
+            cropType: 'Furrow Period',
           },
         },
       })),
@@ -1811,7 +1824,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         <Box sx={{ gridColumn: { xl: 'span 7' } }}>
           <ChartShell
             title="Crop Land Use Coverage"
-            subtitle="Mapped hectares grouped into sugarcane, break crop, and fallow period using the latest classified field snapshot."
+            subtitle="Mapped hectares grouped into sugarcane, break crop, and furrow period using the latest classified field snapshot."
             eyebrow="Area Coverage"
             height={450}
             accentColor={AREA_COLORS.sugarcane}
@@ -2035,7 +2048,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
           <ChartShell
             title="Break Crop Area by Crop"
             subtitle="Break crop hectares grouped by the recorded crop class so soyabeans, maize, sugarbeans, and other break crops show their own land coverage."
-            eyebrow="Break Crop Mix"
+            eyebrow="Break Crop"
             height={380}
             accentColor={AREA_COLORS.breakCrop}
           >
@@ -2086,37 +2099,39 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
 
         <Box sx={{ gridColumn: { xl: 'span 12' } }}>
           <ChartShell
-            title="Fallow Period Coverage"
-            subtitle="A quick view of how much mapped land is resting in fallow and which fields carry the largest fallow footprint right now."
-            eyebrow="Fallow Land"
+            title="Furrow Period Coverage"
+            subtitle="A quick view of how much mapped land is marked as furrow period and which fields carry the largest furrow footprint right now."
+            eyebrow="Furrow Land"
             height={380}
             accentColor={AREA_COLORS.fallow}
           >
             {fallowFields.length > 0 ? (
               <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.6 }}>
                 <MetricGroupCard
-                  label="Fallow Summary"
+                  label="Furrow Summary"
                   items={[
                     { label: 'Area', value: formatMetricValue(totalFallowArea, 'ha') },
                     { label: 'Fields', value: String(fallowFields.length) },
                     { label: 'Share', value: `${fallowShare.toFixed(1)}%` },
                   ]}
-                  helper="Grouped fallow totals for the current live mapped area."
+                  helper="Grouped furrow totals for the current live mapped area."
                   tone={AREA_COLORS.fallow}
                   columns={3}
                 />
 
                 <Box sx={{ flex: 1, minHeight: 0 }}>
-                  <CoverageRows
-                    items={fallowFieldData}
-                    emptyMessage="No individual fallow field areas are available yet."
-                    formatValue={(item) => formatAreaValue(item.value)}
-                    onSelectItem={(item) => handleMapNavigation(item.navigation)}
-                  />
+                  <Stack spacing={1}>
+                    <CoverageRows
+                      items={fallowFieldData}
+                      emptyMessage="No individual furrow trial areas are available yet."
+                      formatValue={(item) => formatAreaValue(item.value)}
+                      onSelectItem={(item) => handleMapNavigation(item.navigation)}
+                    />
+                  </Stack>
                 </Box>
               </Box>
             ) : (
-              <EmptyState message="Fallow period coverage will appear here once mapped fields are marked as fallow period." />
+              <EmptyState message="Furrow period coverage will appear here once mapped fields are marked as furrow period." />
             )}
           </ChartShell>
         </Box>

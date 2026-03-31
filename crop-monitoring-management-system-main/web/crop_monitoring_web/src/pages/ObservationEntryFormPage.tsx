@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
     Container,
     Box,
@@ -18,34 +18,68 @@ import {
     SUGARCANE_MONITORING_SHEET_COLUMNS,
     buildSugarcaneMonitoringSheetRow,
 } from '@/components/Data/ObservationEntryDataTable'
+import type { SugarcaneMonitoringRecord } from '@/types/database.types'
+
+const trialSortCollator = new Intl.Collator(undefined, {
+    numeric: true,
+    sensitivity: 'base',
+})
+
+function normalizeSortText(value?: string | null) {
+    return (value ?? '').replace(/\s+/g, ' ').trim()
+}
+
+function compareSortText(left?: string | null, right?: string | null) {
+    return trialSortCollator.compare(normalizeSortText(left), normalizeSortText(right))
+}
+
+function compareEntryRows(left: SugarcaneMonitoringRecord, right: SugarcaneMonitoringRecord) {
+    const byTrial = compareSortText(left.field_id || left.field_name, right.field_id || right.field_name)
+    if (byTrial !== 0) return byTrial
+
+    const byTrialName = compareSortText(left.trial_name, right.trial_name)
+    if (byTrialName !== 0) return byTrialName
+
+    const byBlock = compareSortText(left.block_id, right.block_id)
+    if (byBlock !== 0) return byBlock
+
+    const bySection = compareSortText(left.section_name, right.section_name)
+    if (bySection !== 0) return bySection
+
+    const byDate = compareSortText(left.date_recorded, right.date_recorded)
+    if (byDate !== 0) return byDate
+
+    return compareSortText(left.id, right.id)
+}
 
 export function ObservationEntryFormPage() {
     const [intakeOpen, setIntakeOpen] = useState(false)
     const [saveSuccessMessage, setSaveSuccessMessage] = useState('')
     const {
         data: monitoringRows = [],
-        isLoading: monitoringLoading,
-        error: monitoringError,
+        isLoading: loading,
+        error,
         refetch: refetchMonitoring,
-        isFetching: isFetchingMonitoring,
+        isFetching,
     } = useSugarcaneMonitoring()
 
-    const loading = monitoringLoading
-    const error = monitoringError
-    const isFetching = isFetchingMonitoring
+    const tableRows = useMemo(
+        () => [...monitoringRows].sort(compareEntryRows),
+        [monitoringRows]
+    )
 
     const handleRefresh = async () => {
         await refetchMonitoring()
     }
 
     const handleExportCSV = () => {
-        if (monitoringRows.length === 0) {
+        if (tableRows.length === 0) {
             alert('No data to export')
             return
         }
 
         const headers = SUGARCANE_MONITORING_SHEET_COLUMNS.map((column) => column.label)
-        const rows = monitoringRows.map((record) => {
+        const rows = tableRows.map((record) => {
             const row = buildSugarcaneMonitoringSheetRow(record)
             return SUGARCANE_MONITORING_SHEET_COLUMNS.map((column) => row[column.key])
         })
@@ -58,7 +92,7 @@ export function ObservationEntryFormPage() {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `sugarcane-monitoring-${new Date().toISOString().split('T')[0]}.csv`
+        a.download = `sugarcane-field-management-${new Date().toISOString().split('T')[0]}.csv`
         a.click()
         window.URL.revokeObjectURL(url)
     }
@@ -93,7 +127,7 @@ export function ObservationEntryFormPage() {
                     variant="outlined"
                     startIcon={<DownloadOutlined />}
                     onClick={handleExportCSV}
-                    disabled={monitoringRows.length === 0}
+                    disabled={tableRows.length === 0}
                 >
                     Export CSV
                 </Button>
@@ -105,20 +139,20 @@ export function ObservationEntryFormPage() {
                 </Alert>
             )}
 
-            {monitoringRows.length > 0 ? (
+            {tableRows.length > 0 ? (
                 <Box>
                     <ObservationEntryDataTable
-                        records={monitoringRows}
-                        emptyMessage="No monitoring rows match the current filter."
+                        records={tableRows}
+                        emptyMessage="No field management rows match the current filter."
                     />
                 </Box>
             ) : (
                 <Paper sx={{ p: 4, textAlign: 'center' }}>
                     <Typography variant="h6" sx={{ color: 'text.secondary', mb: 2 }}>
-                        📭 No crop monitoring entries found
+                        📭 No field management entries found
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        Records will appear here once live monitoring data is available or you add a new monitoring record.
+                        Records will appear here once `sugarcane_field_management` has live rows with recorded dates or you add a new saved entry from the intake form.
                     </Typography>
                 </Paper>
             )}

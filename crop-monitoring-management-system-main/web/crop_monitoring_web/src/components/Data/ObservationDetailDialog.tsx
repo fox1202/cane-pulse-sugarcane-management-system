@@ -116,7 +116,7 @@ function formatSyncStatus(value?: boolean): string {
 
 function formatSourceLabel(sourceTable?: string): string {
     if (!sourceTable) return 'observations'
-    if (sourceTable === 'sugarcane_monitoring') return 'Monitoring record'
+    if (sourceTable === 'sugarcane_monitoring' || sourceTable === 'sugarcane_field_management') return 'Monitoring record'
     return sourceTable.replace(/_/g, ' ')
 }
 

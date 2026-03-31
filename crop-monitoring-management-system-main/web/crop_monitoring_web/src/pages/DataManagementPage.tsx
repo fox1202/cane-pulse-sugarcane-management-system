@@ -18,7 +18,7 @@ import {
     Search,
     RefreshOutlined,
 } from '@mui/icons-material'
-import { useMobileObservationRecords } from '@/hooks/useMobileObservationRecords'
+import { useFieldManagementRecords } from '@/hooks/useFieldManagementRecords'
 import { useAuth } from '@/contexts/AuthContext'
 import type { FullObservation } from '@/types/database.types'
 import { ObservationDetailDialog } from '@/components/Data/ObservationDetailDialog'
@@ -173,7 +173,7 @@ export function DataManagementPage() {
 function DataManagementPageContent() {
     const theme = useTheme()
     const { user } = useAuth()
-    const { data: observationData, isLoading, error, refetch } = useMobileObservationRecords()
+    const { data: observationData, isLoading, error, refetch } = useFieldManagementRecords()
     const observations = useMemo(
         () => (observationData ?? []) as ObservationPageRecord[],
         [observationData]

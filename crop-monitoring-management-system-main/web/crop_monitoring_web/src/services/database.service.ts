@@ -12,10 +12,13 @@ import { HARDCODED_FIELDS, HARDCODED_FIELD_SHAPEFILE } from '@/data/hardcodedFie
 import { hasDateOnlyValue, normalizeDateOnlyValue } from '@/utils/dateOnly'
 
 const USE_HARDCODED_FIELD_REGISTRY = false
+const FIELD_REGISTRY_TABLE_NAMES = ['sugarcane_field_management'] as const
+const MONITORING_TABLE_NAME = FIELD_REGISTRY_TABLE_NAMES[0]
 
 export interface PredefinedField extends Field {
     id?: string
     geom?: any
+    soil_ph?: number
 }
 
 export interface CreatePredefinedFieldInput {
@@ -114,6 +117,7 @@ export interface ObservationEntryFormSubmissionInput {
     soil_type?: string
     soil_ph?: number
     field_remarks?: string
+    stress?: string
     residue_type?: string
     residue_management_method?: string
     residual_management_remarks?: string
@@ -130,6 +134,7 @@ export interface ObservationEntryFormSubmissionInput {
     disease_remarks?: string
     harvest_date?: string
     yield?: number
+    harvest_method?: string
     quality_remarks?: string
     remarks?: string
 }
@@ -185,53 +190,53 @@ function extractMissingSugarcaneMonitoringColumn(error: unknown): string | null 
     return match?.[1] ?? null
 }
 
-async function insertSugarcaneMonitoringWithSchemaFallback(
-    payloads: Record<string, unknown>[]
+async function persistFieldManagementMonitoringRowWithSchemaFallback(
+    payload: Record<string, unknown>,
+    rowId?: string | number | null
 ): Promise<{ data: Record<string, unknown>; droppedColumns: string[] }> {
-    let lastError: any = null
-    const seenPayloads = new Set<string>()
+    let currentPayload: Record<string, unknown> = { ...payload }
+    const droppedColumns: string[] = []
+    let lastError: unknown = null
+    const attemptedSignatures = new Set<string>()
 
-    for (const candidatePayload of payloads) {
-        let currentPayload: Record<string, unknown> = { ...candidatePayload }
-        const droppedColumnsForCandidate: string[] = []
-
-        while (Object.keys(currentPayload).length > 0) {
-            const payloadSignature = JSON.stringify(Object.keys(currentPayload).sort())
-            if (seenPayloads.has(payloadSignature)) {
-                break
-            }
-            seenPayloads.add(payloadSignature)
-
-            const result = await supabase
-                .from('sugarcane_monitoring')
-                .insert(currentPayload)
-                .select('*')
-                .single()
-
-            if (!result.error && result.data) {
-                return {
-                    data: result.data as Record<string, unknown>,
-                    droppedColumns: droppedColumnsForCandidate,
-                }
-            }
-
-            lastError = result.error
-
-            if (!isSugarcaneMonitoringSchemaError(result.error)) {
-                break
-            }
-
-            const missingColumn = extractMissingSugarcaneMonitoringColumn(result.error)
-            if (!missingColumn || !(missingColumn in currentPayload)) {
-                break
-            }
-
-            delete currentPayload[missingColumn]
-            droppedColumnsForCandidate.push(missingColumn)
+    while (Object.keys(currentPayload).length > 0) {
+        const payloadSignature = JSON.stringify(Object.keys(currentPayload).sort())
+        if (attemptedSignatures.has(payloadSignature)) {
+            break
         }
+        attemptedSignatures.add(payloadSignature)
+
+        const query = rowId == null
+            ? supabase.from(MONITORING_TABLE_NAME).insert(currentPayload)
+            : supabase.from(MONITORING_TABLE_NAME).update(currentPayload).eq('id', String(rowId))
+
+        const result = await query
+            .select('*')
+            .single()
+
+        if (!result.error && result.data) {
+            return {
+                data: result.data as Record<string, unknown>,
+                droppedColumns,
+            }
+        }
+
+        lastError = result.error
+
+        if (!isSugarcaneMonitoringSchemaError(result.error)) {
+            break
+        }
+
+        const missingColumn = extractMissingSugarcaneMonitoringColumn(result.error)
+        if (!missingColumn || !(missingColumn in currentPayload)) {
+            break
+        }
+
+        delete currentPayload[missingColumn]
+        droppedColumns.push(missingColumn)
     }
 
-    throw lastError
+    throw lastError ?? new Error('Could not persist the field management row with the available schema.')
 }
 
 function normalizeLookupToken(value?: string | null): string {
@@ -262,11 +267,13 @@ function normalizeFertilizerApplication(value: unknown): FertilizerApplication |
         : {}
 
     const normalized: FertilizerApplication = {}
+    const loopNumber = toNullableNumber(source.loop_number)
     const fertilizerType = toNullableString(source.fertilizer_type)
     const applicationDate = toNullableDateValue(source.application_date)
     const applicationRate = toNullableNumber(source.application_rate)
     const foliarSamplingDate = toNullableDateValue(source.foliar_sampling_date)
 
+    if (loopNumber != null) normalized.loop_number = toLoopNumber(loopNumber, 1)
     if (fertilizerType) normalized.fertilizer_type = fertilizerType
     if (applicationDate) normalized.application_date = applicationDate
     if (applicationRate != null) normalized.application_rate = applicationRate
@@ -281,10 +288,12 @@ function normalizeHerbicideApplication(value: unknown): HerbicideApplication | n
         : {}
 
     const normalized: HerbicideApplication = {}
+    const loopNumber = toNullableNumber(source.loop_number)
     const herbicideName = toNullableString(source.herbicide_name)
     const applicationDate = toNullableDateValue(source.application_date)
     const applicationRate = toNullableNumber(source.application_rate)
 
+    if (loopNumber != null) normalized.loop_number = toLoopNumber(loopNumber, 1)
     if (herbicideName) normalized.herbicide_name = herbicideName
     if (applicationDate) normalized.application_date = applicationDate
     if (applicationRate != null) normalized.application_rate = applicationRate
@@ -342,6 +351,72 @@ function normalizeHerbicideApplications(
     })
 
     return single ? [single] : []
+}
+
+function extractFertilizerApplicationsFromColumns(row: Record<string, unknown>): FertilizerApplication[] {
+    const applications: FertilizerApplication[] = []
+
+    for (let loop = 1; loop <= 10; loop += 1) {
+        const application = normalizeFertilizerApplication({
+            loop_number: loop,
+            fertilizer_type: row[`fertilizer_type_${loop}`],
+            application_date: row[`fertilizer_application_date_${loop}`],
+            application_rate: row[`fertilizer_application_rate_${loop}`],
+        })
+
+        if (application) {
+            applications.push(application)
+        }
+    }
+
+    return applications
+}
+
+function extractHerbicideApplicationsFromColumns(row: Record<string, unknown>): HerbicideApplication[] {
+    const applications: HerbicideApplication[] = []
+
+    for (let loop = 1; loop <= 10; loop += 1) {
+        const application = normalizeHerbicideApplication({
+            loop_number: loop,
+            herbicide_name: row[`herbicide_name_${loop}`],
+            application_date: row[`herbicide_application_date_${loop}`],
+            application_rate: row[`herbicide_application_rate_${loop}`],
+        })
+
+        if (application) {
+            applications.push(application)
+        }
+    }
+
+    return applications
+}
+
+function buildFertilizerApplicationColumns(applications: FertilizerApplication[]): Record<string, unknown> {
+    const payload: Record<string, unknown> = {}
+
+    for (let loop = 1; loop <= 10; loop += 1) {
+        const application = applications[loop - 1]
+        payload[`fertilizer_type_${loop}`] = toNullableString(application?.fertilizer_type)
+        payload[`fertilizer_application_date_${loop}`] = toNullableDateValue(application?.application_date)
+        payload[`fertilizer_application_rate_${loop}`] = toNullableNumber(application?.application_rate)
+        payload[`fertilizer_application_remarks_${loop}`] = null
+    }
+
+    return payload
+}
+
+function buildHerbicideApplicationColumns(applications: HerbicideApplication[]): Record<string, unknown> {
+    const payload: Record<string, unknown> = {}
+
+    for (let loop = 1; loop <= 10; loop += 1) {
+        const application = applications[loop - 1]
+        payload[`herbicide_name_${loop}`] = toNullableString(application?.herbicide_name)
+        payload[`herbicide_application_date_${loop}`] = toNullableDateValue(application?.application_date)
+        payload[`herbicide_application_rate_${loop}`] = toNullableNumber(application?.application_rate)
+        payload[`herbicide_application_remarks_${loop}`] = null
+    }
+
+    return payload
 }
 
 function getCurrentApplicationFromList<T extends { application_date?: string }>(
@@ -582,6 +657,222 @@ function requireRecordedDateValue(value: unknown): string {
     return normalized
 }
 
+function toLoopNumber(value: unknown, fallback: number): number {
+    const numeric = toNullableNumber(value)
+    if (numeric == null || !Number.isFinite(numeric) || numeric <= 0) {
+        return fallback
+    }
+
+    return Math.max(1, Math.round(numeric))
+}
+
+function normalizeFieldGeometry(value: unknown): Record<string, unknown> | null {
+    if (!value) return null
+
+    if (typeof value === 'string') {
+        try {
+            return normalizeFieldGeometry(JSON.parse(value))
+        } catch {
+            return null
+        }
+    }
+
+    if (typeof value !== 'object') {
+        return null
+    }
+
+    const source = value as Record<string, unknown>
+
+    if (typeof source.type === 'string') {
+        if (source.type === 'Feature') return normalizeFieldGeometry(source.geometry)
+        if (source.type === 'FeatureCollection') {
+            const [firstFeature] = Array.isArray(source.features) ? source.features : []
+            return normalizeFieldGeometry(firstFeature)
+        }
+
+        return source
+    }
+
+    return normalizeFieldGeometry(
+        source.geometry
+        ?? source.geom
+        ?? source.geom_polygon
+        ?? source.spatial_data
+        ?? null
+    )
+}
+
+function deriveFieldCoordinatesFromGeometry(
+    geometryValue: unknown
+): { latitude: number; longitude: number } | null {
+    const geometry = normalizeFieldGeometry(geometryValue)
+    if (!geometry) return null
+
+    if (geometry.type === 'Point' && Array.isArray(geometry.coordinates)) {
+        const [longitude, latitude] = geometry.coordinates
+        if (typeof latitude === 'number' && typeof longitude === 'number') {
+            return { latitude, longitude }
+        }
+
+        return null
+    }
+
+    const coordinatesSource = geometry.coordinates
+    const coordinates = geometry.type === 'Polygon' && Array.isArray(coordinatesSource)
+        ? coordinatesSource[0]
+        : geometry.type === 'MultiPolygon' && Array.isArray(coordinatesSource)
+            ? Array.isArray(coordinatesSource[0]) ? coordinatesSource[0][0] : null
+            : null
+
+    if (!Array.isArray(coordinates) || coordinates.length === 0) {
+        return null
+    }
+
+    const totals = coordinates.reduce(
+        (acc, point) => {
+            const [longitude, latitude] = Array.isArray(point) ? point : []
+            if (typeof latitude === 'number' && typeof longitude === 'number') {
+                acc.latitude += latitude
+                acc.longitude += longitude
+                acc.count += 1
+            }
+
+            return acc
+        },
+        { latitude: 0, longitude: 0, count: 0 }
+    )
+
+    if (totals.count === 0) {
+        return null
+    }
+
+    return {
+        latitude: totals.latitude / totals.count,
+        longitude: totals.longitude / totals.count,
+    }
+}
+
+function mapPredefinedFieldRow(row: Record<string, unknown>): PredefinedField {
+    const geometry = row.geom ?? row.geom_polygon ?? row.geometry ?? null
+    const derivedCoordinates = deriveFieldCoordinatesFromGeometry(geometry)
+
+    return {
+        id: toNullableString(row.id) ?? undefined,
+        field_name: firstNonEmptyString(row.field_name, row.Trial, row.trial) ?? '',
+        section_name: firstNonEmptyString(row.section_name, row.section_name_id, row.section) ?? '',
+        block_id: firstNonEmptyString(row.block_id) ?? '',
+        area: toNullableNumber(row.area) ?? undefined,
+        latitude: toNullableNumber(row.latitude) ?? derivedCoordinates?.latitude ?? 0,
+        longitude: toNullableNumber(row.longitude) ?? derivedCoordinates?.longitude ?? 0,
+        irrigation_type: toNullableString(row.irrigation_type) ?? undefined,
+        water_source: toNullableString(row.water_source) ?? undefined,
+        tam_mm: firstNonEmptyString(row.tam_mm, row.tam, row.TAM) ?? undefined,
+        tamm_area: toNullableNumber(row.tamm_area ?? row.tam_area) ?? undefined,
+        soil_type: toNullableString(row.soil_type) ?? undefined,
+        soil_ph: firstNumericValue(row.soil_ph, row.ph, row.pH) ?? undefined,
+        created_at: toNullableString(row.created_at) ?? undefined,
+        created_by: toNullableString(row.created_by) ?? undefined,
+        date_recorded: toNullableString(row.date_recorded) ?? undefined,
+        crop_type: toNullableString(row.crop_type) ?? undefined,
+        is_synced: typeof row.is_synced === 'boolean' ? row.is_synced : undefined,
+        local_updated_at: toNullableString(row.local_updated_at) ?? undefined,
+        updated_at: toNullableString(row.updated_at) ?? undefined,
+        geom: geometry,
+        observation_count: toNullableNumber(row.observation_count) ?? 0,
+    }
+}
+
+function sortPredefinedFields(fields: PredefinedField[]): PredefinedField[] {
+    return [...fields].sort((left, right) => {
+        const byFieldName = left.field_name.localeCompare(right.field_name, undefined, {
+            numeric: true,
+            sensitivity: 'base',
+        })
+
+        if (byFieldName !== 0) {
+            return byFieldName
+        }
+
+        return left.block_id.localeCompare(right.block_id, undefined, {
+            numeric: true,
+            sensitivity: 'base',
+        })
+    })
+}
+
+function buildFieldRegistryInsertPayload(
+    tableName: (typeof FIELD_REGISTRY_TABLE_NAMES)[number],
+    payload: Record<string, unknown>
+): Record<string, unknown> {
+    if (tableName === 'sugarcane_field_management') {
+        return {
+            Trial: toNullableString(payload.field_name),
+            block_id: toNullableString(payload.block_id),
+            latitude: toNullableNumber(payload.latitude),
+            longitude: toNullableNumber(payload.longitude),
+            geom_polygon: payload.geom ?? null,
+            crop_type: toNullableString(payload.crop_type),
+            date_recorded: toNullableDateValue(payload.date_recorded),
+            created_at: new Date().toISOString(),
+        }
+    }
+
+    return payload
+}
+
+async function fetchFieldRegistryRowsWithFallback(): Promise<{
+    fields: PredefinedField[]
+    tableName: (typeof FIELD_REGISTRY_TABLE_NAMES)[number] | null
+}> {
+    for (const tableName of FIELD_REGISTRY_TABLE_NAMES) {
+        const { data, error } = await supabase
+            .from(tableName)
+            .select('*')
+
+        if (error) {
+            if (isMissingRelationError(error)) {
+                continue
+            }
+
+            throw error
+        }
+
+        return {
+            fields: sortPredefinedFields((data ?? []).map((row) => mapPredefinedFieldRow(row as Record<string, unknown>))),
+            tableName,
+        }
+    }
+
+    return {
+        fields: [],
+        tableName: null,
+    }
+}
+
+async function createFieldRegistryRowWithFallback(
+    payload: Record<string, unknown>
+): Promise<PredefinedField> {
+    for (const tableName of FIELD_REGISTRY_TABLE_NAMES) {
+        const { data, error } = await supabase
+            .from(tableName)
+            .insert(buildFieldRegistryInsertPayload(tableName, payload))
+            .select('*')
+            .single()
+
+        if (error) {
+            if (isMissingRelationError(error)) {
+                continue
+            }
+
+            throw error
+        }
+
+        return mapPredefinedFieldRow(data as Record<string, unknown>)
+    }
+
+    throw new Error('The field registry table is not available, so new fields cannot be created yet.')
+}
+
 function getHardcodedPredefinedFields(): PredefinedField[] {
     return HARDCODED_FIELDS.map((field, idx) => ({
         ...field,
@@ -659,21 +950,25 @@ async function resolveObservationEntrySubmission(
 }
 
 function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): SugarcaneMonitoringRecord {
-    const fieldName = firstNonEmptyString(row.field_name, row.field_id) ?? ''
+    const fieldName = firstNonEmptyString(row.field_name, row.field_id, row.Trial, row.trial) ?? ''
     const recordedDate = normalizeRecordedDateValue(row.date_recorded) || ''
-    const previousCutting = toNullableDateValue(row.previous_cutting ?? row.previous_cutting_date) ?? undefined
+    const previousCutting = toNullableDateValue(
+        row.previous_cutting ?? row.previous_cutting_date ?? row.cutting_date
+    ) ?? undefined
     const nutrientApplicationDate = toNullableDateValue(
         row.nutrient_application_date ?? row.fertilizer_application_date ?? row.application_date
     ) ?? undefined
     const weedApplicationDate = toNullableDateValue(row.weed_application_date) ?? undefined
     const harvestDate = toNullableDateValue(row.harvest_date ?? row.actual_cutting_date) ?? undefined
-    const fertilizerApplications = normalizeFertilizerApplications(row.fertilizer_applications, {
+    const geometry = row.geom_polygon ?? row.geom ?? row.geometry ?? row.spatial_data ?? undefined
+    const derivedCoordinates = deriveFieldCoordinatesFromGeometry(geometry)
+    const fertilizerApplications = normalizeFertilizerApplications(row.fertilizer_applications ?? extractFertilizerApplicationsFromColumns(row), {
         fertilizer_type: row.fertilizer_type,
         nutrient_application_date: nutrientApplicationDate,
         application_rate: row.application_rate,
         foliar_sampling_date: row.foliar_sampling_date,
     })
-    const herbicideApplications = normalizeHerbicideApplications(row.herbicide_applications, {
+    const herbicideApplications = normalizeHerbicideApplications(row.herbicide_applications ?? extractHerbicideApplicationsFromColumns(row), {
         herbicide_name: row.herbicide_name ?? row.weed_control,
         weed_application_date: weedApplicationDate,
         weed_application_rate: row.weed_application_rate ?? row.herbicide_application_rate,
@@ -684,13 +979,13 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
     return {
         id: String(row.id || ''),
         field_name: fieldName,
-        field_id: firstNonEmptyString(row.field_id, row.field_name) ?? undefined,
-        section_name: toNullableString(row.section_name) ?? undefined,
+        field_id: firstNonEmptyString(row.field_id, row.field_name, row.Trial, row.trial) ?? undefined,
+        section_name: firstNonEmptyString(row.section_name, row.section, row.section_name_id) ?? undefined,
         block_id: toNullableString(row.block_id) ?? undefined,
         area: firstNumericValue(row.area) ?? undefined,
-        geom_polygon: row.geom_polygon ?? row.geometry ?? row.spatial_data ?? undefined,
-        latitude: toNullableNumber(row.latitude) ?? undefined,
-        longitude: toNullableNumber(row.longitude) ?? undefined,
+        geom_polygon: geometry,
+        latitude: toNullableNumber(row.latitude) ?? derivedCoordinates?.latitude ?? undefined,
+        longitude: toNullableNumber(row.longitude) ?? derivedCoordinates?.longitude ?? undefined,
         date_recorded: recordedDate,
         crop_type: toNullableString(row.crop_type) ?? undefined,
         crop_class: toNullableString(row.crop_class) ?? undefined,
@@ -715,7 +1010,7 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
         water_source: toNullableString(row.water_source) ?? undefined,
         trial_number: toNullableString(row.trial_number) ?? undefined,
         trial_name: toNullableString(row.trial_name) ?? undefined,
-        contact_person: toNullableString(row.contact_person) ?? undefined,
+        contact_person: firstNonEmptyString(row.contact_person, row.contact_person_scientist) ?? undefined,
         field_remarks: firstNonEmptyString(row.field_remarks, row.remarks) ?? undefined,
         fertilizer_type: currentFertilizerApplication?.fertilizer_type ?? toNullableString(row.fertilizer_type) ?? undefined,
         fertilizer_application_date: currentFertilizerApplication?.application_date ?? nutrientApplicationDate,
@@ -745,14 +1040,14 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
         harvest_method: toNullableString(row.harvest_method) ?? undefined,
         quality_remarks: firstNonEmptyString(row.quality_remarks, row.cane_quality_remarks) ?? undefined,
         residue_type: toNullableString(row.residue_type) ?? undefined,
-        residue_management_method: toNullableString(row.residue_management_method) ?? undefined,
+        residue_management_method: firstNonEmptyString(row.residue_management_method, row.management_method) ?? undefined,
         residual_management_remarks: firstNonEmptyString(row.residual_management_remarks, row.residue_remarks) ?? undefined,
         collector_id: toNullableString(row.collector_id) ?? undefined,
         remarks: firstNonEmptyString(row.remarks, row.field_remarks) ?? undefined,
         image_url: toNullableString(row.image_url) ?? undefined,
         well_known_text: toNullableString(row.well_known_text) ?? undefined,
         created_at: String(row.created_at || ''),
-        updated_at: String(row.updated_at || ''),
+        updated_at: String(row.updated_at || row.created_at || ''),
     }
 }
 
@@ -862,7 +1157,7 @@ function mapSugarcaneMonitoringRowToObservation(row: SugarcaneMonitoringRecord):
                 uploaded_by: row.collector_id || 'system',
             }]
             : undefined,
-        source_table: 'sugarcane_monitoring',
+        source_table: MONITORING_TABLE_NAME,
         source_row_id: row.id,
         monitoring_sheet: row,
     }
@@ -942,44 +1237,13 @@ function mapSugarcaneMonitoringRowToEntryForm(
         harvest_method: row.harvest_method || '',
         quality_remarks: row.quality_remarks || '',
         remarks: row.field_remarks || row.remarks || '',
-        source_table: 'sugarcane_monitoring',
+        source_table: MONITORING_TABLE_NAME,
         created_at: row.created_at,
         updated_at: row.updated_at,
     }
 }
 
-function buildBaseSugarcaneMonitoringPayload(submission: ObservationEntryFormSubmissionInput) {
-    return {
-        collector_id: toNullableString(submission.collector_id),
-        field_name: toNullableString(submission.field_name || submission.field_id),
-        section_name: toNullableString(submission.section_name),
-        block_id: toNullableString(submission.block_id),
-        latitude: toNullableNumber(submission.latitude),
-        longitude: toNullableNumber(submission.longitude),
-        date_recorded: requireRecordedDateValue(submission.date_recorded),
-        crop_type: toNullableString(submission.crop_type || submission.crop_class) || 'Sugarcane',
-        variety: toNullableString(submission.variety),
-        planting_date: toNullableDateValue(submission.planting_date),
-        expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
-        irrigation_type: toNullableString(submission.irrigation_type),
-        water_source: toNullableString(submission.water_source),
-        soil_type: toNullableString(submission.soil_type),
-        soil_ph: toNullableNumber(submission.soil_ph),
-        fertilizer_type: toNullableString(submission.fertilizer_type),
-        fertilizer_application_date: toNullableDateValue(submission.nutrient_application_date),
-        application_rate: toNullableNumber(submission.application_rate),
-        weed_control: toNullableString(submission.herbicide_name),
-        pest_control: toNullableString(submission.pest_remarks),
-        disease_control: toNullableString(submission.disease_remarks),
-        harvest_date: toNullableDateValue(submission.harvest_date),
-        yield: toNullableNumber(submission.yield),
-        residue_type: toNullableString(submission.residue_type),
-        residue_management_method: toNullableString(submission.residue_management_method),
-        remarks: toNullableString(submission.remarks || submission.field_remarks),
-    }
-}
-
-function buildSugarcaneMonitoringPayload(submission: ObservationEntryFormSubmissionInput) {
+function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSubmissionInput) {
     const fertilizerApplications = normalizeFertilizerApplications(submission.fertilizer_applications, {
         fertilizer_type: submission.fertilizer_type,
         nutrient_application_date: submission.nutrient_application_date,
@@ -995,46 +1259,262 @@ function buildSugarcaneMonitoringPayload(submission: ObservationEntryFormSubmiss
     const currentHerbicideApplication = getCurrentApplicationFromList(herbicideApplications)
 
     return {
-        ...buildBaseSugarcaneMonitoringPayload(submission),
-        field_id: toNullableString(submission.field_id || submission.field_name),
+        Trial: toNullableString(submission.field_name || submission.field_id),
+        field_name: toNullableString(submission.field_name || submission.field_id),
+        section_name: toNullableString(submission.section_name),
+        block_id: toNullableString(submission.block_id),
+        collector_id: toNullableString(submission.collector_id),
+        latitude: toNullableNumber(submission.latitude),
+        longitude: toNullableNumber(submission.longitude),
         area: toNullableNumber(submission.area ?? submission.block_size),
-        geom_polygon: submission.geom_polygon ?? submission.spatial_data ?? null,
+        irrigation_type: toNullableString(submission.irrigation_type),
+        water_source: toNullableString(submission.water_source),
+        tam: toNullableNumber(submission.tam_mm ?? submission.tamm_area),
+        soil_type: toNullableString(submission.soil_type),
+        soil_ph: toNullableNumber(submission.soil_ph),
+        remarks: toNullableString(submission.remarks || submission.field_remarks),
+        date_recorded: requireRecordedDateValue(submission.date_recorded),
         trial_number: toNullableString(submission.trial_number),
         trial_name: toNullableString(submission.trial_name),
-        contact_person: toNullableString(submission.contact_person),
+        contact_person_scientist: toNullableString(submission.contact_person),
+        crop_type: toNullableString(submission.crop_type || submission.crop_class) || 'Sugarcane',
         crop_class: toNullableString(submission.crop_class),
-        previous_cutting: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
-        tam_mm: toNullableString(submission.tam_mm) || toNullableString(submission.tamm_area),
-        field_remarks: toNullableString(submission.remarks || submission.field_remarks),
-        residual_management_remarks: toNullableString(submission.residual_management_remarks),
-        nutrient_application_date: toNullableDateValue(
-            currentFertilizerApplication?.application_date ?? submission.nutrient_application_date
-        ),
-        application_rate: toNullableNumber(
-            currentFertilizerApplication?.application_rate ?? submission.application_rate
-        ),
-        fertilizer_type: toNullableString(
-            currentFertilizerApplication?.fertilizer_type ?? submission.fertilizer_type
-        ),
-        fertilizer_applications: fertilizerApplications.length > 0 ? fertilizerApplications : null,
-        foliar_sampling_date: toNullableDateValue(
-            currentFertilizerApplication?.foliar_sampling_date ?? submission.foliar_sampling_date
-        ),
-        herbicide_name: toNullableString(
-            currentHerbicideApplication?.herbicide_name ?? submission.herbicide_name
-        ),
-        weed_application_date: toNullableDateValue(
-            currentHerbicideApplication?.application_date ?? submission.weed_application_date
-        ),
-        weed_application_rate: toNullableNumber(
-            currentHerbicideApplication?.application_rate ?? submission.weed_application_rate
-        ),
-        herbicide_applications: herbicideApplications.length > 0 ? herbicideApplications : null,
-        pest_remarks: toNullableString(submission.pest_remarks),
-        disease_remarks: toNullableString(submission.disease_remarks),
-        harvest_yield: toNullableNumber(submission.yield),
-        quality_remarks: toNullableString(submission.quality_remarks),
+        variety: toNullableString(submission.variety),
+        stress: toNullableString(submission.stress),
+        planting_date: toNullableDateValue(submission.planting_date),
+        cutting_date: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
+        expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
+        residue_type: toNullableString(submission.residue_type),
+        management_method: toNullableString(submission.residue_management_method),
+        residue_remarks: toNullableString(submission.residual_management_remarks),
+        field_remarks: toNullableString(submission.field_remarks),
+        fertilizer_type: toNullableString(currentFertilizerApplication?.fertilizer_type ?? submission.fertilizer_type),
+        application_date: toNullableDateValue(currentFertilizerApplication?.application_date ?? submission.nutrient_application_date),
+        application_rate: toNullableNumber(currentFertilizerApplication?.application_rate ?? submission.application_rate),
+        foliar_sampling_date: toNullableDateValue(currentFertilizerApplication?.foliar_sampling_date ?? submission.foliar_sampling_date),
+        herbicide_name: toNullableString(currentHerbicideApplication?.herbicide_name ?? submission.herbicide_name),
+        weed_application_date: toNullableDateValue(currentHerbicideApplication?.application_date ?? submission.weed_application_date),
+        weed_application_rate: toNullableNumber(currentHerbicideApplication?.application_rate ?? submission.weed_application_rate),
+        pest_control: toNullableString(submission.pest_remarks),
+        disease_control: toNullableString(submission.disease_remarks),
+        harvest_date: toNullableDateValue(submission.harvest_date),
+        yield: toNullableNumber(submission.yield),
+        harvest_method: toNullableString(submission.harvest_method),
+        cane_quality_remarks: toNullableString(submission.quality_remarks),
+        geom_polygon: submission.geom_polygon ?? submission.spatial_data ?? null,
+        ...buildFertilizerApplicationColumns(fertilizerApplications),
+        ...buildHerbicideApplicationColumns(herbicideApplications),
     }
+}
+
+function normalizeComparableText(value: unknown): string | null {
+    const normalized = toNullableString(value)
+    return normalized ? normalized.replace(/\s+/g, ' ').trim().toLowerCase() : null
+}
+
+function normalizeComparableNumber(value: unknown, precision: number = 6): number | null {
+    const normalized = toNullableNumber(value)
+    return normalized == null ? null : Number(normalized.toFixed(precision))
+}
+
+function sortSerializableValue(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map((item) => sortSerializableValue(item))
+    }
+
+    if (value && typeof value === 'object') {
+        return Object.keys(value as Record<string, unknown>)
+            .sort((left, right) => left.localeCompare(right))
+            .reduce<Record<string, unknown>>((acc, key) => {
+                const normalized = sortSerializableValue((value as Record<string, unknown>)[key])
+                if (normalized !== undefined) {
+                    acc[key] = normalized
+                }
+                return acc
+            }, {})
+    }
+
+    return value
+}
+
+function buildComparableFertilizerApplications(
+    value: unknown,
+    fallback?: {
+        fertilizer_type?: unknown
+        nutrient_application_date?: unknown
+        application_rate?: unknown
+        foliar_sampling_date?: unknown
+    }
+) {
+    return normalizeFertilizerApplications(value, fallback)
+        .map((application) => ({
+            loop_number: toLoopNumber(application.loop_number, 1),
+            fertilizer_type: normalizeComparableText(application.fertilizer_type),
+            application_date: toNullableDateValue(application.application_date),
+            application_rate: normalizeComparableNumber(application.application_rate),
+            foliar_sampling_date: toNullableDateValue(application.foliar_sampling_date),
+        }))
+        .sort((left, right) => (
+            left.loop_number - right.loop_number
+            || String(left.application_date ?? '').localeCompare(String(right.application_date ?? ''))
+            || String(left.fertilizer_type ?? '').localeCompare(String(right.fertilizer_type ?? ''))
+        ))
+}
+
+function buildComparableHerbicideApplications(
+    value: unknown,
+    fallback?: {
+        herbicide_name?: unknown
+        weed_application_date?: unknown
+        weed_application_rate?: unknown
+    }
+) {
+    return normalizeHerbicideApplications(value, fallback)
+        .map((application) => ({
+            loop_number: toLoopNumber(application.loop_number, 1),
+            herbicide_name: normalizeComparableText(application.herbicide_name),
+            application_date: toNullableDateValue(application.application_date),
+            application_rate: normalizeComparableNumber(application.application_rate),
+        }))
+        .sort((left, right) => (
+            left.loop_number - right.loop_number
+            || String(left.application_date ?? '').localeCompare(String(right.application_date ?? ''))
+            || String(left.herbicide_name ?? '').localeCompare(String(right.herbicide_name ?? ''))
+        ))
+}
+
+function buildSubmissionDuplicateFingerprint(submission: ObservationEntryFormSubmissionInput): string {
+    const fingerprint = {
+        field_name: normalizeComparableText(firstNonEmptyString(submission.field_name, submission.field_id, submission.selected_field)),
+        section_name: normalizeComparableText(submission.section_name),
+        block_id: normalizeComparableText(submission.block_id),
+        area: normalizeComparableNumber(submission.area ?? submission.block_size, 4),
+        date_recorded: toNullableDateValue(submission.date_recorded),
+        trial_number: normalizeComparableText(submission.trial_number),
+        trial_name: normalizeComparableText(submission.trial_name),
+        contact_person: normalizeComparableText(submission.contact_person),
+        crop_type: normalizeComparableText(submission.crop_type),
+        crop_class: normalizeComparableText(submission.crop_class),
+        variety: normalizeComparableText(submission.variety),
+        planting_date: toNullableDateValue(submission.planting_date),
+        previous_cutting_date: toNullableDateValue(submission.previous_cutting_date ?? submission.cutting_date),
+        expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
+        irrigation_type: normalizeComparableText(submission.irrigation_type),
+        water_source: normalizeComparableText(submission.water_source),
+        tam: normalizeComparableNumber(submission.tam_mm ?? submission.tamm_area, 4),
+        soil_type: normalizeComparableText(submission.soil_type),
+        soil_ph: normalizeComparableNumber(submission.soil_ph, 4),
+        field_remarks: normalizeComparableText(firstNonEmptyString(submission.field_remarks, submission.remarks)),
+        stress: normalizeComparableText(submission.stress),
+        residue_type: normalizeComparableText(submission.residue_type),
+        residue_management_method: normalizeComparableText(submission.residue_management_method),
+        residual_management_remarks: normalizeComparableText(submission.residual_management_remarks),
+        fertilizer_applications: buildComparableFertilizerApplications(submission.fertilizer_applications, {
+            fertilizer_type: submission.fertilizer_type,
+            nutrient_application_date: submission.nutrient_application_date,
+            application_rate: submission.application_rate,
+            foliar_sampling_date: submission.foliar_sampling_date,
+        }),
+        herbicide_applications: buildComparableHerbicideApplications(submission.herbicide_applications, {
+            herbicide_name: submission.herbicide_name,
+            weed_application_date: submission.weed_application_date,
+            weed_application_rate: submission.weed_application_rate,
+        }),
+        pest_remarks: normalizeComparableText(submission.pest_remarks),
+        disease_remarks: normalizeComparableText(submission.disease_remarks),
+        harvest_date: toNullableDateValue(submission.harvest_date),
+        yield: normalizeComparableNumber(submission.yield, 4),
+        harvest_method: normalizeComparableText(submission.harvest_method),
+        quality_remarks: normalizeComparableText(submission.quality_remarks),
+        geometry: sortSerializableValue(normalizeFieldGeometry(submission.geom_polygon ?? submission.spatial_data)),
+    }
+
+    return JSON.stringify(fingerprint)
+}
+
+function buildMonitoringRowDuplicateFingerprint(row: SugarcaneMonitoringRecord): string {
+    const fingerprint = {
+        field_name: normalizeComparableText(firstNonEmptyString(row.field_name, row.field_id)),
+        section_name: normalizeComparableText(row.section_name),
+        block_id: normalizeComparableText(row.block_id),
+        area: normalizeComparableNumber(row.area, 4),
+        date_recorded: toNullableDateValue(row.date_recorded),
+        trial_number: normalizeComparableText(row.trial_number),
+        trial_name: normalizeComparableText(row.trial_name),
+        contact_person: normalizeComparableText(row.contact_person),
+        crop_type: normalizeComparableText(row.crop_type),
+        crop_class: normalizeComparableText(row.crop_class),
+        variety: normalizeComparableText(row.variety),
+        planting_date: toNullableDateValue(row.planting_date),
+        previous_cutting_date: toNullableDateValue(row.previous_cutting_date ?? row.previous_cutting),
+        expected_harvest_date: toNullableDateValue(row.expected_harvest_date),
+        irrigation_type: normalizeComparableText(row.irrigation_type),
+        water_source: normalizeComparableText(row.water_source),
+        tam: normalizeComparableNumber(row.tam_mm, 4),
+        soil_type: normalizeComparableText(row.soil_type),
+        soil_ph: normalizeComparableNumber(row.soil_ph, 4),
+        field_remarks: normalizeComparableText(firstNonEmptyString(row.field_remarks, row.remarks)),
+        stress: normalizeComparableText(row.stress),
+        residue_type: normalizeComparableText(row.residue_type),
+        residue_management_method: normalizeComparableText(row.residue_management_method),
+        residual_management_remarks: normalizeComparableText(row.residual_management_remarks),
+        fertilizer_applications: buildComparableFertilizerApplications(row.fertilizer_applications, {
+            fertilizer_type: row.fertilizer_type,
+            nutrient_application_date: row.nutrient_application_date ?? row.fertilizer_application_date,
+            application_rate: row.application_rate,
+            foliar_sampling_date: row.foliar_sampling_date,
+        }),
+        herbicide_applications: buildComparableHerbicideApplications(row.herbicide_applications, {
+            herbicide_name: row.herbicide_name,
+            weed_application_date: row.weed_application_date,
+            weed_application_rate: row.weed_application_rate,
+        }),
+        pest_remarks: normalizeComparableText(row.pest_remarks),
+        disease_remarks: normalizeComparableText(row.disease_remarks),
+        harvest_date: toNullableDateValue(row.harvest_date),
+        yield: normalizeComparableNumber(row.harvest_yield ?? row.yield, 4),
+        harvest_method: normalizeComparableText(row.harvest_method),
+        quality_remarks: normalizeComparableText(row.quality_remarks),
+        geometry: sortSerializableValue(normalizeFieldGeometry(row.geom_polygon)),
+    }
+
+    return JSON.stringify(fingerprint)
+}
+
+async function findDuplicateFieldManagementSubmission(
+    submission: ObservationEntryFormSubmissionInput,
+    currentRowId?: string | number | null
+): Promise<{ kind: 'duplicate' | 'unchanged'; row: SugarcaneMonitoringRecord } | null> {
+    const recordedDate = requireRecordedDateValue(submission.date_recorded)
+    const { data, error } = await supabase
+        .from(MONITORING_TABLE_NAME)
+        .select('*')
+        .eq('date_recorded', recordedDate)
+
+    if (error) {
+        if (isMissingRelationError(error)) {
+            return null
+        }
+
+        throw error
+    }
+
+    const fingerprint = buildSubmissionDuplicateFingerprint(submission)
+    const matches = (data ?? [])
+        .map((row) => normalizeSugarcaneMonitoringRow(row as Record<string, unknown>))
+        .filter((row) => buildMonitoringRowDuplicateFingerprint(row) === fingerprint)
+
+    const otherMatch = matches.find((row) => String(row.id) !== String(currentRowId ?? ''))
+    if (otherMatch) {
+        return { kind: 'duplicate', row: otherMatch }
+    }
+
+    const currentMatch = matches.find((row) => String(row.id) === String(currentRowId ?? ''))
+    if (currentMatch) {
+        return { kind: 'unchanged', row: currentMatch }
+    }
+
+    return null
 }
 
 export async function fetchPredefinedFields(): Promise<PredefinedField[]> {
@@ -1043,48 +1523,7 @@ export async function fetchPredefinedFields(): Promise<PredefinedField[]> {
     }
 
     try {
-        const { data, error } = await supabase
-            .from('fields')
-            .select(`
-                id,
-                field_name,
-                section_name,
-                block_id,
-                latitude,
-                longitude,
-                geom,
-                created_at,
-                created_by,
-                date_recorded,
-                is_synced,
-                local_updated_at,
-                updated_at
-            `)
-            .order('field_name', { ascending: true })
-
-        if (error) {
-            if (isMissingRelationError(error)) {
-                return getHardcodedPredefinedFields()
-            }
-            throw error
-        }
-
-        const liveFields = (data ?? []).map((row: any) => ({
-            id: row.id,
-            field_name: row.field_name,
-            section_name: row.section_name,
-            block_id: row.block_id,
-            latitude: Number(row.latitude) || 0,
-            longitude: Number(row.longitude) || 0,
-            created_at: row.created_at || undefined,
-            created_by: row.created_by || undefined,
-            date_recorded: row.date_recorded || undefined,
-            is_synced: typeof row.is_synced === 'boolean' ? row.is_synced : undefined,
-            local_updated_at: row.local_updated_at || undefined,
-            updated_at: row.updated_at || undefined,
-            geom: row.geom,
-            observation_count: 0,
-        }))
+        const { fields: liveFields } = await fetchFieldRegistryRowsWithFallback()
 
         if (liveFields.length === 0) {
             return getHardcodedPredefinedFields()
@@ -1110,84 +1549,12 @@ export async function createPredefinedField(input: CreatePredefinedFieldInput): 
         date_recorded: toNullableDateValue(input.date_recorded),
     }
 
-    const { data, error } = await supabase
-        .from('fields')
-        .insert(payload)
-        .select(`
-            id,
-            field_name,
-            section_name,
-            block_id,
-            latitude,
-            longitude,
-            geom,
-            created_at,
-            created_by,
-            date_recorded,
-            crop_type,
-            is_synced,
-            local_updated_at,
-            updated_at
-        `)
-        .single()
-
-    if (error) {
-        if (isMissingRelationError(error)) {
-            throw new Error('The field registry table is not available, so new fields cannot be created yet.')
-        }
-
-        throw error
-    }
-
-    return {
-        id: data.id,
-        field_name: data.field_name,
-        section_name: data.section_name,
-        block_id: data.block_id,
-        latitude: Number(data.latitude) || 0,
-        longitude: Number(data.longitude) || 0,
-        created_at: data.created_at || undefined,
-        created_by: data.created_by || undefined,
-        date_recorded: data.date_recorded || undefined,
-        crop_type: data.crop_type || undefined,
-        is_synced: typeof data.is_synced === 'boolean' ? data.is_synced : undefined,
-        local_updated_at: data.local_updated_at || undefined,
-        updated_at: data.updated_at || undefined,
-        geom: data.geom,
-        observation_count: 0,
-    }
+    return createFieldRegistryRowWithFallback(payload)
 }
 
 export async function fetchLivePredefinedFields(): Promise<PredefinedField[]> {
-    const { data, error } = await supabase
-        .from('fields')
-        .select('*')
-        .order('field_name', { ascending: true })
-
-    if (error) {
-        if (isMissingRelationError(error)) {
-            return []
-        }
-        throw error
-    }
-
-    return (data ?? []).map((row: any) => ({
-        id: row.id,
-        field_name: row.field_name,
-        section_name: row.section_name,
-        block_id: row.block_id,
-        latitude: Number(row.latitude) || 0,
-        longitude: Number(row.longitude) || 0,
-        created_at: row.created_at || undefined,
-        created_by: row.created_by || undefined,
-        date_recorded: row.date_recorded || undefined,
-        crop_type: row.crop_type || undefined,
-        is_synced: typeof row.is_synced === 'boolean' ? row.is_synced : undefined,
-        local_updated_at: row.local_updated_at || undefined,
-        updated_at: row.updated_at || undefined,
-        geom: row.geom,
-        observation_count: 0,
-    }))
+    const { fields } = await fetchFieldRegistryRowsWithFallback()
+    return fields
 }
 
 export function getPredefinedFieldByName(
@@ -1199,36 +1566,11 @@ export function getPredefinedFieldByName(
 }
 
 export async function fetchSugarcaneMonitoringRows(filters?: ObservationFilters): Promise<SugarcaneMonitoringRecord[]> {
-    let query = supabase
-        .from('sugarcane_monitoring')
+    const query = supabase
+        .from(MONITORING_TABLE_NAME)
         .select('*')
         .not('date_recorded', 'is', null)
         .order('date_recorded', { ascending: false })
-
-    if (hasActiveFilterValue(filters?.cropType)) {
-        query = query.eq('crop_type', filters.cropType)
-    }
-    if (hasActiveFilterValue(filters?.variety)) {
-        query = query.eq('variety', filters.variety)
-    }
-    if (hasActiveFilterValue(filters?.fieldName)) {
-        query = query.eq('field_name', filters.fieldName)
-    }
-    if (hasActiveFilterValue(filters?.section)) {
-        query = query.eq('section_name', filters.section)
-    }
-    if (hasActiveFilterValue(filters?.block)) {
-        query = query.eq('block_id', filters.block)
-    }
-    if (filters?.startDate) {
-        query = query.gte('date_recorded', filters.startDate)
-    }
-    if (filters?.endDate) {
-        query = query.lte('date_recorded', filters.endDate)
-    }
-    if (hasActiveFilterValue(filters?.stressLevel)) {
-        query = query.eq('stress', filters.stressLevel)
-    }
 
     const { data, error } = await query
 
@@ -1239,9 +1581,42 @@ export async function fetchSugarcaneMonitoringRows(filters?: ObservationFilters)
         throw error
     }
 
-    return (data ?? [])
+    let normalizedRows = (data ?? [])
         .map((row) => normalizeSugarcaneMonitoringRow(row as Record<string, unknown>))
         .filter((row) => hasUsableRecordedDate(row.date_recorded))
+
+    if (hasActiveFilterValue(filters?.cropType)) {
+        const expected = normalizeLookupToken(filters.cropType)
+        normalizedRows = normalizedRows.filter((row) => normalizeLookupToken(row.crop_type) === expected)
+    }
+    if (hasActiveFilterValue(filters?.variety)) {
+        const expected = normalizeLookupToken(filters.variety)
+        normalizedRows = normalizedRows.filter((row) => normalizeLookupToken(row.variety) === expected)
+    }
+    if (hasActiveFilterValue(filters?.fieldName)) {
+        const expected = normalizeLookupToken(filters.fieldName)
+        normalizedRows = normalizedRows.filter((row) => normalizeLookupToken(row.field_name) === expected)
+    }
+    if (hasActiveFilterValue(filters?.section)) {
+        const expected = normalizeLookupToken(filters.section)
+        normalizedRows = normalizedRows.filter((row) => normalizeLookupToken(row.section_name) === expected)
+    }
+    if (hasActiveFilterValue(filters?.block)) {
+        const expected = normalizeLookupToken(filters.block)
+        normalizedRows = normalizedRows.filter((row) => normalizeLookupToken(row.block_id) === expected)
+    }
+    if (filters?.startDate) {
+        normalizedRows = normalizedRows.filter((row) => row.date_recorded >= filters.startDate!)
+    }
+    if (filters?.endDate) {
+        normalizedRows = normalizedRows.filter((row) => row.date_recorded <= filters.endDate!)
+    }
+    if (hasActiveFilterValue(filters?.stressLevel)) {
+        const expected = normalizeLookupToken(filters.stressLevel)
+        normalizedRows = normalizedRows.filter((row) => normalizeLookupToken(row.stress) === expected)
+    }
+
+    return normalizedRows
 }
 
 export async function fetchSugarcaneMonitoringObservations(filters?: ObservationFilters): Promise<MobileObservationRecord[]> {
@@ -1455,16 +1830,36 @@ export async function createObservationEntryFormSubmission(
     predefinedFields?: PredefinedField[]
 ): Promise<ObservationEntryForm> {
     const { submission: resolvedSubmission, linkedField } = await resolveObservationEntrySubmission(submission, predefinedFields)
-    const payload = buildSugarcaneMonitoringPayload(resolvedSubmission)
-    const fallbackPayload = buildBaseSugarcaneMonitoringPayload(resolvedSubmission)
-    const { data, droppedColumns } = await insertSugarcaneMonitoringWithSchemaFallback([
+    const duplicateMatch = await findDuplicateFieldManagementSubmission(
+        resolvedSubmission,
+        linkedField?.id ?? null
+    )
+
+    if (duplicateMatch) {
+        const label = firstNonEmptyString(
+            resolvedSubmission.trial_name,
+            resolvedSubmission.field_name,
+            resolvedSubmission.field_id,
+            resolvedSubmission.block_id
+        ) ?? 'this field'
+        const recordedDate = requireRecordedDateValue(resolvedSubmission.date_recorded)
+
+        if (duplicateMatch.kind === 'unchanged') {
+            throw new Error(`The saved record for ${label} on ${recordedDate} already matches this data. Change at least one value before saving again.`)
+        }
+
+        throw new Error(`An identical record for ${label} on ${recordedDate} already exists in sugarcane_field_management.`)
+    }
+
+    const payload = buildSugarcaneFieldManagementPayload(resolvedSubmission)
+    const { data, droppedColumns } = await persistFieldManagementMonitoringRowWithSchemaFallback(
         payload,
-        fallbackPayload,
-    ])
+        linkedField?.id ?? null
+    )
 
     if (droppedColumns.length > 0) {
         console.warn(
-            'Inserted sugarcane monitoring row after omitting unsupported columns from the live schema:',
+            'Persisted sugarcane field management row after omitting unsupported columns from the live schema:',
             droppedColumns
         )
     }

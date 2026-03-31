@@ -18,7 +18,7 @@ interface MonitoringFieldLookups {
     byName: Map<string, PredefinedField[]>
 }
 
-type AreaCropGroup = 'Sugarcane' | 'Break Crop' | 'Fallow Period' | 'Unspecified'
+type AreaCropGroup = 'Sugarcane' | 'Break Crop' | 'Furrow Period' | 'Unspecified'
 
 export type TaskSeverity = 'overdue' | 'today' | 'soon' | 'planned'
 
@@ -103,7 +103,7 @@ function getAreaCropGroup(value?: string | null): AreaCropGroup {
 
     if (!normalized) return 'Unspecified'
     if (/break\s*crop|breakcrop/.test(normalized)) return 'Break Crop'
-    if (/fallow|fullow/.test(normalized)) return 'Fallow Period'
+    if (/fallow|furrow|fullow/.test(normalized)) return 'Furrow Period'
     if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
     return 'Unspecified'
 }

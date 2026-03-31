@@ -82,6 +82,7 @@ export interface NutrientManagement {
 }
 
 export interface FertilizerApplication {
+    loop_number?: number;
     fertilizer_type?: string;
     application_date?: string;
     application_rate?: number;
@@ -89,9 +90,21 @@ export interface FertilizerApplication {
 }
 
 export interface HerbicideApplication {
+    loop_number?: number;
     herbicide_name?: string;
     application_date?: string;
     application_rate?: number;
+}
+
+export interface FertilizerApplicationRecord {
+    field_name: string;
+    fertilizer_applications?: FertilizerApplication[];
+    herbicide_applications?: HerbicideApplication[];
+    foliar_sampling_date?: string;
+    collector_id?: string;
+    remarks?: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface CropProtection {
@@ -144,8 +157,14 @@ export interface Field {
     field_name: string;
     section_name: string;
     block_id: string;
+    area?: number;
     latitude: number;
     longitude: number;
+    irrigation_type?: string;
+    water_source?: string;
+    tam_mm?: string;
+    tamm_area?: number;
+    soil_type?: string;
     created_at?: string;
     created_by?: string;
     date_recorded?: string;

@@ -37,16 +37,16 @@ import {
     GridOn,
     Layers,
 } from '@mui/icons-material'
-import { MapContainer, TileLayer, Popup, useMap, GeoJSON } from 'react-leaflet'
+import { MapContainer, TileLayer, Popup, useMap, GeoJSON, CircleMarker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { motion } from 'framer-motion'
-import { fetchFields, fetchBlocks, fetchPredefinedFields } from '@/services/database.service'
+import { fetchBlocks, fetchLivePredefinedFields } from '@/services/database.service'
 import type { MobileObservationRecord } from '@/services/database.service'
 import { useMobileObservationRecords } from '@/hooks/useMobileObservationRecords'
 import { LIVE_DATA_UPDATED_EVENT } from '@/lib/liveData'
 import type { Field } from '@/types/database.types'
-import { HARDCODED_FIELDS, HARDCODED_FIELD_SHAPEFILE } from '@/data/hardcodedFieldShapefile'
 import { MapCenterObject } from '@/components/Map/MapCenterObject'
+import { SUGARCANE_CROP_CLASS_OPTIONS as SUGARCANE_CROP_CLASS_FALLBACKS } from '@/utils/cropClassOptions'
 import {
     SATELLITE_TILE_SOURCES,
     SATELLITE_HYBRID_LABELS_SOURCE,
@@ -83,7 +83,6 @@ import {
     getRenderableBoundaryGeometry,
     hasCoordinates,
     linkFieldsWithMobileRecords,
-    mergeFieldCollections,
     normalizeFieldToken,
 } from './mapView.utils'
 
@@ -104,21 +103,7 @@ const POPUP_TEXT = '#f2fff4'
 const POPUP_SUB  = 'rgba(214, 247, 221, 0.82)'
 const POPUP_META = 'rgba(182, 224, 191, 0.68)'
 const DEFAULT_CROP_TYPE = 'Sugarcane'
-const SUGARCANE_CROP_CLASS_FALLBACKS = [
-    'Plant Cane',
-    '1st Ratoon',
-    '2nd Ratoon',
-    '3rd Ratoon',
-    '4th Ratoon',
-    '5th Ratoon',
-    '6th Ratoon',
-    '7th Ratoon',
-    '8th Ratoon',
-    '9th Ratoon',
-    '10th Ratoon',
-    '11th Ratoon',
-    '12th Ratoon',
-]
+const DEFAULT_SELECTED_CROP_TYPE = 'all'
 const BREAK_CROP_CLASS_FALLBACKS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Maize']
 const FALLOW_CROP_CLASS_FALLBACKS = ['None']
 
@@ -126,13 +111,11 @@ const FALLOW_CROP_CLASS_FALLBACKS = ['None']
 const MONO: React.CSSProperties['fontFamily'] = '"Times New Roman", Times, serif'
 const DISPLAY: React.CSSProperties['fontFamily'] = '"Times New Roman", Times, serif'
 
-const USE_HARDCODED_FIELD_SHAPEFILE = false
-
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type SprayFilter      = 'all' | 'sprayed' | 'not-sprayed'
 type CollectionFilter = 'all' | 'recorded' | 'pending'
 type MapLayer         = 'satellite' | 'terrain'
-type MapCropGroup     = 'Sugarcane' | 'Break Crop' | 'Fallow Period' | 'Unspecified'
+type MapCropGroup     = 'Sugarcane' | 'Break Crop' | 'Furrow Period' | 'Unspecified'
 
 interface GeoFeature {
     type: 'Feature'
@@ -174,7 +157,7 @@ function getMapCropGroup(value?: string | null): MapCropGroup {
 
     if (!normalized) return 'Unspecified'
     if (/break\s*crop|breakcrop|soyabeans?|sugarbeans?|sunn\s*hemp|velvet\s*beans?|maize/.test(normalized)) return 'Break Crop'
-    if (/fallow|fullow|\bnone\b/.test(normalized)) return 'Fallow Period'
+    if (/fallow|furrow|fullow|\bnone\b/.test(normalized)) return 'Furrow Period'
     if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
     return 'Unspecified'
 }
@@ -731,6 +714,49 @@ function BlockLayer({
     )
 }
 
+function FieldMarkerLayer({ fields }: { fields: Field[] }) {
+    return (
+        <>
+            {fields.map((field, index) => {
+                if (!hasCoordinates(field.latitude, field.longitude)) return null
+
+                const key = buildFieldIdentity(field.field_name, field.section_name, field.block_id) || `field-point-${index}`
+
+                return (
+                    <CircleMarker
+                        key={`field-point-${key}`}
+                        center={[field.latitude!, field.longitude!]}
+                        radius={7}
+                        pathOptions={{
+                            color: CYAN,
+                            weight: 2,
+                            fillColor: GREEN_OK,
+                            fillOpacity: 0.88,
+                            opacity: 1,
+                        }}
+                    >
+                        <Popup className="hud-popup">
+                            <Box sx={{ p: 1.5 }}>
+                                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: GREEN_OK, fontFamily: MONO, letterSpacing: '0.08em' }}>
+                                    {String(field.field_name || 'FIELD POINT').toUpperCase()}
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.58rem', color: POPUP_SUB, fontFamily: MONO, mt: 0.4 }}>
+                                    {field.block_id || 'FIELD MANAGEMENT POINT'}
+                                </Typography>
+                                <FieldInfoPanel
+                                    field={field}
+                                    collectionLabel="FIELD MANAGEMENT POINT"
+                                    sourceLabel="field management coordinates"
+                                />
+                            </Box>
+                        </Popup>
+                    </CircleMarker>
+                )
+            })}
+        </>
+    )
+}
+
 // ─── Helpers (pure, no hooks) ─────────────────────────────────────────────────
 const getCollectionColor = (
     field?: Partial<Field> | null,
@@ -795,6 +821,24 @@ const getBoundaryStyle = (
 const getMobileRecordFeatureKey = (record: MobileObservationRecord) =>
     `${record.source_table}-${record.source_row_id ?? record.id}`
 
+const getFieldBoundaryKeys = (field?: Partial<Field> | null): string[] => {
+    if (!field) return []
+
+    const keys: string[] = []
+    const fieldId = normalizeFieldToken(field.id)
+    const identity = buildFieldIdentity(field.field_name, field.section_name, field.block_id)
+    const blockKey = normalizeFieldToken(field.block_id)
+    const nameKey = normalizeFieldToken(field.field_name)
+
+    if (fieldId) keys.push(`field:${fieldId}`)
+    if (identity.replace(/:/g, '')) keys.push(`identity:${identity}`)
+    if (blockKey) keys.push(`block:${blockKey}`)
+    if (nameKey) keys.push(`name:${nameKey}`)
+    getBoundaryCodeTokens(field.field_name, field.block_id).forEach((code) => keys.push(`code:${code}`))
+
+    return keys
+}
+
 const getMobileRecordBoundaryKeys = (record: MobileObservationRecord): string[] => {
     const props = getMobileRecordBoundaryProps(record)
     const keys: string[] = []
@@ -813,10 +857,12 @@ const getMobileRecordBoundaryKeys = (record: MobileObservationRecord): string[] 
 const getFeatureBoundaryKeys = (feature: GeoFeature): string[] => {
     const props    = feature?.properties ?? {}
     const keys: string[] = []
+    const fieldId  = normalizeFieldToken(props.field_id as string)
     const identity = buildFieldIdentity(props.field_name as string, props.section_name as string, props.block_id as string)
     const blockKey = normalizeFieldToken(props.block_id as string)
     const nameKey  = normalizeFieldToken(props.field_name as string)
 
+    if (fieldId)                    keys.push(`field:${fieldId}`)
     if (identity.replace(/:/g, '')) keys.push(`identity:${identity}`)
     if (blockKey)                   keys.push(`block:${blockKey}`)
     if (nameKey)                    keys.push(`name:${nameKey}`)
@@ -826,6 +872,9 @@ const getFeatureBoundaryKeys = (feature: GeoFeature): string[] => {
 
 const getFeatureBoundaryUniqueKey = (feature: GeoFeature): string | null => {
     const props = feature?.properties ?? {}
+    const fieldId = normalizeFieldToken(props.field_id as string)
+    if (fieldId) return `field:${fieldId}`
+
     const identity = buildFieldIdentity(props.field_name as string, props.section_name as string, props.block_id as string)
     if (identity.replace(/:/g, '')) return `identity:${identity}`
 
@@ -928,7 +977,7 @@ export function MapViewPage() {
     const [blocks,       setBlocks]       = useState<any[]>([])
     const [isLoading,    setIsLoading]    = useState(true)
     const [error,        setError]        = useState<Error | null>(null)
-    const [selectedCropType,    setSelectedCropType]    = useState<string>(DEFAULT_CROP_TYPE)
+    const [selectedCropType,    setSelectedCropType]    = useState<string>(DEFAULT_SELECTED_CROP_TYPE)
     const [selectedCropClass,   setSelectedCropClass]   = useState<string>('all')
     const [selectedSoilType,    setSelectedSoilType]    = useState<string>('all')
     const [selectedCollector,   setSelectedCollector]   = useState<string>('all')
@@ -1014,7 +1063,7 @@ export function MapViewPage() {
             return ''
         }
 
-        if (cropGroup === 'Fallow Period') {
+        if (cropGroup === 'Furrow Period') {
             return cropClass || 'None'
         }
 
@@ -1041,7 +1090,7 @@ export function MapViewPage() {
     useEffect(() => {
         setShowMobileRecords(true)
         setCollectionFilter(focusObservation ? 'recorded' : 'all')
-        setSelectedCropType(requestedMapFilters.cropType ?? (focusObservation ? 'all' : DEFAULT_CROP_TYPE))
+        setSelectedCropType(requestedMapFilters.cropType ?? (focusObservation ? 'all' : DEFAULT_SELECTED_CROP_TYPE))
         setSelectedCropClass(requestedMapFilters.cropClass ?? 'all')
         setSelectedSoilType(requestedMapFilters.soilType ?? 'all')
         setSelectedCollector('all')
@@ -1052,40 +1101,50 @@ export function MapViewPage() {
         setIsLoading(true)
         setError(null)
 
-        const [registryResult, fieldsResult, blocksResult] = await Promise.allSettled([
-            fetchPredefinedFields(),
-            fetchFields(),
+        const [fieldsResult, blocksResult] = await Promise.allSettled([
+            fetchLivePredefinedFields(),
             fetchBlocks(),
         ])
 
-        const registryFields = registryResult.status === 'fulfilled' ? registryResult.value : []
-        const observedFields = fieldsResult.status === 'fulfilled' ? fieldsResult.value : []
+        const liveFields = fieldsResult.status === 'fulfilled' ? fieldsResult.value : []
         const dbBlocks = blocksResult.status === 'fulfilled' ? blocksResult.value : []
-        const mergedFields = mergeFieldCollections(registryFields, observedFields)
 
         console.log('🗺️ Map Data Loaded:', {
-            registryFields: registryFields.length,
-            observedFields: observedFields.length,
+            liveFields: liveFields.length,
             dbBlocks: dbBlocks.length,
         })
 
-        const useBundledRegistry = USE_HARDCODED_FIELD_SHAPEFILE || mergedFields.length === 0
-        const useBundledBoundaries = dbBlocks.length === 0 && HARDCODED_FIELD_SHAPEFILE.features.length > 0
-        const normalizedFields = (useBundledRegistry ? HARDCODED_FIELDS : mergedFields).map((field) => ({
+        const normalizedFields = liveFields.map((field) => ({
             ...field,
             crop_type: normalizeCropType(field.crop_type),
         }))
+        const liveFieldShapes: GeoFeature[] = liveFields
+            .map((field) => {
+                const geometry = getRenderableBoundaryGeometry(field.geom)
+                if (!geometry) return null
+
+                return {
+                    type: 'Feature' as const,
+                    geometry,
+                    properties: {
+                        field_id: field.id,
+                        field_name: field.field_name,
+                        section_name: field.section_name,
+                        block_id: field.block_id,
+                        source_label: 'field management boundary',
+                    },
+                }
+            })
+            .filter((feature): feature is GeoFeature => feature !== null)
 
         setFields(normalizedFields)
-        setFieldShapes(useBundledBoundaries ? HARDCODED_FIELD_SHAPEFILE.features : [])
+        setFieldShapes(liveFieldShapes)
         setBlocks(Array.isArray(dbBlocks) ? dbBlocks : [])
 
-        if (registryResult.status === 'rejected' && fieldsResult.status === 'rejected' && !useBundledRegistry) {
+        if (fieldsResult.status === 'rejected') {
             const reason = fieldsResult.reason instanceof Error
                 ? fieldsResult.reason
-                : registryResult.reason instanceof Error
-                    ? registryResult.reason
-                    : new Error('Failed to load field map data')
+                : new Error('Failed to load field map data')
             setError(reason)
         }
 
@@ -1173,7 +1232,7 @@ export function MapViewPage() {
             .sort((left, right) => {
                 const order = new Map<string, number>([
                     ['Sugarcane', 0],
-                    ['Fallow Period', 1],
+                    ['Furrow Period', 1],
                     ['Break Crop', 2],
                 ])
 
@@ -1204,7 +1263,7 @@ export function MapViewPage() {
             return resolved.sort((left, right) => left.localeCompare(right))
         }
 
-        if (selectedCropType === 'Fallow Period') {
+        if (selectedCropType === 'Furrow Period') {
             const resolved = availableClasses.length > 0 ? availableClasses : FALLOW_CROP_CLASS_FALLBACKS
             return resolved.sort((left, right) => left.localeCompare(right))
         }
@@ -1273,7 +1332,7 @@ export function MapViewPage() {
             if (latestVariety) return latestVariety
         }
 
-        if (selectedCropType === 'Fallow Period') {
+        if (selectedCropType === 'Furrow Period') {
             return 'None'
         }
 
@@ -1403,15 +1462,20 @@ export function MapViewPage() {
         ]
     )
 
-    const filteredFields = useMemo(() =>
+    const visibleRegistryFields = useMemo(() =>
         cropClassFilteredFields.filter((field) => {
             if (selectedCropType !== 'all' && normalizeCropType(field.crop_type) !== selectedCropType) return false
             if (sprayFilter === 'sprayed' && !field.is_sprayed) return false
             if (sprayFilter === 'not-sprayed' && field.is_sprayed) return false
             if (!matchesRecordedBoundaryFilter(Boolean(getMobileRecordForBoundary(field, recordedBoundaryMobileRecords)))) return false
-            return hasCoordinates(field.latitude, field.longitude)
+            return true
         }),
         [cropClassFilteredFields, selectedCropType, sprayFilter, normalizeCropType, matchesRecordedBoundaryFilter, recordedBoundaryMobileRecords]
+    )
+
+    const filteredFields = useMemo(
+        () => visibleRegistryFields.filter((field) => hasCoordinates(field.latitude, field.longitude)),
+        [visibleRegistryFields]
     )
 
     const filteredMobileRecords = useMemo(() =>
@@ -1491,7 +1555,7 @@ export function MapViewPage() {
     )
 
     const referenceFieldShapes = useMemo(
-        () => (fieldShapes.length > 0 ? fieldShapes : HARDCODED_FIELD_SHAPEFILE.features),
+        () => fieldShapes,
         [fieldShapes]
     )
 
@@ -1745,6 +1809,18 @@ export function MapViewPage() {
         return filteredBlocks.filter((b) => getBlockBoundaryKeys(b).every((k) => !existingKeys.has(k)))
     }, [activeFieldBoundaryFeatures, filteredBlocks])
 
+    const pointOnlyFields = useMemo(() => {
+        const existingKeys = new Set([
+            ...activeFieldBoundaryFeatures.flatMap((feature) => getFeatureBoundaryKeys(feature)),
+            ...activeBlocks.flatMap((block) => getBlockBoundaryKeys(block)),
+        ])
+
+        return filteredFields.filter((field) =>
+            !getRenderableBoundaryGeometry(field.geom)
+            && getFieldBoundaryKeys(field).every((key) => !existingKeys.has(key))
+        )
+    }, [activeBlocks, activeFieldBoundaryFeatures, filteredFields])
+
     const focusBoundaryKeys = useMemo(
         () => getFocusBoundaryKeys(focusObservation),
         [focusObservation]
@@ -1810,7 +1886,8 @@ export function MapViewPage() {
     const resolvedMapCenter = focusedBoundaryCenter ?? mapCenter
 
     // ── Derived stats ──────────────────────────────────────────────────────────
-    const visibleBoundaryCount = activeFieldBoundaryFeatures.length + activeBlocks.length
+    const visibleFieldCount = visibleRegistryFields.length
+    const visibleSpatialCount = activeFieldBoundaryFeatures.length + activeBlocks.length + pointOnlyFields.length
     const shouldShowCropClassFilter = selectedCropType !== 'all' && (
         selectedCropType === 'Sugarcane'
         || selectedCropType === 'Break Crop'
@@ -1929,7 +2006,7 @@ export function MapViewPage() {
                                     {[
                                         {
                                             label: 'Visible',
-                                            value: String(visibleBoundaryCount),
+                                            value: String(visibleFieldCount),
                                             tone: CYAN,
                                         },
                                         {
@@ -2093,6 +2170,7 @@ export function MapViewPage() {
                                         getCollectionColor={getCollectionColor}
                                         getCollectionLabel={getCollectionLabel}
                                     />
+                                    <FieldMarkerLayer fields={pointOnlyFields} />
                                 </MapContainer>
                                 <MapCenterObject color={CYAN} label="Map Center" size={58} />
                             </Box>
@@ -2134,7 +2212,7 @@ export function MapViewPage() {
                             )}
 
                             {/* Empty state */}
-                            {visibleBoundaryCount === 0 && (
+                            {visibleSpatialCount === 0 && (
                                 <Box sx={{ position: 'absolute', inset: 0, zIndex: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', p: 2 }}>
                                     <HudPanel sx={{ p: 2.2, maxWidth: 360, textAlign: 'center' }} accentColor={AMBER_WARN}>
                                         <Typography sx={{ fontSize: '0.58rem', color: AMBER_WARN, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: MONO }}>

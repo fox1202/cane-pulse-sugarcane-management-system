@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     Alert,
     Box,
@@ -18,6 +19,8 @@ import L from 'leaflet';
 import { MapContainer, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import {
     createObservationEntryFormSubmission,
+    createPredefinedField,
+    fetchLivePredefinedFields,
     getPredefinedFieldByName,
     type ObservationEntryFormSubmissionInput,
     type PredefinedField,
@@ -33,6 +36,7 @@ import type {
     ObservationEntryForm,
     SugarcaneMonitoringRecord,
 } from '@/types/database.types';
+import { SUGARCANE_CROP_CLASS_OPTIONS } from '@/utils/cropClassOptions';
 import { buildObservationCalendarSearch } from '@/utils/farmingCalendarLinks';
 
 interface ObservationEntryIntakeDialogProps {
@@ -52,22 +56,7 @@ const IRRIGATION_TYPE_OPTIONS = [
 
 const WATER_SOURCE_OPTIONS = ['Dam 1', 'Dam 2', 'Dam 3'];
 const SOIL_TYPE_OPTIONS = ['SaL', 'SaC', 'SaCL'];
-const CROP_TYPE_OPTIONS = ['Sugarcane', 'Break Crop', 'Fallow Period'];
-const SUGARCANE_CROP_CLASS_OPTIONS = [
-    'Plant Cane',
-    '1st Ratoon',
-    '2nd Ratoon',
-    '3rd Ratoon',
-    '4th Ratoon',
-    '5th Ratoon',
-    '6th Ratoon',
-    '7th Ratoon',
-    '8th Ratoon',
-    '9th Ratoon',
-    '10th Ratoon',
-    '11th Ratoon',
-    '12th Ratoon',
-];
+const CROP_TYPE_OPTIONS = ['Sugarcane', 'Break Crop', 'Furrow Period'];
 const BREAK_CROP_CLASS_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Maize'];
 const FALLOW_CROP_CLASS_OPTIONS = ['None'];
 const RESIDUE_TYPE_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Sugarcane', 'None'];
@@ -266,7 +255,7 @@ function getCropClassOptionsForCropType(cropType?: string | null): string[] {
         return BREAK_CROP_CLASS_OPTIONS;
     }
 
-    if (normalized === 'fallow period') {
+    if (normalized === 'fallow period' || normalized === 'furrow period') {
         return FALLOW_CROP_CLASS_OPTIONS;
     }
 
@@ -414,6 +403,8 @@ function buildFreshFormData(
         };
     }
 
+    const fieldArea = matchedField.area ?? estimateGeometryAreaHa(matchedField.geom);
+
     return {
         ...preserved,
         field_id: matchedField.field_name,
@@ -421,13 +412,19 @@ function buildFreshFormData(
         field_name: matchedField.field_name,
         section_name: matchedField.section_name,
         block_id: matchedField.block_id,
-        area: estimateGeometryAreaHa(matchedField.geom),
-        block_size: estimateGeometryAreaHa(matchedField.geom),
+        area: fieldArea,
+        block_size: fieldArea,
         latitude: matchedField.latitude ?? empty.latitude,
         longitude: matchedField.longitude ?? empty.longitude,
         spatial_data: matchedField.geom ?? undefined,
         geom_polygon: matchedField.geom ?? undefined,
         crop_type: matchedField.crop_type || preserved.crop_type || empty.crop_type,
+        irrigation_type: matchedField.irrigation_type || preserved.irrigation_type || '',
+        water_source: matchedField.water_source || preserved.water_source || '',
+        tam_mm: matchedField.tam_mm || preserved.tam_mm || '',
+        tamm_area: matchedField.tamm_area ?? preserved.tamm_area,
+        soil_type: matchedField.soil_type || preserved.soil_type || '',
+        soil_ph: matchedField.soil_ph ?? preserved.soil_ph,
     };
 }
 
@@ -734,12 +731,12 @@ function buildLoadedSavedRecordData(
         previous_cutting_date: previousCuttingDate,
         cutting_date: cuttingDate,
         expected_harvest_date: savedEntry.expected_harvest_date || '',
-        irrigation_type: savedEntry.irrigation_type || '',
-        water_source: savedEntry.water_source || '',
-        tam_mm: savedEntry.tam_mm || '',
-        tamm_area: tamArea,
-        soil_type: savedEntry.soil_type || '',
-        soil_ph: savedEntry.soil_ph,
+        irrigation_type: savedEntry.irrigation_type || loaded.irrigation_type || '',
+        water_source: savedEntry.water_source || loaded.water_source || '',
+        tam_mm: savedEntry.tam_mm || loaded.tam_mm || '',
+        tamm_area: tamArea ?? loaded.tamm_area,
+        soil_type: savedEntry.soil_type || loaded.soil_type || '',
+        soil_ph: savedEntry.soil_ph ?? loaded.soil_ph,
         field_remarks: savedEntry.field_remarks || savedEntry.remarks || '',
         residue_type: savedEntry.residue_type || '',
         residue_management_method: savedEntry.residue_management_method || '',
@@ -809,6 +806,45 @@ function buildMonitoringFieldRegistry(records: SugarcaneMonitoringRecord[]): Pre
         .sort((left, right) => left.field_name.localeCompare(right.field_name, undefined, { sensitivity: 'base' }));
 }
 
+function buildFieldRegistryKey(field: Pick<PredefinedField, 'field_name' | 'section_name' | 'block_id'>): string {
+    const compositeKey = [
+        normalizeLookupValue(field.field_name),
+        normalizeLookupValue(field.section_name),
+        normalizeLookupValue(field.block_id),
+    ].join('|');
+
+    if (compositeKey !== '||') {
+        return compositeKey;
+    }
+
+    return normalizeLookupValue(field.field_name);
+}
+
+function buildSelectableFieldRegistry(
+    liveFields: PredefinedField[],
+    records: SugarcaneMonitoringRecord[]
+): PredefinedField[] {
+    const merged = new Map<string, PredefinedField>();
+    const monitoringFields = buildMonitoringFieldRegistry(records);
+
+    [...liveFields, ...monitoringFields].forEach((field, index) => {
+        const key = buildFieldRegistryKey(field) || `field-${index}`;
+        if (!merged.has(key)) {
+            merged.set(key, field);
+        }
+    });
+
+    return Array.from(merged.values())
+        .sort((left, right) => left.field_name.localeCompare(right.field_name, undefined, { sensitivity: 'base' }));
+}
+
+function mergeCreatedFieldIntoRegistry(fields: PredefinedField[] | undefined, createdField: PredefinedField): PredefinedField[] {
+    return buildSelectableFieldRegistry([...(fields ?? []), createdField], []).map((field) => {
+        const matchesCreatedField = buildFieldRegistryKey(field) === buildFieldRegistryKey(createdField);
+        return matchesCreatedField ? { ...field, ...createdField } : field;
+    });
+}
+
 export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialogProps> = ({
     open,
     onClose,
@@ -817,6 +853,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     existingRecords,
 }) => {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const dialogContentRef = useRef<HTMLDivElement | null>(null);
     const [formData, setFormData] = useState<ObservationEntryFormSubmissionInput>(createEmptySubmission(user?.id || ''));
     const [saving, setSaving] = useState(false);
@@ -826,9 +863,21 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const [isCreatingCustomField, setIsCreatingCustomField] = useState(false);
     const [drawPoints, setDrawPoints] = useState<DrawPoint[]>([]);
 
+    const {
+        data: livePredefinedFields = [],
+        error: livePredefinedFieldsError,
+    } = useQuery<PredefinedField[], Error>({
+        queryKey: ['live-predefined-fields'],
+        queryFn: fetchLivePredefinedFields,
+        enabled: open,
+        staleTime: 60_000,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
+    });
+
     const predefinedFields = useMemo(
-        () => buildMonitoringFieldRegistry(existingRecords),
-        [existingRecords]
+        () => buildSelectableFieldRegistry(livePredefinedFields, existingRecords),
+        [existingRecords, livePredefinedFields]
     );
 
     useEffect(() => {
@@ -1202,6 +1251,10 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 throw new Error('Please select a field before saving.');
             }
 
+            if (!formData.date_recorded) {
+                throw new Error('Date recorded is required.');
+            }
+
             let resolvedField = selectedField;
             const registryFields = predefinedFields;
 
@@ -1216,7 +1269,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 }
 
                 if (hasExistingField) {
-                    throw new Error('That field name already exists in sugarcane_monitoring. Please select it from the list instead.');
+                    throw new Error('That field name already exists in the field management table. Please select it from the list instead.');
                 }
 
                 if (!formData.block_id?.trim()) {
@@ -1231,19 +1284,23 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     throw new Error('Unable to calculate the center of the drawn field boundary.');
                 }
 
-                const createdField: PredefinedField = {
-                    id: `monitoring-${normalizedFieldName}-${Date.now()}`,
+                const createdField = await createPredefinedField({
                     field_name: normalizedFieldName,
                     section_name: formData.section_name || '',
                     block_id: formData.block_id,
                     latitude: drawnCentroid.latitude,
                     longitude: drawnCentroid.longitude,
-                    geom: drawnGeometry ?? null,
+                    geom: drawnGeometry,
                     created_by: user?.id,
                     crop_type: formData.crop_type,
                     date_recorded: formData.date_recorded || undefined,
-                    observation_count: 0,
-                };
+                });
+
+                queryClient.setQueryData<PredefinedField[]>(
+                    ['live-predefined-fields'],
+                    (currentFields) => mergeCreatedFieldIntoRegistry(currentFields, createdField)
+                );
+
                 resolvedField = createdField;
 
                 setIsCreatingCustomField(false);
@@ -1266,11 +1323,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             }
 
             if (!resolvedField) {
-                throw new Error('Please choose a field or trial from the sugarcane_monitoring list.');
-            }
-
-            if (!formData.date_recorded) {
-                throw new Error('Date recorded is required.');
+                throw new Error('Please choose a field or trial from the field management table.');
             }
 
             const submission = {
@@ -1294,6 +1347,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 : [resolvedField, ...registryFields];
 
             const savedEntry = await createObservationEntryFormSubmission(submission, submissionFields);
+
+            if (isCreatingCustomField) {
+                await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: ['live-predefined-fields'] }),
+                    queryClient.invalidateQueries({ queryKey: ['overview-predefined-fields'] }),
+                ]);
+            }
 
             await onSubmitted();
             onSaved?.('Successfully saved to the database.');
@@ -1326,6 +1386,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 <Stack spacing={2.5}>
                     {error && <Alert severity="error">{error}</Alert>}
                     {parseSummary && <Alert severity="success">{parseSummary}</Alert>}
+                    {livePredefinedFieldsError && (
+                        <Alert severity="warning">
+                            Could not load the live field management table. Showing any matching monitoring fields as a fallback.
+                        </Alert>
+                    )}
 
                     <Box>
                     <SectionHeading title="1. Field Information" />
@@ -1423,8 +1488,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : formData.field_name}
                                 onChange={(e) => handleFieldSelection(e.target.value)}
                                 helperText={isCreatingCustomField
-                                    ? 'Drawing a new field or trial. Save the form to add it to sugarcane_monitoring.'
-                                    : 'Can’t find it in the list? Choose "Draw New Trial / Field".'}
+                                    ? 'Drawing a new field or trial. Save the form to add it to the field management table and monitoring records.'
+                                    : 'Choose a field from the field management table, or use "Draw New Trial / Field".'}
                                 SelectProps={{
                                     MenuProps: WHITE_SELECT_MENU_PROPS,
                                 }}
@@ -1449,7 +1514,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     label="New Trial / Field Name"
                                     value={formData.field_name || ''}
                                     onChange={(e) => updateField('field_name', e.target.value)}
-                                    helperText="This name will be saved into sugarcane_monitoring for future use."
+                                    helperText="This name will be saved into the field management table for future use."
                                 />
                             </Grid>
                         ) : (
@@ -1785,12 +1850,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 {currentFertilizerApplication
                                     ? [
                                         currentFertilizerApplication.fertilizer_type || '',
-                                        currentFertilizerApplication.application_date || '',
                                         currentFertilizerApplication.application_rate != null
                                             ? `Rate ${currentFertilizerApplication.application_rate}`
-                                            : '',
-                                        currentFertilizerApplication.foliar_sampling_date
-                                            ? `Foliar ${currentFertilizerApplication.foliar_sampling_date}`
                                             : '',
                                     ].filter(Boolean).join(' | ')
                                     : 'No fertilizer application added yet.'}
@@ -1898,7 +1959,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 {currentHerbicideApplication
                                     ? [
                                         currentHerbicideApplication.herbicide_name || '',
-                                        currentHerbicideApplication.application_date || '',
                                         currentHerbicideApplication.application_rate != null
                                             ? `Rate ${currentHerbicideApplication.application_rate}`
                                             : '',

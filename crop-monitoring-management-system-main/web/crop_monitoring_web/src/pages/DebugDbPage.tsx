@@ -29,7 +29,7 @@ const candidateTables = [
   'blocks',
   'fields',
   'profiles',
-  'sugarcane_monitoring',
+  'sugarcane_field_management',
 ]
 
 export default function DebugDbPage() {

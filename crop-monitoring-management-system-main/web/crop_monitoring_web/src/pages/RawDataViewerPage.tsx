@@ -56,7 +56,7 @@ export function RawDataViewerPage() {
         'fields',
         'blocks',
         'profiles',
-        'sugarcane_monitoring',
+        'sugarcane_field_management',
     ]
 
     const loadAllData = async (): Promise<Record<string, TableData>> => {

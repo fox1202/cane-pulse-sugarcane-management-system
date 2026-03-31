@@ -549,7 +549,7 @@ export function getMobileRemarks(record: MobileObservationRecord): string {
 }
 
 export function getMobileSourceLabel(record: MobileObservationRecord): string {
-    if (record.source_table === 'sugarcane_monitoring') {
+    if (record.source_table === 'sugarcane_monitoring' || record.source_table === 'sugarcane_field_management') {
         return 'Monitoring record'
     }
 
@@ -989,6 +989,7 @@ export function buildDatabaseFieldBoundaries(
             type: 'Feature',
             geometry: getRenderableBoundaryGeometry(field.geom),
             properties: {
+                field_id: field.id,
                 field_name: field.field_name,
                 section_name: field.section_name,
                 block_id: field.block_id,
