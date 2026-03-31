@@ -17,9 +17,7 @@ import {
 import L from 'leaflet';
 import { MapContainer, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import {
-    createPredefinedField,
     createObservationEntryFormSubmission,
-    fetchPredefinedFields,
     getPredefinedFieldByName,
     type ObservationEntryFormSubmissionInput,
     type PredefinedField,
@@ -764,6 +762,53 @@ function buildLoadedSavedRecordData(
     };
 }
 
+function buildMonitoringFieldRegistry(records: SugarcaneMonitoringRecord[]): PredefinedField[] {
+    const sortedRecords = [...records].sort((left, right) => getEntryTimestamp(right) - getEntryTimestamp(left));
+    const byFieldName = new Map<string, PredefinedField>();
+
+    sortedRecords.forEach((record) => {
+        const fieldName = String(record.field_name || record.field_id || '').trim();
+        if (!fieldName) {
+            return;
+        }
+
+        const key = normalizeLookupValue(fieldName);
+        const existing = byFieldName.get(key);
+
+        if (!existing) {
+            byFieldName.set(key, {
+                id: record.id,
+                field_name: fieldName,
+                section_name: record.section_name || '',
+                block_id: record.block_id || '',
+                latitude: record.latitude ?? 0,
+                longitude: record.longitude ?? 0,
+                geom: record.geom_polygon,
+                crop_type: record.crop_type || undefined,
+                date_recorded: record.date_recorded || undefined,
+                created_at: record.created_at || undefined,
+                updated_at: record.updated_at || undefined,
+                observation_count: 1,
+            });
+            return;
+        }
+
+        existing.section_name = existing.section_name || record.section_name || '';
+        existing.block_id = existing.block_id || record.block_id || '';
+        existing.latitude = existing.latitude || record.latitude || 0;
+        existing.longitude = existing.longitude || record.longitude || 0;
+        existing.geom = existing.geom ?? record.geom_polygon;
+        existing.crop_type = existing.crop_type || record.crop_type || undefined;
+        existing.date_recorded = existing.date_recorded || record.date_recorded || undefined;
+        existing.created_at = existing.created_at || record.created_at || undefined;
+        existing.updated_at = existing.updated_at || record.updated_at || undefined;
+        existing.observation_count = (existing.observation_count ?? 0) + 1;
+    });
+
+    return Array.from(byFieldName.values())
+        .sort((left, right) => left.field_name.localeCompare(right.field_name, undefined, { sensitivity: 'base' }));
+}
+
 export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialogProps> = ({
     open,
     onClose,
@@ -773,15 +818,18 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 }) => {
     const { user } = useAuth();
     const dialogContentRef = useRef<HTMLDivElement | null>(null);
-    const [predefinedFields, setPredefinedFields] = useState<PredefinedField[]>([]);
     const [formData, setFormData] = useState<ObservationEntryFormSubmissionInput>(createEmptySubmission(user?.id || ''));
-    const [loadingFields, setLoadingFields] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveMode, setSaveMode] = useState<'close' | 'add_another' | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [parseSummary, setParseSummary] = useState<string | null>(null);
     const [isCreatingCustomField, setIsCreatingCustomField] = useState(false);
     const [drawPoints, setDrawPoints] = useState<DrawPoint[]>([]);
+
+    const predefinedFields = useMemo(
+        () => buildMonitoringFieldRegistry(existingRecords),
+        [existingRecords]
+    );
 
     useEffect(() => {
         if (!open) return;
@@ -793,36 +841,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setIsCreatingCustomField(false);
         setDrawPoints([]);
     }, [open, user?.id]);
-
-    useEffect(() => {
-        if (!open) return;
-
-        let mounted = true;
-
-        const loadFields = async () => {
-            setLoadingFields(true);
-            try {
-                const fields = await fetchPredefinedFields();
-                if (mounted) {
-                    setPredefinedFields(fields);
-                }
-            } catch (err: any) {
-                if (mounted) {
-                    setError(err.message || 'Failed to load predefined fields.');
-                }
-            } finally {
-                if (mounted) {
-                    setLoadingFields(false);
-                }
-            }
-        };
-
-        loadFields();
-
-        return () => {
-            mounted = false;
-        };
-    }, [open]);
 
     const selectedField = useMemo(
         () => getPredefinedFieldByName(predefinedFields, formData.field_name),
@@ -1185,7 +1203,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             }
 
             let resolvedField = selectedField;
-            let registryFields = predefinedFields;
+            const registryFields = predefinedFields;
 
             if (isCreatingCustomField) {
                 const normalizedFieldName = formData.field_name.trim();
@@ -1198,7 +1216,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 }
 
                 if (hasExistingField) {
-                    throw new Error('That field name already exists in the registry. Please select it from the list instead.');
+                    throw new Error('That field name already exists in sugarcane_monitoring. Please select it from the list instead.');
                 }
 
                 if (!formData.block_id?.trim()) {
@@ -1213,23 +1231,21 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     throw new Error('Unable to calculate the center of the drawn field boundary.');
                 }
 
-                const createdField = await createPredefinedField({
+                const createdField: PredefinedField = {
+                    id: `monitoring-${normalizedFieldName}-${Date.now()}`,
                     field_name: normalizedFieldName,
                     section_name: formData.section_name || '',
                     block_id: formData.block_id,
                     latitude: drawnCentroid.latitude,
                     longitude: drawnCentroid.longitude,
-                    geom: drawnGeometry,
+                    geom: drawnGeometry ?? null,
                     created_by: user?.id,
                     crop_type: formData.crop_type,
-                    date_recorded: formData.date_recorded,
-                });
-
-                registryFields = [...predefinedFields, createdField]
-                    .sort((left, right) => left.field_name.localeCompare(right.field_name, undefined, { sensitivity: 'base' }));
+                    date_recorded: formData.date_recorded || undefined,
+                    observation_count: 0,
+                };
                 resolvedField = createdField;
 
-                setPredefinedFields(registryFields);
                 setIsCreatingCustomField(false);
                 setDrawPoints([]);
                 setFormData((prev) => buildFreshFormData(
@@ -1250,7 +1266,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             }
 
             if (!resolvedField) {
-                throw new Error('Please choose a predefined field from the registry.');
+                throw new Error('Please choose a field or trial from the sugarcane_monitoring list.');
             }
 
             if (!formData.date_recorded) {
@@ -1271,7 +1287,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 longitude: formData.longitude ?? resolvedField.longitude ?? 0,
             };
 
-            const savedEntry = await createObservationEntryFormSubmission(submission, registryFields);
+            const submissionFields = registryFields.some((field) =>
+                field.field_name.trim().toLowerCase() === resolvedField.field_name.trim().toLowerCase()
+            )
+                ? registryFields
+                : [resolvedField, ...registryFields];
+
+            const savedEntry = await createObservationEntryFormSubmission(submission, submissionFields);
 
             await onSubmitted();
             onSaved?.('Successfully saved to the database.');
@@ -1400,9 +1422,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Field Name"
                                 value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : formData.field_name}
                                 onChange={(e) => handleFieldSelection(e.target.value)}
-                                disabled={loadingFields}
                                 helperText={isCreatingCustomField
-                                    ? 'Drawing a new field or trial. Save the form to add it to the registry.'
+                                    ? 'Drawing a new field or trial. Save the form to add it to sugarcane_monitoring.'
                                     : 'Can’t find it in the list? Choose "Draw New Trial / Field".'}
                                 SelectProps={{
                                     MenuProps: WHITE_SELECT_MENU_PROPS,
@@ -1428,7 +1449,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     label="New Trial / Field Name"
                                     value={formData.field_name || ''}
                                     onChange={(e) => updateField('field_name', e.target.value)}
-                                    helperText="This name will be saved into the field registry for future use."
+                                    helperText="This name will be saved into sugarcane_monitoring for future use."
                                 />
                             </Grid>
                         ) : (
@@ -2043,7 +2064,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 <Button
                     onClick={() => handleSubmit('add_another')}
                     variant="outlined"
-                    disabled={saving || loadingFields}
+                    disabled={saving}
                     sx={{
                         borderRadius: '999px',
                         px: 2.3,
@@ -2066,7 +2087,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 <Button
                     onClick={() => handleSubmit('close')}
                     variant="contained"
-                    disabled={saving || loadingFields}
+                    disabled={saving}
                     sx={{
                         borderRadius: '999px',
                         px: 2.5,
