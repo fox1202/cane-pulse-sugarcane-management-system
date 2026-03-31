@@ -11,7 +11,6 @@ import {
     Stack,
 } from '@mui/material'
 import { AddCircleOutline, RefreshOutlined, DownloadOutlined } from '@mui/icons-material'
-import { useObservationEntryForms } from '@/hooks/useObservationEntryForms'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
 import { ObservationEntryIntakeDialog } from '@/components/Data/ObservationEntryIntakeDialog'
 import {
@@ -24,13 +23,6 @@ export function ObservationEntryFormPage() {
     const [intakeOpen, setIntakeOpen] = useState(false)
     const [saveSuccessMessage, setSaveSuccessMessage] = useState('')
     const {
-        data: forms = [],
-        isLoading: formsLoading,
-        error: formsError,
-        refetch: refetchForms,
-        isFetching: isFetchingForms,
-    } = useObservationEntryForms()
-    const {
         data: monitoringRows = [],
         isLoading: monitoringLoading,
         error: monitoringError,
@@ -38,15 +30,12 @@ export function ObservationEntryFormPage() {
         isFetching: isFetchingMonitoring,
     } = useSugarcaneMonitoring()
 
-    const loading = formsLoading || monitoringLoading
-    const error = monitoringError ?? formsError
-    const isFetching = isFetchingForms || isFetchingMonitoring
+    const loading = monitoringLoading
+    const error = monitoringError
+    const isFetching = isFetchingMonitoring
 
     const handleRefresh = async () => {
-        await Promise.all([
-            refetchForms(),
-            refetchMonitoring(),
-        ])
+        await refetchMonitoring()
     }
 
     const handleExportCSV = () => {
@@ -141,7 +130,7 @@ export function ObservationEntryFormPage() {
                     await handleRefresh()
                 }}
                 onSaved={setSaveSuccessMessage}
-                existingForms={forms}
+                existingRecords={monitoringRows}
             />
             <Snackbar
                 open={!!saveSuccessMessage}

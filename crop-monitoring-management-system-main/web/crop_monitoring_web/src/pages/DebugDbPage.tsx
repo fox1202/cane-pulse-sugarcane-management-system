@@ -29,7 +29,6 @@ const candidateTables = [
   'blocks',
   'fields',
   'profiles',
-  'observation_entry_form',
   'sugarcane_monitoring',
 ]
 

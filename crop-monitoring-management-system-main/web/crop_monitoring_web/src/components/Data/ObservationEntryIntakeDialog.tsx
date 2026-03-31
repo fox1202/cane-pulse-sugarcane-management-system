@@ -33,6 +33,7 @@ import type {
     FertilizerApplication,
     HerbicideApplication,
     ObservationEntryForm,
+    SugarcaneMonitoringRecord,
 } from '@/types/database.types';
 import { buildObservationCalendarSearch } from '@/utils/farmingCalendarLinks';
 
@@ -41,7 +42,7 @@ interface ObservationEntryIntakeDialogProps {
     onClose: () => void;
     onSubmitted: () => Promise<void> | void;
     onSaved?: (message: string) => void;
-    existingForms: ObservationEntryForm[];
+    existingRecords: SugarcaneMonitoringRecord[];
 }
 
 const IRRIGATION_TYPE_OPTIONS = [
@@ -576,7 +577,7 @@ function normalizeLookupValue(value?: string | number | null): string {
     return String(value ?? '').trim().toLowerCase();
 }
 
-function getEntryTimestamp(entry: ObservationEntryForm): number {
+function getEntryTimestamp(entry: SugarcaneMonitoringRecord): number {
     const candidate = entry.date_recorded || entry.updated_at || entry.created_at;
     if (!candidate) {
         return 0;
@@ -586,14 +587,13 @@ function getEntryTimestamp(entry: ObservationEntryForm): number {
     return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
-function matchesFieldObservation(field: PredefinedField, entry: ObservationEntryForm): boolean {
+function matchesFieldObservation(field: PredefinedField, entry: SugarcaneMonitoringRecord): boolean {
     const fieldName = normalizeLookupValue(field.field_name);
     const blockId = normalizeLookupValue(field.block_id);
     const sectionName = normalizeLookupValue(field.section_name);
 
     const entryFieldNames = [
         entry.field_name,
-        entry.selected_field,
         entry.field_id,
     ].map((value) => normalizeLookupValue(value));
 
@@ -622,21 +622,86 @@ function matchesFieldObservation(field: PredefinedField, entry: ObservationEntry
 
 function findLatestRecordForField(
     field: PredefinedField,
-    forms: ObservationEntryForm[]
-): ObservationEntryForm | null {
-    return forms
+    records: SugarcaneMonitoringRecord[]
+): SugarcaneMonitoringRecord | null {
+    return records
         .filter((entry) => matchesFieldObservation(field, entry))
         .sort((left, right) => getEntryTimestamp(right) - getEntryTimestamp(left))[0] ?? null;
 }
 
+function isObservationEntryFormRecord(
+    entry: ObservationEntryForm | SugarcaneMonitoringRecord
+): entry is ObservationEntryForm {
+    return 'selected_field' in entry || 'spatial_data' in entry || 'gps_accuracy' in entry;
+}
+
 function buildLoadedSavedRecordData(
-    savedEntry: ObservationEntryForm,
+    savedEntry: ObservationEntryForm | SugarcaneMonitoringRecord,
     collectorId: string,
     matchedField?: PredefinedField
 ): ObservationEntryFormSubmissionInput {
+    const isEntryForm = isObservationEntryFormRecord(savedEntry);
+    const selectedField = matchedField?.field_name
+        || (isEntryForm ? savedEntry.selected_field : undefined)
+        || savedEntry.field_name
+        || savedEntry.field_id
+        || '';
+    const fieldId = savedEntry.field_id || matchedField?.field_name || savedEntry.field_name || '';
+    const fieldName = matchedField?.field_name || savedEntry.field_name || savedEntry.field_id || '';
+    const sectionName = matchedField?.section_name || savedEntry.section_name || '';
+    const blockId = matchedField?.block_id || savedEntry.block_id || '';
+    const area = isEntryForm
+        ? savedEntry.area ?? savedEntry.block_size
+        : savedEntry.area;
+    const blockSize = isEntryForm
+        ? savedEntry.block_size ?? savedEntry.area
+        : savedEntry.area;
+    const spatialData = isEntryForm
+        ? savedEntry.spatial_data ?? savedEntry.geom_polygon
+        : savedEntry.geom_polygon;
+    const geomPolygon = isEntryForm
+        ? savedEntry.geom_polygon ?? savedEntry.spatial_data
+        : savedEntry.geom_polygon;
+    const latitude = savedEntry.latitude;
+    const longitude = savedEntry.longitude;
+    const previousCuttingDate = isEntryForm
+        ? savedEntry.previous_cutting_date || savedEntry.cutting_date || ''
+        : savedEntry.previous_cutting_date || savedEntry.previous_cutting || '';
+    const cuttingDate = isEntryForm
+        ? savedEntry.cutting_date || savedEntry.previous_cutting_date || ''
+        : savedEntry.previous_cutting_date || savedEntry.previous_cutting || '';
+    const nutrientApplicationDate = isEntryForm
+        ? savedEntry.nutrient_application_date || ''
+        : savedEntry.nutrient_application_date || savedEntry.fertilizer_application_date || '';
+    const tamArea = isEntryForm ? savedEntry.tamm_area : undefined;
+    const fertilizerApplications = (savedEntry.fertilizer_applications ?? [])
+        .map((item) => normalizeFertilizerApplicationInput(item))
+        .filter((item): item is FertilizerApplication => item !== null);
+    const herbicideApplications = (savedEntry.herbicide_applications ?? [])
+        .map((item) => normalizeHerbicideApplicationInput(item))
+        .filter((item): item is HerbicideApplication => item !== null);
+    const remarks = savedEntry.remarks || savedEntry.field_remarks || '';
+
     const loaded = buildFreshFormData(
         {
             ...savedEntry,
+            selected_field: selectedField,
+            field_id: fieldId,
+            field_name: fieldName,
+            section_name: sectionName,
+            block_id: blockId,
+            area,
+            block_size: blockSize,
+            spatial_data: spatialData,
+            geom_polygon: geomPolygon,
+            latitude: latitude ?? 0,
+            longitude: longitude ?? 0,
+            gps_accuracy: isEntryForm ? savedEntry.gps_accuracy ?? 0 : 0,
+            previous_cutting_date: previousCuttingDate,
+            cutting_date: cuttingDate,
+            nutrient_application_date: nutrientApplicationDate,
+            tamm_area: tamArea,
+            remarks,
             collector_id: collectorId || savedEntry.collector_id || '',
         },
         collectorId,
@@ -646,35 +711,35 @@ function buildLoadedSavedRecordData(
     return {
         ...loaded,
         collector_id: collectorId || savedEntry.collector_id || '',
-        selected_field: matchedField?.field_name || savedEntry.selected_field || savedEntry.field_name || savedEntry.field_id || '',
-        field_id: savedEntry.field_id || matchedField?.field_name || savedEntry.field_name || '',
-        field_name: matchedField?.field_name || savedEntry.field_name || savedEntry.field_id || '',
-        section_name: matchedField?.section_name || savedEntry.section_name || '',
-        block_id: matchedField?.block_id || savedEntry.block_id || '',
-        area: savedEntry.area ?? savedEntry.block_size ?? loaded.area,
-        block_size: savedEntry.block_size ?? savedEntry.area ?? loaded.block_size,
-        spatial_data: savedEntry.spatial_data ?? savedEntry.geom_polygon ?? loaded.spatial_data,
-        geom_polygon: savedEntry.geom_polygon ?? savedEntry.spatial_data ?? loaded.geom_polygon,
-        latitude: savedEntry.latitude ?? loaded.latitude,
-        longitude: savedEntry.longitude ?? loaded.longitude,
-        gps_accuracy: savedEntry.gps_accuracy ?? loaded.gps_accuracy ?? 0,
+        selected_field: selectedField,
+        field_id: fieldId,
+        field_name: fieldName,
+        section_name: sectionName,
+        block_id: blockId,
+        area: area ?? loaded.area,
+        block_size: blockSize ?? loaded.block_size,
+        spatial_data: spatialData ?? loaded.spatial_data,
+        geom_polygon: geomPolygon ?? loaded.geom_polygon,
+        latitude: latitude ?? loaded.latitude,
+        longitude: longitude ?? loaded.longitude,
+        gps_accuracy: isEntryForm ? savedEntry.gps_accuracy ?? loaded.gps_accuracy ?? 0 : 0,
         date_recorded: savedEntry.date_recorded || '',
         trial_number: savedEntry.trial_number ?? '',
         trial_name: savedEntry.trial_name || '',
         contact_person: savedEntry.contact_person || '',
-        phone_country_code: savedEntry.phone_country_code || '',
-        phone_number: savedEntry.phone_number || '',
+        phone_country_code: isEntryForm ? savedEntry.phone_country_code || '' : '',
+        phone_number: isEntryForm ? savedEntry.phone_number || '' : '',
         crop_type: savedEntry.crop_type || loaded.crop_type,
         crop_class: savedEntry.crop_class || '',
         variety: savedEntry.variety || '',
         planting_date: savedEntry.planting_date || '',
-        previous_cutting_date: savedEntry.previous_cutting_date || savedEntry.cutting_date || '',
-        cutting_date: savedEntry.cutting_date || savedEntry.previous_cutting_date || '',
+        previous_cutting_date: previousCuttingDate,
+        cutting_date: cuttingDate,
         expected_harvest_date: savedEntry.expected_harvest_date || '',
         irrigation_type: savedEntry.irrigation_type || '',
         water_source: savedEntry.water_source || '',
         tam_mm: savedEntry.tam_mm || '',
-        tamm_area: savedEntry.tamm_area,
+        tamm_area: tamArea,
         soil_type: savedEntry.soil_type || '',
         soil_ph: savedEntry.soil_ph,
         field_remarks: savedEntry.field_remarks || savedEntry.remarks || '',
@@ -682,24 +747,20 @@ function buildLoadedSavedRecordData(
         residue_management_method: savedEntry.residue_management_method || '',
         residual_management_remarks: savedEntry.residual_management_remarks || '',
         fertilizer_type: savedEntry.fertilizer_type || '',
-        nutrient_application_date: savedEntry.nutrient_application_date || '',
+        nutrient_application_date: nutrientApplicationDate,
         application_rate: savedEntry.application_rate,
-        fertilizer_applications: (savedEntry.fertilizer_applications ?? [])
-            .map((item) => normalizeFertilizerApplicationInput(item))
-            .filter((item): item is FertilizerApplication => item !== null),
+        fertilizer_applications: fertilizerApplications,
         foliar_sampling_date: savedEntry.foliar_sampling_date || '',
         herbicide_name: savedEntry.herbicide_name || '',
         weed_application_date: savedEntry.weed_application_date || '',
         weed_application_rate: savedEntry.weed_application_rate,
-        herbicide_applications: (savedEntry.herbicide_applications ?? [])
-            .map((item) => normalizeHerbicideApplicationInput(item))
-            .filter((item): item is HerbicideApplication => item !== null),
+        herbicide_applications: herbicideApplications,
         pest_remarks: savedEntry.pest_remarks || '',
         disease_remarks: savedEntry.disease_remarks || '',
         harvest_date: savedEntry.harvest_date || '',
-        yield: savedEntry.yield,
+        yield: savedEntry.yield ?? (!isEntryForm ? savedEntry.harvest_yield : undefined),
         quality_remarks: savedEntry.quality_remarks || '',
-        remarks: savedEntry.remarks || savedEntry.field_remarks || '',
+        remarks,
     };
 }
 
@@ -708,7 +769,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     onClose,
     onSubmitted,
     onSaved,
-    existingForms,
+    existingRecords,
 }) => {
     const { user } = useAuth();
     const dialogContentRef = useRef<HTMLDivElement | null>(null);
@@ -1081,7 +1142,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         }
 
         setParseSummary(null);
-        const latestRecord = findLatestRecordForField(match, existingForms);
+        const latestRecord = findLatestRecordForField(match, existingRecords);
 
         if (latestRecord) {
             const collectorId = user?.id || latestRecord.collector_id || '';

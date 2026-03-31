@@ -1276,29 +1276,6 @@ export async function fetchSugarcaneMonitoringObservations(filters?: Observation
     })
 }
 
-export async function fetchObservationEntryForms(): Promise<ObservationEntryForm[]> {
-    const registryFields = await fetchPredefinedFields().catch(() => [] as PredefinedField[])
-    const lookups = registryFields.length > 0 ? buildFieldLookupMaps(registryFields) : null
-
-    const monitoringRows = await fetchSugarcaneMonitoringRows()
-    return monitoringRows.map((row) => {
-        const linkedField = lookups
-            ? resolveLinkedFieldRegistry(
-                {
-                    field_name: row.field_name,
-                    field_id: row.field_id,
-                    selected_field: row.field_name || row.field_id,
-                    section_name: row.section_name,
-                    block_id: row.block_id,
-                },
-                lookups
-            )
-            : null
-
-        return mapSugarcaneMonitoringRowToEntryForm(row, linkedField)
-    })
-}
-
 export async function fetchMobileObservationRecords(): Promise<MobileObservationRecord[]> {
     return fetchSugarcaneMonitoringObservations()
 }
@@ -1471,82 +1448,6 @@ export async function fetchAllData() {
 
 export async function uploadObservationImage(_file: File, _observationId: string): Promise<string> {
     throw new Error('Image upload is not connected in this web build.')
-}
-
-export async function updateObservationEntryFormSubmission(
-    entryFormId: number | string,
-    submission: ObservationEntryFormSubmissionInput,
-    predefinedFields?: PredefinedField[]
-): Promise<void> {
-    const { submission: resolvedSubmission } = await resolveObservationEntrySubmission(submission, predefinedFields)
-
-    if (typeof entryFormId === 'string') {
-        const payload = buildSugarcaneMonitoringPayload(resolvedSubmission)
-        const fallbackPayload = buildBaseSugarcaneMonitoringPayload(resolvedSubmission)
-        const { error } = await supabase
-            .from('sugarcane_monitoring')
-            .update(payload)
-            .eq('id', entryFormId)
-
-        if (error) {
-            if (isSugarcaneMonitoringSchemaError(error)) {
-                const { error: fallbackError } = await supabase
-                    .from('sugarcane_monitoring')
-                    .update(fallbackPayload)
-                    .eq('id', entryFormId)
-
-                if (fallbackError) {
-                    throw fallbackError
-                }
-
-                return
-            }
-
-            throw error
-        }
-
-        return
-    }
-
-    const payload = {
-        client_uuid: toNullableString(resolvedSubmission.client_uuid),
-        collector_id: toNullableString(resolvedSubmission.collector_id),
-        selected_field: toNullableString(resolvedSubmission.selected_field || resolvedSubmission.field_name),
-        field_name: toNullableString(resolvedSubmission.field_name),
-        section_name: toNullableString(resolvedSubmission.section_name),
-        block_id: toNullableString(resolvedSubmission.block_id),
-        block_size: toNullableNumber(resolvedSubmission.block_size),
-        spatial_data: resolvedSubmission.spatial_data ?? null,
-        latitude: toNullableNumber(resolvedSubmission.latitude),
-        longitude: toNullableNumber(resolvedSubmission.longitude),
-        gps_accuracy: toNullableNumber(resolvedSubmission.gps_accuracy),
-        date_recorded: toNullableString(resolvedSubmission.date_recorded),
-        trial_number: toNullableNumber(resolvedSubmission.trial_number),
-        trial_name: toNullableString(resolvedSubmission.trial_name),
-        contact_person: toNullableString(resolvedSubmission.contact_person),
-        phone_country_code: toNullableString(resolvedSubmission.phone_country_code),
-        phone_number: toNullableString(resolvedSubmission.phone_number),
-        crop_class: toNullableString(resolvedSubmission.crop_class),
-        variety: toNullableString(resolvedSubmission.variety),
-        planting_date: toNullableString(resolvedSubmission.planting_date),
-        cutting_date: toNullableString(resolvedSubmission.cutting_date),
-        expected_harvest_date: toNullableString(resolvedSubmission.expected_harvest_date),
-        irrigation_type: toNullableString(resolvedSubmission.irrigation_type),
-        water_source: toNullableString(resolvedSubmission.water_source),
-        tamm_area: toNullableNumber(resolvedSubmission.tamm_area),
-        soil_type: toNullableString(resolvedSubmission.soil_type),
-        soil_ph: toNullableNumber(resolvedSubmission.soil_ph),
-        remarks: toNullableString(resolvedSubmission.remarks),
-    }
-
-    const { error } = await supabase
-        .from('observation_entry_form')
-        .update(payload)
-        .eq('id', entryFormId)
-
-    if (error) {
-        throw error
-    }
 }
 
 export async function createObservationEntryFormSubmission(

@@ -56,7 +56,6 @@ export function RawDataViewerPage() {
         'fields',
         'blocks',
         'profiles',
-        'observation_entry_form',
         'sugarcane_monitoring',
     ]
 
