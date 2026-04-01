@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
     Alert,
@@ -25,6 +26,7 @@ import {
 } from 'recharts'
 import { getFarmingCalendarTemplate, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
+import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
 import type { SugarcaneMonitoringRecord } from '@/types/database.types'
 import { formatDateOnlyLabel, getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
 
@@ -36,6 +38,7 @@ const PEACH = '#f4a28c'
 const PEACH_DARK = '#de7c64'
 const PEACH_PALE = 'rgba(244,162,140,0.14)'
 const SKY = '#68c3d4'
+const SAND = '#c4b090'
 const CREAM = '#fffaf3'
 const PANEL = 'rgba(255,255,255,0.94)'
 const PANEL_ALT = 'rgba(255,248,242,0.96)'
@@ -322,6 +325,19 @@ function resolveMonitoringAreaHa(record: SugarcaneMonitoringRecord): number | nu
     const recordGeometryArea = getGeometryAreaHa(record.geom_polygon)
     if (recordGeometryArea !== null && recordGeometryArea > 0) {
         return recordGeometryArea
+    }
+
+    return null
+}
+
+function resolvePredefinedFieldAreaHa(field: PredefinedField): number | null {
+    if (typeof field.area === 'number' && Number.isFinite(field.area) && field.area > 0) {
+        return Number(field.area.toFixed(2))
+    }
+
+    const fieldGeometryArea = getGeometryAreaHa(field.geom)
+    if (fieldGeometryArea !== null && fieldGeometryArea > 0) {
+        return fieldGeometryArea
     }
 
     return null
@@ -1116,14 +1132,42 @@ export function HomePage() {
         data: monitoring = [],
         isLoading: monitoringLoading,
         error: monitoringError,
-    } = useSugarcaneMonitoring()
+    } = useSugarcaneMonitoring({ includeUndated: true })
+    const {
+        data: liveFields = [],
+        isLoading: fieldsLoading,
+        error: fieldsError,
+    } = useQuery<PredefinedField[], Error>({
+        queryKey: ['overview-live-fields'],
+        queryFn: fetchLivePredefinedFields,
+        staleTime: 60_000,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
+    })
 
     const fieldSnapshots = useMemo<FieldSnapshot[]>(() => {
+        const latestByField = new Map<string, FieldSnapshot>()
+
+        liveFields.forEach((field) => {
+            const fieldKey = buildFieldIdentity(field.field_name, field.section_name, field.block_id)
+            if (!fieldKey || fieldKey === '||') {
+                return
+            }
+
+            latestByField.set(fieldKey, {
+                fieldKey,
+                fieldLabel: buildFieldLabel(field.field_name, field.section_name, field.block_id),
+                cropType: (field.crop_type ?? '').trim() || 'Unspecified',
+                areaHa: resolvePredefinedFieldAreaHa(field),
+                isTrial: [field.field_name, field.section_name, field.block_id].some((value) => isTrialLike(value)),
+                recordedDate: normalizeDateOnlyValue(field.date_recorded) || '',
+            })
+        })
+
         const sortedMonitoring = [...monitoring].sort(
             (left, right) => getDateOnlyTimestamp(normalizeDateOnlyValue(right.date_recorded) || '')
                 - getDateOnlyTimestamp(normalizeDateOnlyValue(left.date_recorded) || '')
         )
-        const latestByField = new Map<string, FieldSnapshot>()
 
         sortedMonitoring.forEach((record) => {
             const fieldKey = buildFieldIdentity(record.field_name, record.section_name, record.block_id)
@@ -1161,7 +1205,7 @@ export function HomePage() {
 
         return Array.from(latestByField.values())
             .sort((left, right) => getDateOnlyTimestamp(right.recordedDate) - getDateOnlyTimestamp(left.recordedDate))
-    }, [monitoring])
+    }, [liveFields, monitoring])
 
     const calendarFieldSeeds = useMemo<CalendarFieldSeed[]>(() => {
         const sortedMonitoring = [...monitoring].sort(
@@ -1304,6 +1348,8 @@ export function HomePage() {
                         summary.fallowFieldCount += 1
                         break
                     default:
+                        summary.totalUnspecifiedArea += areaHa
+                        summary.unspecifiedFieldCount += 1
                         break
                 }
 
@@ -1314,9 +1360,11 @@ export function HomePage() {
                 totalSugarcaneArea: 0,
                 totalBreakCropArea: 0,
                 totalFallowArea: 0,
+                totalUnspecifiedArea: 0,
                 sugarcaneFieldCount: 0,
                 breakCropFieldCount: 0,
                 fallowFieldCount: 0,
+                unspecifiedFieldCount: 0,
             }
         ),
         [mappedAreaFields]
@@ -1341,14 +1389,22 @@ export function HomePage() {
                 color: PEACH,
                 fieldCount: areaSummary.fallowFieldCount,
             },
+            {
+                label: 'Unspecified',
+                areaHa: Number(areaSummary.totalUnspecifiedArea.toFixed(2)),
+                color: SAND,
+                fieldCount: areaSummary.unspecifiedFieldCount,
+            },
         ],
         [
             areaSummary.breakCropFieldCount,
             areaSummary.fallowFieldCount,
             areaSummary.sugarcaneFieldCount,
+            areaSummary.totalUnspecifiedArea,
             areaSummary.totalBreakCropArea,
             areaSummary.totalFallowArea,
             areaSummary.totalSugarcaneArea,
+            areaSummary.unspecifiedFieldCount,
         ]
     )
     const nextScheduledTask = upcomingTaskItems[0] ?? null
@@ -1359,7 +1415,8 @@ export function HomePage() {
     const nextCalendarWarning = calendarWarnings[0] ?? null
     const secondaryCalendarWarning = calendarWarnings.find((warning) => warning.key !== nextCalendarWarning?.key) ?? nextCalendarWarning
     const calendarWarningsPreview = calendarWarnings.slice(0, 3)
-    const isOverviewLoading = monitoringLoading
+    const overviewError = monitoringError ?? fieldsError
+    const isOverviewLoading = monitoringLoading || fieldsLoading
 
     const protocolRef = useRef(null)
     const protocolInView = useInView(protocolRef, { once: true, margin: '-80px' })
@@ -1393,9 +1450,9 @@ export function HomePage() {
             />
 
             <Container maxWidth="xl" sx={{ pb: 10, pt: { xs: 3, md: 4 }, position: 'relative', zIndex: 1 }}>
-                {monitoringError && (
+                {overviewError && (
                     <Alert severity="error" sx={{ mb: 3 }}>
-                        {monitoringError.message}
+                        {overviewError.message}
                     </Alert>
                 )}
 

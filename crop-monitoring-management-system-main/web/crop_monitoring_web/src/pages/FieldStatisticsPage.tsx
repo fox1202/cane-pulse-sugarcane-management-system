@@ -14,7 +14,7 @@ export function FieldStatisticsPage() {
     data: observations = [],
     isLoading,
     error,
-  } = useMobileObservationRecords()
+  } = useMobileObservationRecords({ includeUndated: true })
 
   return (
     <Box sx={{ bgcolor: CREAM, minHeight: '100vh', position: 'relative' }}>

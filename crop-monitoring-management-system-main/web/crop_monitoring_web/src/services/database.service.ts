@@ -882,23 +882,6 @@ function getHardcodedPredefinedFields(): PredefinedField[] {
     }))
 }
 
-function mergePredefinedFields(primaryFields: PredefinedField[], secondaryFields: PredefinedField[]): PredefinedField[] {
-    const merged = new Map<string, PredefinedField>()
-
-    ;[...primaryFields, ...secondaryFields].forEach((field, index) => {
-        const identityKey = buildFieldLookupKey(field.field_name, field.section_name, field.block_id)
-        const fallbackKey = normalizeLookupToken(field.field_name) || `field-${index}`
-        const key = identityKey !== '||' ? identityKey : fallbackKey
-
-        if (!merged.has(key)) {
-            merged.set(key, field)
-        }
-    })
-
-    return Array.from(merged.values())
-        .sort((left, right) => left.field_name.localeCompare(right.field_name, undefined, { sensitivity: 'base' }))
-}
-
 function applyRegistryFieldToSubmission(
     submission: ObservationEntryFormSubmissionInput,
     linkedField: PredefinedField
@@ -1522,18 +1505,8 @@ export async function fetchPredefinedFields(): Promise<PredefinedField[]> {
         return getHardcodedPredefinedFields()
     }
 
-    try {
-        const { fields: liveFields } = await fetchFieldRegistryRowsWithFallback()
-
-        if (liveFields.length === 0) {
-            return getHardcodedPredefinedFields()
-        }
-
-        return mergePredefinedFields(liveFields, getHardcodedPredefinedFields())
-    } catch (error) {
-        console.warn('Failed to fetch predefined fields from Supabase, using bundled field registry instead.', error)
-        return getHardcodedPredefinedFields()
-    }
+    const { fields: liveFields } = await fetchFieldRegistryRowsWithFallback()
+    return liveFields
 }
 
 export async function createPredefinedField(input: CreatePredefinedFieldInput): Promise<PredefinedField> {
@@ -1565,12 +1538,19 @@ export function getPredefinedFieldByName(
     return fields.find((field) => field.field_name === fieldName) ?? null
 }
 
-export async function fetchSugarcaneMonitoringRows(filters?: ObservationFilters): Promise<SugarcaneMonitoringRecord[]> {
-    const query = supabase
+export async function fetchSugarcaneMonitoringRows(
+    filters?: ObservationFilters,
+    options?: { includeUndated?: boolean }
+): Promise<SugarcaneMonitoringRecord[]> {
+    let query = supabase
         .from(MONITORING_TABLE_NAME)
         .select('*')
-        .not('date_recorded', 'is', null)
-        .order('date_recorded', { ascending: false })
+
+    if (!options?.includeUndated) {
+        query = query.not('date_recorded', 'is', null)
+    }
+
+    query = query.order('date_recorded', { ascending: false, nullsFirst: false })
 
     const { data, error } = await query
 
@@ -1583,7 +1563,10 @@ export async function fetchSugarcaneMonitoringRows(filters?: ObservationFilters)
 
     let normalizedRows = (data ?? [])
         .map((row) => normalizeSugarcaneMonitoringRow(row as Record<string, unknown>))
-        .filter((row) => hasUsableRecordedDate(row.date_recorded))
+
+    if (!options?.includeUndated) {
+        normalizedRows = normalizedRows.filter((row) => hasUsableRecordedDate(row.date_recorded))
+    }
 
     if (hasActiveFilterValue(filters?.cropType)) {
         const expected = normalizeLookupToken(filters.cropType)
@@ -1619,8 +1602,11 @@ export async function fetchSugarcaneMonitoringRows(filters?: ObservationFilters)
     return normalizedRows
 }
 
-export async function fetchSugarcaneMonitoringObservations(filters?: ObservationFilters): Promise<MobileObservationRecord[]> {
-    const rows = await fetchSugarcaneMonitoringRows(filters)
+export async function fetchSugarcaneMonitoringObservations(
+    filters?: ObservationFilters,
+    options?: { includeUndated?: boolean }
+): Promise<MobileObservationRecord[]> {
+    const rows = await fetchSugarcaneMonitoringRows(filters, options)
     if (rows.length === 0) {
         return []
     }
@@ -1651,8 +1637,10 @@ export async function fetchSugarcaneMonitoringObservations(filters?: Observation
     })
 }
 
-export async function fetchMobileObservationRecords(): Promise<MobileObservationRecord[]> {
-    return fetchSugarcaneMonitoringObservations()
+export async function fetchMobileObservationRecords(
+    options?: { includeUndated?: boolean }
+): Promise<MobileObservationRecord[]> {
+    return fetchSugarcaneMonitoringObservations(undefined, options)
 }
 
 export async function fetchObservations(_filters?: ObservationFilters): Promise<FullObservation[]> {

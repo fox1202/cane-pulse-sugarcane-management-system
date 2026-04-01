@@ -158,7 +158,7 @@ function InsightPanel({
 
 export function SugarcaneMonitoringDashboard() {
     const navigate = useNavigate()
-    const { data: monitoring = [], isLoading, error } = useSugarcaneMonitoring()
+    const { data: monitoring = [], isLoading, error } = useSugarcaneMonitoring({ includeUndated: true })
 
     const summary = useMemo(() => {
         const fieldKeys = new Set<string>()
