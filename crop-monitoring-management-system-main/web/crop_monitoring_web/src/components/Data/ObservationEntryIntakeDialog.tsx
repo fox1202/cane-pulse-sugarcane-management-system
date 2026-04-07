@@ -541,6 +541,33 @@ function getCurrentFertilizerApplication(
     return best;
 }
 
+function getCurrentFertilizerApplicationIndex(
+    applications: FertilizerApplication[]
+): number {
+    if (applications.length === 0) {
+        return 0;
+    }
+
+    let bestIndex = 0;
+    let bestDate = new Date(String(applications[0]?.application_date ?? '')).getTime();
+
+    for (let index = 1; index < applications.length; index += 1) {
+        const nextDate = new Date(String(applications[index]?.application_date ?? '')).getTime();
+
+        if (!Number.isFinite(nextDate) && !Number.isFinite(bestDate)) {
+            bestIndex = index;
+            continue;
+        }
+
+        if (Number.isFinite(nextDate) && (!Number.isFinite(bestDate) || nextDate >= bestDate)) {
+            bestIndex = index;
+            bestDate = nextDate;
+        }
+    }
+
+    return bestIndex;
+}
+
 function getCurrentHerbicideApplication(
     applications: HerbicideApplication[]
 ): HerbicideApplication | null {
@@ -1113,6 +1140,22 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         nextRows[index] = {
             ...nextRows[index],
             [field]: value,
+        };
+
+        applyFertilizerApplicationRows(nextRows);
+    };
+
+    const handleFoliarSamplingDateChange = (value: string) => {
+        const nextRows = fertilizerApplicationRows.map((item) => ({ ...item }));
+
+        if (nextRows.length === 0) {
+            nextRows.push(buildEmptyFertilizerApplication());
+        }
+
+        const currentIndex = getCurrentFertilizerApplicationIndex(nextRows);
+        nextRows[currentIndex] = {
+            ...nextRows[currentIndex],
+            foliar_sampling_date: value,
         };
 
         applyFertilizerApplicationRows(nextRows);
@@ -1726,7 +1769,17 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 onChange={(e) => updateField('planting_date', e.target.value)}
                             />
                         </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                type="date"
+                                fullWidth
+                                label="Foliar Sampling Date"
+                                InputLabelProps={{ shrink: true }}
+                                value={normalizeDateInputValue(formData.foliar_sampling_date)}
+                                onChange={(e) => handleFoliarSamplingDateChange(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
                                 type="date"
                                 fullWidth
@@ -1740,7 +1793,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 }))}
                             />
                         </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
                                 type="date"
                                 fullWidth
@@ -1911,16 +1964,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                                 label="Application Rate"
                                                 value={application.application_rate ?? ''}
                                                 onChange={(e) => handleFertilizerApplicationChange(index, 'application_rate', parseOptionalNumericInput(e.target.value))}
-                                            />
-                                        </Grid>
-                                        <Grid size={{ xs: 12, md: 4 }}>
-                                            <TextField
-                                                type="date"
-                                                fullWidth
-                                                label="Foliar Sampling Date"
-                                                InputLabelProps={{ shrink: true }}
-                                                value={normalizeDateInputValue(application.foliar_sampling_date)}
-                                                onChange={(e) => handleFertilizerApplicationChange(index, 'foliar_sampling_date', e.target.value)}
                                             />
                                         </Grid>
                                     </Grid>
