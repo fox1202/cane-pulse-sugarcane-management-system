@@ -1070,11 +1070,10 @@ export function MapViewPage() {
         return cropClass || cropTypeRaw
     }, [normalizeCropClass, normalizeCropType])
 
-    const getCollectorLabel = useCallback((record?: MobileObservationRecord | null, field?: Partial<Field> | null): string => {
+    const getCollectorLabel = useCallback((record?: MobileObservationRecord | null, _field?: Partial<Field> | null): string => {
         return String(
             record?.monitoring_sheet?.contact_person
             || record?.entry_form?.contact_person
-            || field?.created_by
             || record?.collector_id
             || ''
         ).trim().replace(/\s+/g, ' ')
@@ -1356,21 +1355,11 @@ export function MapViewPage() {
                 }
             })
 
-            fields.forEach((field) => {
-                const matchedRecord = getMobileRecordForBoundary(field, mobileRecords)
-                const label = getCollectorLabel(matchedRecord, field)
-                const token = normalizeCollectorToken(label)
-                if (token && !optionMap.has(token)) {
-                    optionMap.set(token, label)
-                }
-            })
-
             return Array.from(optionMap.entries())
                 .map(([value, label]) => ({ value, label }))
                 .sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: 'base' }))
         },
         [
-            fields,
             getCollectorLabel,
             mobileRecords,
         ]
@@ -1390,13 +1379,6 @@ export function MapViewPage() {
         if (selectedCollector === 'all') return true
         return normalizeCollectorToken(value) === selectedCollector
     }, [selectedCollector])
-
-    const matchesSelectedCollectorField = useCallback((field?: Partial<Field> | null, matchedRecord?: MobileObservationRecord | null) => {
-        if (selectedCollector === 'all') return true
-
-        const collectorLabel = getCollectorLabel(matchedRecord, field)
-        return matchesSelectedCollector(collectorLabel)
-    }, [getCollectorLabel, matchesSelectedCollector, selectedCollector])
 
     // ── Mobile helpers ────────────────────────────────────────────────────────
     const hasRenderableMobileGeometry = (record: MobileObservationRecord) =>
@@ -1418,6 +1400,94 @@ export function MapViewPage() {
             getCollectorLabel,
         ]
     )
+
+    const selectedCollectorFieldScope = useMemo(() => {
+        const fieldIds = new Set<string>()
+        const identities = new Set<string>()
+        const nameBlocks = new Map<string, Set<string>>()
+        const codeBlocks = new Map<string, Set<string>>()
+
+        mobileRecordsForFieldLinking.forEach((record) => {
+            const linkedField = record.field_registry
+            const boundaryProps = linkedField
+                ? {
+                    field_name: linkedField.field_name,
+                    section_name: linkedField.section_name,
+                    block_id: linkedField.block_id,
+                }
+                : getMobileRecordBoundaryProps(record)
+
+            const fieldId = normalizeFieldToken(linkedField?.id)
+            const identity = buildFieldIdentity(boundaryProps.field_name, boundaryProps.section_name, boundaryProps.block_id)
+            const nameKey = normalizeFieldToken(boundaryProps.field_name)
+            const blockKey = normalizeFieldToken(boundaryProps.block_id)
+            const boundaryCodes = getBoundaryCodeTokens(boundaryProps.field_name, boundaryProps.block_id)
+
+            if (fieldId) {
+                fieldIds.add(fieldId)
+            }
+
+            if (identity.replace(/:/g, '')) {
+                identities.add(identity)
+            }
+
+            if (nameKey) {
+                const allowedBlocks = nameBlocks.get(nameKey) ?? new Set<string>()
+                allowedBlocks.add(blockKey)
+                nameBlocks.set(nameKey, allowedBlocks)
+            }
+
+            boundaryCodes.forEach((code) => {
+                const allowedBlocks = codeBlocks.get(code) ?? new Set<string>()
+                allowedBlocks.add(blockKey)
+                codeBlocks.set(code, allowedBlocks)
+            })
+        })
+
+        return {
+            fieldIds,
+            identities,
+            nameBlocks,
+            codeBlocks,
+        }
+    }, [mobileRecordsForFieldLinking])
+
+    const matchesSelectedCollectorDatabaseField = useCallback((props?: {
+        id?: string | null
+        field_name?: string | null
+        section_name?: string | null
+        block_id?: string | null
+    } | null) => {
+        if (selectedCollector === 'all') {
+            return true
+        }
+
+        if (!props) {
+            return false
+        }
+
+        const fieldId = normalizeFieldToken(props.id)
+        if (fieldId && selectedCollectorFieldScope.fieldIds.has(fieldId)) {
+            return true
+        }
+
+        const identity = buildFieldIdentity(props.field_name, props.section_name, props.block_id)
+        if (identity.replace(/:/g, '') && selectedCollectorFieldScope.identities.has(identity)) {
+            return true
+        }
+
+        const nameKey = normalizeFieldToken(props.field_name)
+        const blockKey = normalizeFieldToken(props.block_id)
+        const allowedNameBlocks = nameKey ? selectedCollectorFieldScope.nameBlocks.get(nameKey) : undefined
+        if (allowedNameBlocks && allowedNameBlocks.has(blockKey)) {
+            return true
+        }
+
+        return getBoundaryCodeTokens(props.field_name, props.block_id).some((code) => {
+            const allowedCodeBlocks = selectedCollectorFieldScope.codeBlocks.get(code)
+            return Boolean(allowedCodeBlocks && allowedCodeBlocks.has(blockKey))
+        })
+    }, [selectedCollector, selectedCollectorFieldScope])
 
     const recordedBoundaryMobileRecords = useMemo(
         () => dedupeMobileRecordsByBoundary(mobileRecordsForFieldLinking),
@@ -1447,17 +1517,17 @@ export function MapViewPage() {
         () => linkedFields.filter((field) => {
             const matchedRecord = getMobileRecordForBoundary(field, mobileRecordsForFieldLinking)
 
-            return matchesSelectedCropClass(getFieldCropClass(field, matchedRecord))
+            return matchesSelectedCollectorDatabaseField(field)
+                && matchesSelectedCropClass(getFieldCropClass(field, matchedRecord))
                 && matchesSelectedSoilType(getFieldSoilType(field, matchedRecord))
-                && matchesSelectedCollectorField(field, matchedRecord)
         }),
         [
             linkedFields,
+            matchesSelectedCollectorDatabaseField,
             matchesSelectedCropClass,
             matchesSelectedSoilType,
             getFieldCropClass,
             getFieldSoilType,
-            matchesSelectedCollectorField,
             mobileRecordsForFieldLinking,
         ]
     )
@@ -1561,8 +1631,18 @@ export function MapViewPage() {
 
     const filteredFallbackFieldShapes = useMemo(
         () => referenceFieldShapes.filter((feature) => {
-            const matchedField = findFieldForFeature(feature, linkedFields, fieldLookupByIdentity, mobileRecordsForCropType)
-            const matchedRecordForType = findMobileRecordForFeature(feature, mobileRecordsForCropType)
+            const featureProps = feature?.properties ?? {}
+            if (!matchesSelectedCollectorDatabaseField({
+                id: featureProps.field_id as string | undefined,
+                field_name: featureProps.field_name as string | undefined,
+                section_name: featureProps.section_name as string | undefined,
+                block_id: featureProps.block_id as string | undefined,
+            })) {
+                return false
+            }
+
+            const matchedField = findFieldForFeature(feature, linkedFields, fieldLookupByIdentity, mobileRecordsForFieldLinking)
+            const matchedRecordForType = findMobileRecordForFeature(feature, mobileRecordsForFieldLinking)
             const matchedRecordedRecord = findMobileRecordForFeature(feature, recordedBoundaryMobileRecords)
             const isRecorded = Boolean(matchedRecordedRecord)
             const effectiveCropType = matchedField?.crop_type || (matchedRecordForType ? getMobileCropType(matchedRecordForType) : DEFAULT_CROP_TYPE)
@@ -1586,17 +1666,13 @@ export function MapViewPage() {
                 return false
             }
 
-            if (!matchesSelectedCollectorField(matchedField, matchedRecordForType ?? matchedRecordedRecord)) {
-                return false
-            }
-
             return matchesRecordedBoundaryFilter(isRecorded)
         }),
         [
             referenceFieldShapes,
             linkedFields,
             fieldLookupByIdentity,
-            mobileRecordsForCropType,
+            mobileRecordsForFieldLinking,
             recordedBoundaryMobileRecords,
             selectedCropType,
             normalizeCropType,
@@ -1605,15 +1681,22 @@ export function MapViewPage() {
             matchesSelectedCropClass,
             normalizeSoilType,
             matchesSelectedSoilType,
-            matchesSelectedCollectorField,
+            matchesSelectedCollectorDatabaseField,
             matchesRecordedBoundaryFilter,
         ]
     )
 
     const filteredBlocks = useMemo(
         () => blocks.filter((block) => {
-            const matchedField = findFieldForBlock(block, linkedFields, fieldLookupByIdentity, mobileRecordsForCropType)
-            const matchedRecordForType = findMobileRecordForBlock(block, mobileRecordsForCropType)
+            if (!matchesSelectedCollectorDatabaseField({
+                field_name: block?.name,
+                block_id: block?.block_id,
+            })) {
+                return false
+            }
+
+            const matchedField = findFieldForBlock(block, linkedFields, fieldLookupByIdentity, mobileRecordsForFieldLinking)
+            const matchedRecordForType = findMobileRecordForBlock(block, mobileRecordsForFieldLinking)
             const matchedRecordedRecord = findMobileRecordForBlock(block, recordedBoundaryMobileRecords)
             const effectiveCropType = matchedField?.crop_type || (matchedRecordForType ? getMobileCropType(matchedRecordForType) : '')
             const effectiveCropClass = matchedRecordForType
@@ -1636,18 +1719,13 @@ export function MapViewPage() {
             if (!matchesSelectedSoilType(effectiveSoilType)) {
                 return false
             }
-
-            if (!matchesSelectedCollectorField(matchedField, matchedRecordForType ?? matchedRecordedRecord)) {
-                return false
-            }
-
             return matchesRecordedBoundaryFilter(isRecorded)
         }),
         [
             blocks,
             linkedFields,
             fieldLookupByIdentity,
-            mobileRecordsForCropType,
+            mobileRecordsForFieldLinking,
             recordedBoundaryMobileRecords,
             selectedCropType,
             normalizeCropType,
@@ -1656,7 +1734,7 @@ export function MapViewPage() {
             matchesSelectedCropClass,
             normalizeSoilType,
             matchesSelectedSoilType,
-            matchesSelectedCollectorField,
+            matchesSelectedCollectorDatabaseField,
             matchesRecordedBoundaryFilter,
         ]
     )
