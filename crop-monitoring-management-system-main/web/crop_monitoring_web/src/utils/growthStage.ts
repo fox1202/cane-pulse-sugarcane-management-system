@@ -18,7 +18,11 @@ export interface GrowthStageSource {
 
 export interface GrowthStageResolution {
     stage: string | null
+    stageKey: string | null
+    stageSummary: string | null
+    activityFocus: string[]
     templateId: FarmingCalendarTemplate['id'] | null
+    templateTitle: string | null
     anchorDate: string | null
     anchorLabel: string | null
     weekNumber: number | null
@@ -86,7 +90,11 @@ export function deriveGrowthStage(
     if (isFallowLike(cropSignal)) {
         return {
             stage: fallbackStage,
+            stageKey: null,
+            stageSummary: null,
+            activityFocus: [],
             templateId: null,
+            templateTitle: null,
             anchorDate: null,
             anchorLabel: null,
             weekNumber: null,
@@ -106,7 +114,11 @@ export function deriveGrowthStage(
     if (!templateId) {
         return {
             stage: fallbackStage,
+            stageKey: null,
+            stageSummary: null,
+            activityFocus: [],
             templateId: null,
+            templateTitle: null,
             anchorDate: null,
             anchorLabel: null,
             weekNumber: null,
@@ -119,7 +131,11 @@ export function deriveGrowthStage(
     if (!anchorDate) {
         return {
             stage: fallbackStage,
+            stageKey: null,
+            stageSummary: null,
+            activityFocus: [],
             templateId,
+            templateTitle: templateId ? getFarmingCalendarTemplate(templateId).title : null,
             anchorDate: null,
             anchorLabel: templateId === 'plant' ? 'Planting date' : 'Cutting date',
             weekNumber: null,
@@ -132,7 +148,11 @@ export function deriveGrowthStage(
 
     return {
         stage: stage?.title ?? fallbackStage,
+        stageKey: stage?.key ?? null,
+        stageSummary: stage?.summary ?? null,
+        activityFocus: stage?.activityFocus ?? [],
         templateId,
+        templateTitle: template.title,
         anchorDate,
         anchorLabel: templateId === 'plant' ? 'Planting date' : 'Cutting date',
         weekNumber,

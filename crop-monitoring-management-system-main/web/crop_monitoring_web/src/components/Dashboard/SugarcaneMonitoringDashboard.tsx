@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
     Alert,
     Box,
     Button,
-    Chip,
     CircularProgress,
     Grid,
     Paper,
@@ -19,55 +19,93 @@ import {
 } from '@mui/material'
 import {
     AgricultureOutlined,
-    CalendarMonthOutlined,
+    ArrowOutwardRounded,
+    EventAvailableOutlined,
     LocalFloristOutlined,
-    OpenInNewRounded,
     TimelineOutlined,
 } from '@mui/icons-material'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
+import { LIVE_DATA_UPDATED_EVENT } from '@/lib/liveData'
+import {
+    fetchLivePredefinedFields,
+    type PredefinedField,
+} from '@/services/database.service'
+import type { SugarcaneMonitoringRecord } from '@/types/database.types'
+import { formatDateOnlyLabel, getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
 import {
     buildMonitoringCalendarSearch,
     buildMonitoringTrialCalendarLinks,
 } from '@/utils/farmingCalendarLinks'
-import type { SugarcaneMonitoringRecord } from '@/types/database.types'
 import { deriveGrowthStage } from '@/utils/growthStage'
+import {
+    buildUpcomingTaskNotices,
+    getTaskDueLabel,
+    type UpcomingTaskNotice,
+} from '@/utils/upcomingTaskNotices'
 
-function formatDate(value?: string | null, includeTime = false): string {
-    if (!value) return 'N/A'
-
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) {
-        return value
-    }
-
-    return includeTime
-        ? date.toLocaleString()
-        : date.toLocaleDateString()
+interface StageSnapshot {
+    key: string
+    trialLabel: string
+    fieldLabel: string
+    cropType: string
+    cropClass: string
+    latestDate: string
+    templateId: 'plant' | 'ratoon' | null
+    templateTitle: string | null
+    anchorDate: string | null
+    anchorLabel: string | null
+    latestRecord: SugarcaneMonitoringRecord | null
+    growthStage: ReturnType<typeof deriveGrowthStage>
+    nextTask: UpcomingTaskNotice | null
 }
-function formatNumber(value?: number | null, digits = 1): string {
-    if (value === null || value === undefined || !Number.isFinite(value)) {
-        return 'N/A'
-    }
 
-    return Number(value).toFixed(digits)
-}
-
-function normalizeText(value?: string | null, fallback = 'N/A'): string {
-    const normalized = (value ?? '').trim()
+function normalizeText(value?: string | number | null, fallback = 'N/A'): string {
+    const normalized = String(value ?? '').trim()
     return normalized || fallback
 }
 
-function isMeaningfulStress(stress?: string | null): boolean {
-    const normalized = (stress ?? '').trim().toLowerCase()
-    return Boolean(normalized) && !['none', 'no', 'normal', 'healthy', 'optimal', 'n/a', 'na'].includes(normalized)
+function getTodayDateOnly(): string {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
 }
 
-function getSelectedFieldLabel(record: SugarcaneMonitoringRecord): string {
-    return normalizeText(record.field_name || record.field_id, 'Field not set')
+function formatDateLabel(value?: string | null, fallback = 'N/A'): string {
+    if (!value) {
+        return fallback
+    }
+
+    return formatDateOnlyLabel(value, {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }) || value
 }
 
-function getFieldIdLabel(record: SugarcaneMonitoringRecord): string {
-    return normalizeText(record.field_id || record.field_name, 'Field ID not set')
+function buildTrialIdentity(record: SugarcaneMonitoringRecord): string {
+    return [
+        record.trial_name,
+        record.trial_number,
+        record.section_name,
+        record.block_id,
+        record.field_name,
+    ]
+        .map((value) => normalizeText(value, '').toLowerCase())
+        .join('|')
+}
+
+function getStageAccent(snapshot: StageSnapshot): string {
+    if (snapshot.templateId === 'ratoon') {
+        return '#b25b34'
+    }
+
+    if (snapshot.templateId === 'plant') {
+        return '#1b5e20'
+    }
+
+    return '#627264'
 }
 
 function SummaryCard({
@@ -88,7 +126,7 @@ function SummaryCard({
             sx={{
                 p: 2.2,
                 borderRadius: '24px',
-                border: `1px solid ${alpha(tone, 0.16)}`,
+                border: `1px solid ${alpha(tone, 0.14)}`,
                 bgcolor: alpha(tone, 0.08),
                 boxShadow: '0 18px 36px rgba(17,24,16,0.05)',
                 height: '100%',
@@ -108,11 +146,28 @@ function SummaryCard({
                 >
                     {icon}
                 </Box>
-                <Typography sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: alpha(tone, 0.88) }}>
+                <Typography
+                    sx={{
+                        fontSize: 11,
+                        fontWeight: 800,
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        color: alpha(tone, 0.88),
+                    }}
+                >
                     {label}
                 </Typography>
             </Box>
-            <Typography sx={{ fontSize: { xs: 28, md: 32 }, fontWeight: 900, letterSpacing: '-0.05em', color: 'text.primary', lineHeight: 1.05, mb: 0.8 }}>
+            <Typography
+                sx={{
+                    fontSize: { xs: 28, md: 32 },
+                    fontWeight: 900,
+                    letterSpacing: '-0.05em',
+                    color: 'text.primary',
+                    lineHeight: 1.05,
+                    mb: 0.8,
+                }}
+            >
                 {value}
             </Typography>
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.6 }}>
@@ -134,21 +189,21 @@ function InsightPanel({
     return (
         <Paper
             sx={{
-                p: 2.5,
-                borderRadius: '26px',
+                p: { xs: 2.1, md: 2.6 },
+                borderRadius: '28px',
                 border: '1px solid rgba(27, 94, 32, 0.12)',
                 boxShadow: '0 18px 42px rgba(17,24,16,0.05)',
-                bgcolor: 'rgba(255,255,255,0.96)',
+                bgcolor: 'rgba(255,255,255,0.95)',
                 height: '100%',
             }}
         >
             {title && (
-                <Typography sx={{ fontSize: 19, fontWeight: 900, color: 'text.primary', mb: 0.4 }}>
+                <Typography sx={{ fontSize: 20, fontWeight: 900, color: 'text.primary', mb: 0.45 }}>
                     {title}
                 </Typography>
             )}
             {subtitle && (
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.65, mb: 2 }}>
+                <Typography sx={{ fontSize: 12.8, color: 'text.secondary', lineHeight: 1.7, mb: 2.1 }}>
                     {subtitle}
                 </Typography>
             )}
@@ -159,15 +214,116 @@ function InsightPanel({
 
 export function SugarcaneMonitoringDashboard() {
     const navigate = useNavigate()
-    const { data: monitoring = [], isLoading, error } = useSugarcaneMonitoring({ includeUndated: true })
+    const todayIso = getTodayDateOnly()
+    const {
+        data: monitoring = [],
+        isLoading,
+        error,
+    } = useSugarcaneMonitoring({ includeUndated: true })
+    const {
+        data: predefinedFields = [],
+        refetch: refetchFields,
+    } = useQuery<PredefinedField[], Error>({
+        queryKey: ['monitoring-predefined-fields'],
+        queryFn: fetchLivePredefinedFields,
+        staleTime: 60_000,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
+    })
+
+    useEffect(() => {
+        const handleLiveDataUpdate = () => {
+            void refetchFields()
+        }
+
+        window.addEventListener(LIVE_DATA_UPDATED_EVENT, handleLiveDataUpdate)
+        return () => window.removeEventListener(LIVE_DATA_UPDATED_EVENT, handleLiveDataUpdate)
+    }, [refetchFields])
+
+    const sortedMonitoring = useMemo(
+        () => [...monitoring].sort(
+            (left, right) =>
+                getDateOnlyTimestamp(normalizeDateOnlyValue(right.date_recorded) || '')
+                - getDateOnlyTimestamp(normalizeDateOnlyValue(left.date_recorded) || '')
+        ),
+        [monitoring]
+    )
+
+    const latestRecordByTrial = useMemo(() => {
+        const records = new Map<string, SugarcaneMonitoringRecord>()
+
+        sortedMonitoring.forEach((record) => {
+            const key = buildTrialIdentity(record)
+            if (!records.has(key)) {
+                records.set(key, record)
+            }
+        })
+
+        return records
+    }, [sortedMonitoring])
+
+    const upcomingTasks = useMemo(
+        () => buildUpcomingTaskNotices(monitoring, predefinedFields),
+        [monitoring, predefinedFields]
+    )
+
+    const tasksByFieldLabel = useMemo(() => {
+        const grouped = new Map<string, UpcomingTaskNotice[]>()
+
+        upcomingTasks.forEach((task) => {
+            const items = grouped.get(task.fieldLabel) ?? []
+            items.push(task)
+            grouped.set(task.fieldLabel, items)
+        })
+
+        return grouped
+    }, [upcomingTasks])
+
+    const stageSnapshots = useMemo(() => {
+        return buildMonitoringTrialCalendarLinks(monitoring)
+            .map((link) => {
+                const latestRecord = latestRecordByTrial.get(link.key) ?? null
+                const growthStage = latestRecord
+                    ? deriveGrowthStage(latestRecord, todayIso)
+                    : deriveGrowthStage(
+                        {
+                            crop_type: link.cropType,
+                            crop_class: link.cropClass,
+                            planting_date: link.templateId === 'plant' ? link.anchorDate : null,
+                            previous_cutting_date: link.templateId === 'ratoon' ? link.anchorDate : null,
+                            date_recorded: link.latestDate,
+                        },
+                        todayIso
+                    )
+
+                return {
+                    ...link,
+                    latestRecord,
+                    growthStage,
+                    nextTask: (tasksByFieldLabel.get(link.fieldLabel) ?? [])[0] ?? null,
+                }
+            })
+            .sort((left, right) => {
+                const leftLinked = Boolean(left.growthStage.templateId && left.growthStage.anchorDate)
+                const rightLinked = Boolean(right.growthStage.templateId && right.growthStage.anchorDate)
+
+                if (leftLinked !== rightLinked) {
+                    return leftLinked ? -1 : 1
+                }
+
+                const leftTaskDays = left.nextTask?.daysUntil ?? Number.MAX_SAFE_INTEGER
+                const rightTaskDays = right.nextTask?.daysUntil ?? Number.MAX_SAFE_INTEGER
+
+                if (leftTaskDays !== rightTaskDays) {
+                    return leftTaskDays - rightTaskDays
+                }
+
+                return getDateOnlyTimestamp(right.latestDate) - getDateOnlyTimestamp(left.latestDate)
+            })
+    }, [monitoring, latestRecordByTrial, tasksByFieldLabel, todayIso])
 
     const summary = useMemo(() => {
         const fieldKeys = new Set<string>()
-        const varieties = new Set<string>()
-
-        let yieldTotal = 0
-        let yieldCount = 0
-        let stressCount = 0
 
         monitoring.forEach((record) => {
             fieldKeys.add([
@@ -175,35 +331,22 @@ export function SugarcaneMonitoringDashboard() {
                 normalizeText(record.block_id, ''),
                 normalizeText(record.field_name, ''),
             ].join('|'))
-
-            const variety = normalizeText(record.variety, '')
-            if (variety) {
-                varieties.add(variety.toUpperCase())
-            }
-
-            if (typeof record.yield === 'number' && Number.isFinite(record.yield)) {
-                yieldTotal += record.yield
-                yieldCount += 1
-            }
-
-            if (isMeaningfulStress(record.stress)) {
-                stressCount += 1
-            }
         })
 
         return {
             totalRecords: monitoring.length,
             totalFields: fieldKeys.size,
-            totalVarieties: varieties.size,
-            averageYield: yieldCount > 0 ? yieldTotal / yieldCount : null,
-            stressCount,
+            linkedFields: stageSnapshots.filter(
+                (snapshot) => Boolean(snapshot.growthStage.templateId && snapshot.growthStage.anchorDate)
+            ).length,
+            calendarResolvedStages: stageSnapshots.filter((snapshot) => Boolean(snapshot.growthStage.stageKey)).length,
+            urgentActivities: upcomingTasks.filter((task) => task.daysUntil <= 14).length,
+            missingCalendarDates: stageSnapshots.filter(
+                (snapshot) => snapshot.templateId && !snapshot.anchorDate
+            ).length,
+            latestRecordedDate: sortedMonitoring.find((record) => normalizeDateOnlyValue(record.date_recorded))?.date_recorded ?? null,
         }
-    }, [monitoring])
-
-    const trialCalendarLinks = useMemo(
-        () => buildMonitoringTrialCalendarLinks(monitoring),
-        [monitoring]
-    )
+    }, [monitoring, stageSnapshots, upcomingTasks, sortedMonitoring])
 
     if (isLoading) {
         return (
@@ -229,38 +372,47 @@ export function SugarcaneMonitoringDashboard() {
         )
     }
 
-    const handleOpenCalendar = (search: string) => {
-        navigate(`/calendar?${search}`)
+    const handleOpenCalendar = (search?: string) => {
+        navigate(search ? `/calendar?${search}` : '/calendar')
     }
 
     return (
         <Box sx={{ display: 'grid', gap: 3 }}>
             <Grid container spacing={2.4}>
-                <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+                <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
                     <SummaryCard
                         icon={<AgricultureOutlined />}
-                        label="Monitoring Records"
+                        label="Live Records"
                         value={String(summary.totalRecords)}
-                        helper="Rows currently available for analysis from the live Supabase table."
+                        helper="Monitoring rows currently available from the live Supabase table."
                         tone="#1b5e20"
                     />
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+                <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
                     <SummaryCard
                         icon={<LocalFloristOutlined />}
-                        label="Mapped Fields"
+                        label="Active Fields"
                         value={String(summary.totalFields)}
-                        helper="Unique field, section, and block combinations represented in the dataset."
+                        helper="Unique field, section, and block combinations active in monitoring."
                         tone="#2f7f4f"
                     />
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+                <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
                     <SummaryCard
                         icon={<TimelineOutlined />}
-                        label="Average Yield"
-                        value={summary.averageYield === null ? 'N/A' : `${formatNumber(summary.averageYield)} t/ha`}
-                        helper="Average of monitoring rows that include harvest yield values."
-                        tone="#d97706"
+                        label="Calendar Linked"
+                        value={String(summary.linkedFields)}
+                        helper="Fields with enough date data to calculate the current calendar stage."
+                        tone="#b25b34"
+                    />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
+                    <SummaryCard
+                        icon={<EventAvailableOutlined />}
+                        label="Due In 14 Days"
+                        value={String(summary.urgentActivities)}
+                        helper="Upcoming tasks from the farming calendar that need near-term attention."
+                        tone="#996515"
                     />
                 </Grid>
             </Grid>
@@ -268,156 +420,43 @@ export function SugarcaneMonitoringDashboard() {
             <Grid container spacing={3}>
                 <Grid size={{ xs: 12 }}>
                     <InsightPanel
-                        title="Trial Calendar Links"
-                    >
-                        <TableContainer>
-                            <Table sx={{ minWidth: 980 }}>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Trial</TableCell>
-                                        <TableCell>Field</TableCell>
-                                        <TableCell>Crop Class</TableCell>
-                                        <TableCell>Suitable Calendar</TableCell>
-                                        <TableCell>Anchor Date</TableCell>
-                                        <TableCell>Latest Update</TableCell>
-                                        <TableCell align="right">Action</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {trialCalendarLinks.length > 0 ? (
-                                        trialCalendarLinks.map((link) => {
-                                            const calendarSearch = link.templateId ? buildMonitoringCalendarSearch(link) : ''
-                                            const hasAnchorDate = Boolean(link.anchorDate)
-
-                                            return (
-                                                <TableRow key={link.key} hover>
-                                                    <TableCell sx={{ minWidth: 180 }}>
-                                                        <Typography sx={{ fontWeight: 700, fontSize: 13.5 }}>
-                                                            {link.trialLabel}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                                                            {link.cropType || 'Crop type not set'}
-                                                        </Typography>
-                                                    </TableCell>
-                                                    <TableCell sx={{ minWidth: 220 }}>
-                                                        <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
-                                                            {link.fieldLabel}
-                                                        </Typography>
-                                                    </TableCell>
-                                                    <TableCell sx={{ minWidth: 170 }}>
-                                                        <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
-                                                            {normalizeText(link.cropClass, 'Not set')}
-                                                        </Typography>
-                                                    </TableCell>
-                                                    <TableCell sx={{ minWidth: 170 }}>
-                                                        <Chip
-                                                            size="small"
-                                                            icon={<CalendarMonthOutlined />}
-                                                            label={link.templateTitle ?? 'No linked calendar'}
-                                                            color={link.templateId ? 'success' : 'default'}
-                                                            variant={link.templateId ? 'filled' : 'outlined'}
-                                                            sx={{ fontWeight: 700 }}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell sx={{ minWidth: 190 }}>
-                                                        <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
-                                                            {hasAnchorDate ? formatDate(link.anchorDate) : 'Date not set yet'}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                                                            {link.templateId
-                                                                ? hasAnchorDate
-                                                                    ? link.anchorLabel
-                                                                    : `Add the ${link.anchorLabel?.toLowerCase() || 'reference date'} to date the tasks.`
-                                                                : 'Only sugarcane trials can be matched right now.'}
-                                                        </Typography>
-                                                    </TableCell>
-                                                    <TableCell sx={{ minWidth: 140 }}>
-                                                        <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
-                                                            {formatDate(link.latestDate)}
-                                                        </Typography>
-                                                    </TableCell>
-                                                    <TableCell align="right" sx={{ minWidth: 180 }}>
-                                                        <Button
-                                                            size="small"
-                                                            variant={hasAnchorDate ? 'contained' : 'outlined'}
-                                                            endIcon={<OpenInNewRounded />}
-                                                            disabled={!link.templateId}
-                                                            onClick={() => handleOpenCalendar(calendarSearch)}
-                                                            sx={{
-                                                                borderRadius: '999px',
-                                                                px: 1.8,
-                                                                py: 0.8,
-                                                                textTransform: 'none',
-                                                                fontWeight: 800,
-                                                            }}
-                                                        >
-                                                            {hasAnchorDate ? 'Open dated calendar' : 'Open calendar'}
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        })
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={7} sx={{ py: 3.5 }}>
-                                                <Typography sx={{ fontSize: 13, color: 'text.secondary', textAlign: 'center' }}>
-                                                    No trial-to-calendar matches are available yet. Add crop class and planting or cut dates to monitoring records to enable linked calendars.
-                                                </Typography>
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </InsightPanel>
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                    <InsightPanel
-                        title="Recent Monitoring Records"
-                        subtitle="Latest entries from the crop monitoring table, shown in the field register format from your reference."
+                        title="Live Monitoring Tracker"
+                        subtitle="Current growth stage, stage basis, next scheduled activity, and the latest live database update for each monitored field."
                     >
                         <TableContainer
                             sx={{
-                                borderRadius: '32px',
+                                borderRadius: '28px',
                                 border: '1px solid rgba(127, 148, 118, 0.18)',
-                                bgcolor: 'rgba(243, 247, 237, 0.92)',
-                                backgroundImage: `
-                                    radial-gradient(circle at top left, rgba(255,255,255,0.75), transparent 40%),
-                                    linear-gradient(135deg, rgba(226,234,214,0.98), rgba(243,246,238,0.96))
-                                `,
-                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.72), 0 20px 44px rgba(58, 84, 45, 0.08)',
+                                bgcolor: 'rgba(245, 248, 241, 0.96)',
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.78), 0 18px 42px rgba(58, 84, 45, 0.08)',
                                 overflowX: 'auto',
                             }}
                         >
                             <Table
                                 sx={{
-                                    minWidth: 520,
+                                    minWidth: 980,
                                     borderCollapse: 'separate',
                                     borderSpacing: 0,
                                 }}
                             >
                                 <TableHead>
                                     <TableRow>
-                                        {['Selected Field', 'Field Name', 'Field ID', 'Growth Stage'].map((label, index, list) => (
+                                        {['Field / Trial', 'Current Stage', 'Stage Basis', 'Upcoming Activity', 'Latest Update', 'Action'].map((label, index, list) => (
                                             <TableCell
                                                 key={label}
                                                 sx={{
                                                     px: 2.2,
-                                                    py: 2.3,
+                                                    py: 2.15,
                                                     borderBottom: '1px solid rgba(127, 148, 118, 0.22)',
-                                                    bgcolor: 'rgba(213, 225, 204, 0.88)',
+                                                    bgcolor: 'rgba(213, 225, 204, 0.9)',
                                                     color: '#5f7064',
                                                     fontSize: 11,
                                                     fontWeight: 800,
                                                     letterSpacing: '0.18em',
                                                     textTransform: 'uppercase',
                                                     whiteSpace: 'nowrap',
-                                                    ...(index === 0 && {
-                                                        borderTopLeftRadius: '32px',
-                                                    }),
-                                                    ...(index === list.length - 1 && {
-                                                        borderTopRightRadius: '32px',
-                                                    }),
+                                                    ...(index === 0 && { borderTopLeftRadius: '28px' }),
+                                                    ...(index === list.length - 1 && { borderTopRightRadius: '28px' }),
                                                 }}
                                             >
                                                 {label}
@@ -426,43 +465,91 @@ export function SugarcaneMonitoringDashboard() {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {monitoring.slice(0, 12).map((record) => {
-                                        const growthStage = deriveGrowthStage(record)
+                                    {stageSnapshots.map((snapshot) => {
+                                        const search = buildMonitoringCalendarSearch(snapshot)
+                                        const accent = getStageAccent(snapshot)
 
                                         return (
                                             <TableRow
-                                                key={record.id}
+                                                key={snapshot.key}
                                                 hover
                                                 sx={{
                                                     '&:hover td': {
-                                                        bgcolor: 'rgba(255,255,255,0.34)',
+                                                        bgcolor: 'rgba(255,255,255,0.36)',
                                                     },
                                                     '&:last-child td:first-of-type': {
-                                                        borderBottomLeftRadius: '32px',
+                                                        borderBottomLeftRadius: '28px',
                                                     },
                                                     '&:last-child td:last-of-type': {
-                                                        borderBottomRightRadius: '32px',
+                                                        borderBottomRightRadius: '28px',
                                                     },
                                                 }}
                                             >
                                                 <TableCell sx={monitoringCellStyles}>
-                                                    {getSelectedFieldLabel(record)}
-                                                </TableCell>
-                                                <TableCell sx={monitoringCellStyles}>
-                                                    {normalizeText(record.field_name, 'Field name not set')}
-                                                </TableCell>
-                                                <TableCell sx={monitoringCellStyles}>
-                                                    {getFieldIdLabel(record)}
-                                                </TableCell>
-                                                <TableCell sx={monitoringCellStyles}>
-                                                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: '#32453a' }}>
-                                                        {growthStage.stage || 'Stage not detected'}
+                                                    <Typography sx={{ fontSize: 15, fontWeight: 800, color: '#32453a' }}>
+                                                        {snapshot.trialLabel}
                                                     </Typography>
-                                                    <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.35 }}>
-                                                        {growthStage.anchorDate && growthStage.anchorLabel
-                                                            ? `${growthStage.anchorLabel} · ${formatDate(growthStage.anchorDate)}`
-                                                            : 'Add planting or cutting date to detect stage'}
+                                                    <Typography sx={{ fontSize: 12.2, color: 'text.secondary', mt: 0.35, lineHeight: 1.6 }}>
+                                                        {snapshot.fieldLabel}
                                                     </Typography>
+                                                    <Typography sx={{ fontSize: 12.2, color: 'text.secondary', mt: 0.3 }}>
+                                                        {normalizeText(snapshot.cropClass || snapshot.cropType, 'Crop class not set')}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell sx={monitoringCellStyles}>
+                                                    <Typography sx={{ fontSize: 15, fontWeight: 800, color: accent }}>
+                                                        {snapshot.growthStage.stage || 'Stage not detected'}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: 12.1, color: 'text.secondary', mt: 0.35, lineHeight: 1.6 }}>
+                                                        {snapshot.growthStage.weekNumber
+                                                            ? `Calendar week ${snapshot.growthStage.weekNumber}`
+                                                            : 'Waiting for linked calendar dates'}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell sx={monitoringCellStyles}>
+                                                    <Typography sx={{ fontSize: 13.6, fontWeight: 700, color: '#32453a' }}>
+                                                        {snapshot.anchorDate && snapshot.growthStage.anchorLabel
+                                                            ? `${snapshot.growthStage.anchorLabel}`
+                                                            : 'Reference date missing'}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: 12.1, color: 'text.secondary', mt: 0.35, lineHeight: 1.6 }}>
+                                                        {snapshot.anchorDate
+                                                            ? formatDateLabel(snapshot.anchorDate)
+                                                            : 'Save planting or cutting date to unlock the calendar stage'}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell sx={monitoringCellStyles}>
+                                                    <Typography sx={{ fontSize: 13.6, fontWeight: 700, color: '#32453a', lineHeight: 1.6 }}>
+                                                        {snapshot.nextTask?.activity || 'No dated activity available yet'}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: 12.1, color: 'text.secondary', mt: 0.35, lineHeight: 1.6 }}>
+                                                        {snapshot.nextTask
+                                                            ? `${getTaskDueLabel(snapshot.nextTask.daysUntil)} · ${formatDateLabel(snapshot.nextTask.dateIso)}`
+                                                            : 'The dashboard will show the next activity once the field calendar is linked'}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell sx={monitoringCellStyles}>
+                                                    <Typography sx={{ fontSize: 13.6, fontWeight: 700, color: '#32453a' }}>
+                                                        {formatDateLabel(snapshot.latestDate)}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell sx={monitoringCellStyles}>
+                                                    <Button
+                                                        size="small"
+                                                        variant={snapshot.templateId ? 'contained' : 'outlined'}
+                                                        endIcon={<ArrowOutwardRounded />}
+                                                        disabled={!snapshot.templateId}
+                                                        onClick={() => handleOpenCalendar(search)}
+                                                        sx={{
+                                                            borderRadius: '999px',
+                                                            px: 1.6,
+                                                            textTransform: 'none',
+                                                            fontWeight: 800,
+                                                            boxShadow: 'none',
+                                                        }}
+                                                    >
+                                                        Open
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         )
@@ -479,11 +566,11 @@ export function SugarcaneMonitoringDashboard() {
 
 const monitoringCellStyles = {
     px: 2.2,
-    py: 2,
+    py: 1.9,
     minWidth: 150,
     borderBottom: '1px solid rgba(127, 148, 118, 0.14)',
     color: '#32453a',
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: 500,
     bgcolor: 'transparent',
 }
