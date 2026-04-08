@@ -152,7 +152,7 @@ export function ObservationEntryFormPage() {
                         📭 No field management entries found
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        Records will appear here once `sugarcane_field_management` has visible live rows or you add a new saved entry from the intake form.
+                        Records will appear here once live monitoring records are available or you add a new saved entry from the intake form.
                     </Typography>
                 </Paper>
             )}

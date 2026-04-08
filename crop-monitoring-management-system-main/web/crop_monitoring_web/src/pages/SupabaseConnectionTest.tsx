@@ -38,6 +38,10 @@ interface TestResult {
 const getErrorMessage = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
 
+function getDisplayTableName(tableName: string): string {
+    return tableName === 'sugarcane_field_management' ? 'monitoring records' : tableName
+}
+
 export default function SupabaseConnectionTest() {
     const [loading, setLoading] = useState(true)
     const [connectionTests, setConnectionTests] = useState<TestResult[]>([])
@@ -475,7 +479,7 @@ export default function SupabaseConnectionTest() {
                                         )}
                                     </TableCell>
                                     <TableCell sx={{ fontFamily: '"Times New Roman", Times, serif', fontWeight: 500 }}>
-                                        {table.name}
+                                        {getDisplayTableName(table.name)}
                                     </TableCell>
                                     <TableCell align="right">
                                         {table.rowCount !== null ? (

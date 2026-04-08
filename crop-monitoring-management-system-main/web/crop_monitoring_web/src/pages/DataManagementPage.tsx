@@ -430,7 +430,7 @@ function DataManagementPageContent() {
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
                         No live field-management rows are available right now.
-                        {'\n'} This page listens to `sugarcane_field_management` in real time and also refreshes automatically.
+                        {'\n'} This page listens to live monitoring records in real time and also refreshes automatically.
                     </Typography>
                     <Button
                         variant="contained"

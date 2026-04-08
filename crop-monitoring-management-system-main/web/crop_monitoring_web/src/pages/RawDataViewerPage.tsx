@@ -32,6 +32,10 @@ interface TableData {
 const getErrorMessage = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
 
+function getDisplayTableName(tableName: string): string {
+    return tableName === 'sugarcane_field_management' ? 'monitoring records' : tableName
+}
+
 export function RawDataViewerPage() {
     const [tables, setTables] = useState<Record<string, TableData>>({})
     const [expanded, setExpanded] = useState<string | null>(null)
@@ -189,7 +193,7 @@ export function RawDataViewerPage() {
                                     )}
                                     <Box>
                                         <Typography variant="subtitle1" fontWeight={600}>
-                                            {tableName}
+                                            {getDisplayTableName(tableName)}
                                         </Typography>
                                         {hasError ? (
                                             <Typography variant="caption" sx={{ color: '#f44336' }}>

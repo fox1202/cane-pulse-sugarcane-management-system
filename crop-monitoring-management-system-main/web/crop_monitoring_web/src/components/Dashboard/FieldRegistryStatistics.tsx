@@ -795,10 +795,10 @@ export function FieldRegistryStatistics({ fields }: { fields: PredefinedField[] 
     return (
       <Panel
         eyebrow="Live registry"
-        title="Field statistics are ready for `sugarcane_field_management`"
+        title="Field statistics are ready for live monitoring records"
         subtitle="This page turns block IDs, coordinates, area, irrigation, water source, TAM, and soil type into statistics as soon as live field-management rows are available."
       >
-        <EmptyState message="No rows were returned from `sugarcane_field_management` yet." />
+        <EmptyState message="No live monitoring records were returned yet." />
       </Panel>
     )
   }
@@ -807,7 +807,7 @@ export function FieldRegistryStatistics({ fields }: { fields: PredefinedField[] 
     <Stack spacing={2.2}>
       <Panel
         eyebrow="Live registry"
-        title="Field statistics from `sugarcane_field_management`"
+        title="Field statistics from live monitoring records"
         subtitle="This view converts your field-management registry into statistics for block coverage, mapped coordinates, field size, irrigation type, water source, TAM, and soil profile."
       >
         <Grid container spacing={1.4}>
@@ -885,7 +885,7 @@ export function FieldRegistryStatistics({ fields }: { fields: PredefinedField[] 
         <Grid size={{ xs: 12, lg: 5 }}>
           <Panel
             eyebrow="Completeness"
-            title="Coverage across `sugarcane_field_management`"
+            title="Coverage across live monitoring records"
             subtitle="How much of each column in your screenshot is already populated."
           >
             <CoveragePanel items={stats.coverage} />

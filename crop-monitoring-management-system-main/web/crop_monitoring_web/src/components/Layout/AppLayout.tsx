@@ -358,19 +358,6 @@ export function AppLayout() {
             </Box>
 
             <Box sx={{ minWidth: 0 }}>
-              <Chip
-                size="small"
-                icon={<AutoAwesomeRounded sx={{ fontSize: 14 }} />}
-                label={pageMeta.eyebrow}
-                sx={{
-                  height: 26,
-                  mb: 0.7,
-                  bgcolor: 'rgba(255,255,255,0.66)',
-                  color: 'primary.dark',
-                  border: '1px solid rgba(47,127,79,0.14)',
-                  '& .MuiChip-icon': { color: 'inherit' },
-                }}
-              />
               <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontWeight: 800, fontSize: { xs: 22, md: 28 }, color: 'text.primary', lineHeight: 1.02 }}>
                 {pageMeta.title}
               </Typography>

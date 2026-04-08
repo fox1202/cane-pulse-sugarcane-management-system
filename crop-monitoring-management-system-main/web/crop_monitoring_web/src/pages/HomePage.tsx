@@ -1471,7 +1471,7 @@ export function HomePage() {
                                     title="Mapped Area Overview"
                                 >
                                     <Typography sx={{ fontSize: '0.95rem', color: TEXT_MID, lineHeight: 1.8, maxWidth: 540, mb: 2.4 }}>
-                                        Latest hectares from sugarcane_field_management, grouped by crop type: sugarcane, break crop, and fallow period.
+                                        Latest hectares from live monitoring records, grouped by crop type: sugarcane, break crop, and fallow period.
                                     </Typography>
                                     <AreaPieChart
                                         data={areaOverviewData}

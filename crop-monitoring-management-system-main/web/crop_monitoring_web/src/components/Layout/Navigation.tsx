@@ -155,20 +155,6 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
       </Box>
 
       <Box sx={{ px: 2.1, flex: 1, overflowY: 'auto', pb: 2.1 }}>
-        <Typography
-          sx={{
-            fontSize: '0.62rem',
-            color: 'text.secondary',
-            fontFamily: '"Times New Roman", Times, serif',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            mb: 1.1,
-            px: 0.9,
-          }}
-        >
-          Workbench
-        </Typography>
-
         {PRIMARY_NAV.map((item, index) => {
           const active = location.pathname === item.path
 

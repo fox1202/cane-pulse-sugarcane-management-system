@@ -1850,7 +1850,7 @@ export async function createObservationEntryFormSubmission(
             throw new Error(`The saved record for ${label}${recordTiming} already matches this data. Change at least one value before saving again.`)
         }
 
-        throw new Error(`An identical record for ${label}${recordTiming} already exists in sugarcane_field_management.`)
+        throw new Error(`An identical record for ${label}${recordTiming} already exists in the monitoring records.`)
     }
 
     const payload = buildSugarcaneFieldManagementPayload(resolvedSubmission)

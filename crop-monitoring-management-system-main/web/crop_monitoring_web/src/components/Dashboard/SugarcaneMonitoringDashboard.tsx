@@ -18,7 +18,6 @@ import {
     alpha,
 } from '@mui/material'
 import {
-    AgricultureOutlined,
     ArrowOutwardRounded,
     EventAvailableOutlined,
     LocalFloristOutlined,
@@ -118,7 +117,7 @@ function SummaryCard({
     icon: React.ReactNode
     label: string
     value: string
-    helper: string
+    helper?: string
     tone: string
 }) {
     return (
@@ -170,9 +169,11 @@ function SummaryCard({
             >
                 {value}
             </Typography>
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.6 }}>
-                {helper}
-            </Typography>
+            {helper && (
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.6 }}>
+                    {helper}
+                </Typography>
+            )}
         </Paper>
     )
 }
@@ -379,15 +380,6 @@ export function SugarcaneMonitoringDashboard() {
     return (
         <Box sx={{ display: 'grid', gap: 3 }}>
             <Grid container spacing={2.4}>
-                <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-                    <SummaryCard
-                        icon={<AgricultureOutlined />}
-                        label="Live Records"
-                        value={String(summary.totalRecords)}
-                        helper="Monitoring rows currently available from the live Supabase table."
-                        tone="#1b5e20"
-                    />
-                </Grid>
                 <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
                     <SummaryCard
                         icon={<LocalFloristOutlined />}

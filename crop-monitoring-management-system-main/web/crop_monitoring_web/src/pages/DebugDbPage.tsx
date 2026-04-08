@@ -9,6 +9,10 @@ type Result = {
   error?: string
 }
 
+function getDisplayTableName(tableName: string): string {
+  return tableName === 'sugarcane_field_management' ? 'monitoring records' : tableName
+}
+
 const candidateTables = [
   'observations',
   'observation',
@@ -89,10 +93,10 @@ export default function DebugDbPage() {
                 <TableCell>Error</TableCell>
               </TableRow>
             </TableHead>
-            <TableBody>
+              <TableBody>
               {results.map(r => (
                 <TableRow key={r.table}>
-                  <TableCell>{r.table}</TableCell>
+                  <TableCell>{getDisplayTableName(r.table)}</TableCell>
                   <TableCell>{r.exists ? 'Yes' : 'No'}</TableCell>
                   <TableCell>{typeof r.count === 'number' ? r.count : '-'}</TableCell>
                   <TableCell>{r.error ?? '-'}</TableCell>
