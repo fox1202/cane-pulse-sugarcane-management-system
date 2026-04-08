@@ -115,7 +115,7 @@ const DISPLAY: React.CSSProperties['fontFamily'] = '"Times New Roman", Times, se
 type SprayFilter      = 'all' | 'sprayed' | 'not-sprayed'
 type CollectionFilter = 'all' | 'recorded' | 'pending'
 type MapLayer         = 'satellite' | 'terrain'
-type MapCropGroup     = 'Sugarcane' | 'Break Crop' | 'Furrow Period' | 'Unspecified'
+type MapCropGroup     = 'Sugarcane' | 'Break Crop' | 'Fallow Period' | 'Unspecified'
 
 interface GeoFeature {
     type: 'Feature'
@@ -157,7 +157,7 @@ function getMapCropGroup(value?: string | null): MapCropGroup {
 
     if (!normalized) return 'Unspecified'
     if (/break\s*crop|breakcrop|soyabeans?|sugarbeans?|sunn\s*hemp|velvet\s*beans?|maize/.test(normalized)) return 'Break Crop'
-    if (/fallow|furrow|fullow|\bnone\b/.test(normalized)) return 'Furrow Period'
+    if (/fallow|furrow|fullow|\bnone\b/.test(normalized)) return 'Fallow Period'
     if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
     return 'Unspecified'
 }
@@ -1063,7 +1063,7 @@ export function MapViewPage() {
             return ''
         }
 
-        if (cropGroup === 'Furrow Period') {
+        if (cropGroup === 'Fallow Period') {
             return cropClass || 'None'
         }
 
@@ -1232,7 +1232,7 @@ export function MapViewPage() {
             .sort((left, right) => {
                 const order = new Map<string, number>([
                     ['Sugarcane', 0],
-                    ['Furrow Period', 1],
+                    ['Fallow Period', 1],
                     ['Break Crop', 2],
                 ])
 
@@ -1263,7 +1263,7 @@ export function MapViewPage() {
             return resolved.sort((left, right) => left.localeCompare(right))
         }
 
-        if (selectedCropType === 'Furrow Period') {
+        if (selectedCropType === 'Fallow Period') {
             const resolved = availableClasses.length > 0 ? availableClasses : FALLOW_CROP_CLASS_FALLBACKS
             return resolved.sort((left, right) => left.localeCompare(right))
         }
@@ -1332,7 +1332,7 @@ export function MapViewPage() {
             if (latestVariety) return latestVariety
         }
 
-        if (selectedCropType === 'Furrow Period') {
+        if (selectedCropType === 'Fallow Period') {
             return 'None'
         }
 

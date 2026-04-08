@@ -49,7 +49,7 @@ type AnalyticsObservation = (FullObservation | MobileObservationRecord) & {
 type AreaCropGroup =
   | 'Sugarcane'
   | 'Break Crop'
-  | 'Furrow Period'
+  | 'Fallow Period'
   | 'Unspecified'
 
 type AnalyticsRecord = {
@@ -1047,7 +1047,7 @@ function getAreaCropGroup(value?: string | null): AreaCropGroup {
 
   if (!normalized) return 'Unspecified'
   if (/break\s*crop|breakcrop/.test(normalized)) return 'Break Crop'
-  if (/fallow|furrow|fullow/.test(normalized)) return 'Furrow Period'
+  if (/fallow|furrow|fullow/.test(normalized)) return 'Fallow Period'
   if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
   return 'Unspecified'
 }
@@ -1402,7 +1402,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
   )
 
   const fallowFields = useMemo(
-    () => measuredFields.filter((field) => field.cropGroup === 'Furrow Period'),
+    () => measuredFields.filter((field) => field.cropGroup === 'Fallow Period'),
     [measuredFields]
   )
 
@@ -1478,13 +1478,13 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         },
       },
       {
-        label: 'Furrow Period',
+        label: 'Fallow Period',
         value: Number(totalFallowArea.toFixed(2)),
         fieldCount: fallowFields.length,
         color: AREA_COLORS.fallow,
         navigation: {
           searchParams: {
-            cropType: 'Furrow Period',
+            cropType: 'Fallow Period',
           },
         },
       },
@@ -1660,13 +1660,13 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
           : field.sectionBlock,
         navigation: {
           searchParams: {
-            cropType: 'Furrow Period',
+            cropType: 'Fallow Period',
           },
           focusField: {
             fieldName: field.field,
             sectionName: field.section || undefined,
             blockId: field.block || undefined,
-            cropType: 'Furrow Period',
+            cropType: 'Fallow Period',
           },
         },
       })),
@@ -1824,7 +1824,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         <Box sx={{ gridColumn: { xl: 'span 7' } }}>
           <ChartShell
             title="Crop Land Use Coverage"
-            subtitle="Mapped hectares grouped into sugarcane, break crop, and furrow period using the latest classified field snapshot."
+            subtitle="Mapped hectares grouped into sugarcane, break crop, and fallow period using the latest classified field snapshot."
             eyebrow="Area Coverage"
             height={450}
             accentColor={AREA_COLORS.sugarcane}
@@ -2099,22 +2099,22 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
 
         <Box sx={{ gridColumn: { xl: 'span 12' } }}>
           <ChartShell
-            title="Furrow Period Coverage"
-            subtitle="A quick view of how much mapped land is marked as furrow period and which fields carry the largest furrow footprint right now."
-            eyebrow="Furrow Land"
+            title="Fallow Period Coverage"
+            subtitle="A quick view of how much mapped land is marked as fallow period and which fields carry the largest fallow footprint right now."
+            eyebrow="Fallow Land"
             height={380}
             accentColor={AREA_COLORS.fallow}
           >
             {fallowFields.length > 0 ? (
               <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.6 }}>
                 <MetricGroupCard
-                  label="Furrow Summary"
+                  label="Fallow Summary"
                   items={[
                     { label: 'Area', value: formatMetricValue(totalFallowArea, 'ha') },
                     { label: 'Fields', value: String(fallowFields.length) },
                     { label: 'Share', value: `${fallowShare.toFixed(1)}%` },
                   ]}
-                  helper="Grouped furrow totals for the current live mapped area."
+                  helper="Grouped fallow totals for the current live mapped area."
                   tone={AREA_COLORS.fallow}
                   columns={3}
                 />
@@ -2123,7 +2123,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                   <Stack spacing={1}>
                     <CoverageRows
                       items={fallowFieldData}
-                      emptyMessage="No individual furrow trial areas are available yet."
+                      emptyMessage="No individual fallow trial areas are available yet."
                       formatValue={(item) => formatAreaValue(item.value)}
                       onSelectItem={(item) => handleMapNavigation(item.navigation)}
                     />
@@ -2131,7 +2131,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                 </Box>
               </Box>
             ) : (
-              <EmptyState message="Furrow period coverage will appear here once mapped fields are marked as furrow period." />
+              <EmptyState message="Fallow period coverage will appear here once mapped fields are marked as fallow period." />
             )}
           </ChartShell>
         </Box>

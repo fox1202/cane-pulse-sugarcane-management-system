@@ -56,7 +56,7 @@ const IRRIGATION_TYPE_OPTIONS = [
 
 const WATER_SOURCE_OPTIONS = ['Dam 1', 'Dam 2', 'Dam 3'];
 const SOIL_TYPE_OPTIONS = ['SaL', 'SaC', 'SaCL'];
-const CROP_TYPE_OPTIONS = ['Sugarcane', 'Break Crop', 'Furrow Period'];
+const CROP_TYPE_OPTIONS = ['Sugarcane', 'Break Crop', 'Fallow Period'];
 const BREAK_CROP_CLASS_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Maize'];
 const FALLOW_CROP_CLASS_OPTIONS = ['None'];
 const RESIDUE_TYPE_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Sugarcane', 'None'];
@@ -1294,10 +1294,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 throw new Error('Please select a field before saving.');
             }
 
-            if (!formData.date_recorded) {
-                throw new Error('Date recorded is required.');
-            }
-
             let resolvedField = selectedField;
             const registryFields = predefinedFields;
 
@@ -1703,7 +1699,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 type="date"
                                 fullWidth
                                 label="Date Recorded"
-                                required
                                 InputLabelProps={{ shrink: true }}
                                 value={formData.date_recorded || ''}
                                 onChange={(e) => updateField('date_recorded', e.target.value)}

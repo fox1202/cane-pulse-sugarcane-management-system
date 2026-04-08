@@ -5,7 +5,6 @@ import {
     Typography,
     Paper,
     Button,
-    useTheme,
     CircularProgress,
     Alert,
     TablePagination,
@@ -171,7 +170,6 @@ export function DataManagementPage() {
 }
 
 function DataManagementPageContent() {
-    const theme = useTheme()
     const { user } = useAuth()
     const { data: observationData, isLoading, error, refetch } = useFieldManagementRecords()
     const observations = useMemo(
@@ -298,13 +296,7 @@ function DataManagementPageContent() {
 
     return (
         <Container maxWidth="xl" sx={{ pb: 6 }}>
-            {/* Header */}
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 2 }}>
-                <Box>
-                    <Typography variant="h3" fontWeight={900} sx={{ color: 'text.primary' }}>
-                        Field <span style={{ color: theme.palette.primary.light }}>Observation Records</span>
-                    </Typography>
-                </Box>
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', flexWrap: 'wrap', gap: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     <Button
                         variant="outlined"

@@ -30,6 +30,7 @@ import {
     buildMonitoringTrialCalendarLinks,
 } from '@/utils/farmingCalendarLinks'
 import type { SugarcaneMonitoringRecord } from '@/types/database.types'
+import { deriveGrowthStage } from '@/utils/growthStage'
 
 function formatDate(value?: string | null, includeTime = false): string {
     if (!value) return 'N/A'
@@ -397,7 +398,7 @@ export function SugarcaneMonitoringDashboard() {
                             >
                                 <TableHead>
                                     <TableRow>
-                                        {['Selected Field', 'Field Name', 'Field ID'].map((label, index, list) => (
+                                        {['Selected Field', 'Field Name', 'Field ID', 'Growth Stage'].map((label, index, list) => (
                                             <TableCell
                                                 key={label}
                                                 sx={{
@@ -425,33 +426,47 @@ export function SugarcaneMonitoringDashboard() {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {monitoring.slice(0, 12).map((record) => (
-                                        <TableRow
-                                            key={record.id}
-                                            hover
-                                            sx={{
-                                                '&:hover td': {
-                                                    bgcolor: 'rgba(255,255,255,0.34)',
-                                                },
-                                                '&:last-child td:first-of-type': {
-                                                    borderBottomLeftRadius: '32px',
-                                                },
-                                                '&:last-child td:last-of-type': {
-                                                    borderBottomRightRadius: '32px',
-                                                },
-                                            }}
-                                        >
-                                            <TableCell sx={monitoringCellStyles}>
-                                                {getSelectedFieldLabel(record)}
-                                            </TableCell>
-                                            <TableCell sx={monitoringCellStyles}>
-                                                {normalizeText(record.field_name, 'Field name not set')}
-                                            </TableCell>
-                                            <TableCell sx={monitoringCellStyles}>
-                                                {getFieldIdLabel(record)}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {monitoring.slice(0, 12).map((record) => {
+                                        const growthStage = deriveGrowthStage(record)
+
+                                        return (
+                                            <TableRow
+                                                key={record.id}
+                                                hover
+                                                sx={{
+                                                    '&:hover td': {
+                                                        bgcolor: 'rgba(255,255,255,0.34)',
+                                                    },
+                                                    '&:last-child td:first-of-type': {
+                                                        borderBottomLeftRadius: '32px',
+                                                    },
+                                                    '&:last-child td:last-of-type': {
+                                                        borderBottomRightRadius: '32px',
+                                                    },
+                                                }}
+                                            >
+                                                <TableCell sx={monitoringCellStyles}>
+                                                    {getSelectedFieldLabel(record)}
+                                                </TableCell>
+                                                <TableCell sx={monitoringCellStyles}>
+                                                    {normalizeText(record.field_name, 'Field name not set')}
+                                                </TableCell>
+                                                <TableCell sx={monitoringCellStyles}>
+                                                    {getFieldIdLabel(record)}
+                                                </TableCell>
+                                                <TableCell sx={monitoringCellStyles}>
+                                                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: '#32453a' }}>
+                                                        {growthStage.stage || 'Stage not detected'}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.35 }}>
+                                                        {growthStage.anchorDate && growthStage.anchorLabel
+                                                            ? `${growthStage.anchorLabel} · ${formatDate(growthStage.anchorDate)}`
+                                                            : 'Add planting or cutting date to detect stage'}
+                                                    </Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
                                 </TableBody>
                             </Table>
                         </TableContainer>

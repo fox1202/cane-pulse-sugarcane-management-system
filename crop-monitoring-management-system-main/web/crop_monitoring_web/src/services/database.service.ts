@@ -10,6 +10,7 @@ import type {
 } from '@/types/database.types'
 import { HARDCODED_FIELDS, HARDCODED_FIELD_SHAPEFILE } from '@/data/hardcodedFieldShapefile'
 import { hasDateOnlyValue, normalizeDateOnlyValue } from '@/utils/dateOnly'
+import { deriveGrowthStageLabel } from '@/utils/growthStage'
 
 const USE_HARDCODED_FIELD_REGISTRY = false
 const FIELD_REGISTRY_TABLE_NAMES = ['sugarcane_field_management'] as const
@@ -648,15 +649,6 @@ function hasUsableRecordedDate(value: unknown): boolean {
     return hasDateOnlyValue(value)
 }
 
-function requireRecordedDateValue(value: unknown): string {
-    const normalized = normalizeRecordedDateValue(value)
-    if (!normalized) {
-        throw new Error('Date recorded is required and must be a valid date.')
-    }
-
-    return normalized
-}
-
 function toLoopNumber(value: unknown, fallback: number): number {
     const numeric = toNullableNumber(value)
     if (numeric == null || !Number.isFinite(numeric) || numeric <= 0) {
@@ -958,6 +950,15 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
     })
     const currentFertilizerApplication = getCurrentApplicationFromList(fertilizerApplications)
     const currentHerbicideApplication = getCurrentApplicationFromList(herbicideApplications)
+    const derivedCropStage = deriveGrowthStageLabel({
+        crop_type: toNullableString(row.crop_type),
+        crop_class: toNullableString(row.crop_class),
+        crop_stage: toNullableString(row.crop_stage),
+        planting_date: toNullableDateValue(row.planting_date),
+        previous_cutting: previousCutting,
+        previous_cutting_date: previousCutting,
+        date_recorded: recordedDate,
+    })
 
     return {
         id: String(row.id || ''),
@@ -974,7 +975,7 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
         crop_class: toNullableString(row.crop_class) ?? undefined,
         variety: toNullableString(row.variety) ?? undefined,
         ratoon_number: toNullableNumber(row.ratoon_number) ?? undefined,
-        crop_stage: toNullableString(row.crop_stage) ?? undefined,
+        crop_stage: derivedCropStage ?? undefined,
         planting_date: toNullableDateValue(row.planting_date) ?? undefined,
         previous_cutting: previousCutting,
         previous_cutting_date: previousCutting,
@@ -1240,6 +1241,14 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
     })
     const currentFertilizerApplication = getCurrentApplicationFromList(fertilizerApplications)
     const currentHerbicideApplication = getCurrentApplicationFromList(herbicideApplications)
+    const derivedCropStage = deriveGrowthStageLabel({
+        crop_type: submission.crop_type,
+        crop_class: submission.crop_class,
+        planting_date: submission.planting_date,
+        previous_cutting_date: submission.previous_cutting_date,
+        cutting_date: submission.cutting_date,
+        date_recorded: submission.date_recorded,
+    })
 
     return {
         Trial: toNullableString(submission.field_name || submission.field_id),
@@ -1256,13 +1265,14 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
         soil_type: toNullableString(submission.soil_type),
         soil_ph: toNullableNumber(submission.soil_ph),
         remarks: toNullableString(submission.remarks || submission.field_remarks),
-        date_recorded: requireRecordedDateValue(submission.date_recorded),
+        date_recorded: toNullableDateValue(submission.date_recorded),
         trial_number: toNullableString(submission.trial_number),
         trial_name: toNullableString(submission.trial_name),
         contact_person_scientist: toNullableString(submission.contact_person),
         crop_type: toNullableString(submission.crop_type || submission.crop_class) || 'Sugarcane',
         crop_class: toNullableString(submission.crop_class),
         variety: toNullableString(submission.variety),
+        crop_stage: toNullableString(derivedCropStage),
         stress: toNullableString(submission.stress),
         planting_date: toNullableDateValue(submission.planting_date),
         cutting_date: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
@@ -1468,11 +1478,13 @@ async function findDuplicateFieldManagementSubmission(
     submission: ObservationEntryFormSubmissionInput,
     currentRowId?: string | number | null
 ): Promise<{ kind: 'duplicate' | 'unchanged'; row: SugarcaneMonitoringRecord } | null> {
-    const recordedDate = requireRecordedDateValue(submission.date_recorded)
-    const { data, error } = await supabase
+    const recordedDate = toNullableDateValue(submission.date_recorded)
+    const query = supabase
         .from(MONITORING_TABLE_NAME)
         .select('*')
-        .eq('date_recorded', recordedDate)
+    const { data, error } = recordedDate
+        ? await query.eq('date_recorded', recordedDate)
+        : await query.is('date_recorded', null)
 
     if (error) {
         if (isMissingRelationError(error)) {
@@ -1830,13 +1842,14 @@ export async function createObservationEntryFormSubmission(
             resolvedSubmission.field_id,
             resolvedSubmission.block_id
         ) ?? 'this field'
-        const recordedDate = requireRecordedDateValue(resolvedSubmission.date_recorded)
+        const recordedDate = toNullableDateValue(resolvedSubmission.date_recorded)
+        const recordTiming = recordedDate ? ` on ${recordedDate}` : ' without a recorded date'
 
         if (duplicateMatch.kind === 'unchanged') {
-            throw new Error(`The saved record for ${label} on ${recordedDate} already matches this data. Change at least one value before saving again.`)
+            throw new Error(`The saved record for ${label}${recordTiming} already matches this data. Change at least one value before saving again.`)
         }
 
-        throw new Error(`An identical record for ${label} on ${recordedDate} already exists in sugarcane_field_management.`)
+        throw new Error(`An identical record for ${label}${recordTiming} already exists in sugarcane_field_management.`)
     }
 
     const payload = buildSugarcaneFieldManagementPayload(resolvedSubmission)

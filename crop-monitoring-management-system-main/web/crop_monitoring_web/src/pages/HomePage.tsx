@@ -157,7 +157,7 @@ interface AreaFieldSnapshot {
     areaHa: number
 }
 
-type AreaCropGroup = 'Sugarcane' | 'Break Crop' | 'Furrow Period' | 'Unspecified'
+type AreaCropGroup = 'Sugarcane' | 'Break Crop' | 'Fallow Period' | 'Unspecified'
 
 interface AreaOverviewDatum {
     label: string
@@ -360,7 +360,7 @@ function getAreaCropGroup(value?: string | null): AreaCropGroup {
 
     if (!normalized) return 'Unspecified'
     if (/break\s*crop|breakcrop/.test(normalized)) return 'Break Crop'
-    if (/fallow|furrow|fullow/.test(normalized)) return 'Furrow Period'
+    if (/fallow|furrow|fullow/.test(normalized)) return 'Fallow Period'
     if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
     return 'Unspecified'
 }
@@ -634,6 +634,7 @@ function TaskRow({ task }: { task: UpcomingTask }) {
         <Box
             sx={{
                 display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
                 gap: 1.3,
                 alignItems: 'flex-start',
                 justifyContent: 'space-between',
@@ -643,22 +644,22 @@ function TaskRow({ task }: { task: UpcomingTask }) {
                 bgcolor: 'rgba(255,255,255,0.72)',
             }}
         >
-            <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mb: 0.8 }}>
                     <StatusBadge text={task.kind} tone={task.kind === 'Nutrient' ? 'peach' : 'mint'} />
                     <StatusBadge text={task.weekLabel} tone="mint" />
                 </Box>
-                <Typography sx={{ fontSize: '0.86rem', color: TEXT_MID, lineHeight: 1.6 }}>
+                <Typography sx={{ fontSize: '0.86rem', color: TEXT_MID, lineHeight: 1.6, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                     {task.fieldLabel}
                 </Typography>
-                <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.25 }}>
+                <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.25, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                     {task.activity}
                 </Typography>
-                <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 0.25 }}>
+                <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 0.25, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                     {task.scheduleType} calendar · {task.cropType || 'Crop type not set'}
                 </Typography>
             </Box>
-            <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+            <Box sx={{ textAlign: { xs: 'left', sm: 'right' }, flexShrink: 0 }}>
                 <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: task.severity === 'overdue' ? PEACH_DARK : MINT_DARK, mb: 0.2 }}>
                     {formatDateOnlyLabel(task.dateIso, { day: '2-digit', month: 'short', year: 'numeric' }) || task.dateIso}
                 </Typography>
@@ -673,6 +674,7 @@ function CalendarWarningRow({ warning }: { warning: CalendarScheduleWarning }) {
         <Box
             sx={{
                 display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
                 gap: 1.3,
                 alignItems: 'flex-start',
                 justifyContent: 'space-between',
@@ -682,22 +684,22 @@ function CalendarWarningRow({ warning }: { warning: CalendarScheduleWarning }) {
                 bgcolor: 'rgba(255,248,242,0.82)',
             }}
         >
-            <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mb: 0.8 }}>
                     <StatusBadge text="Schedule warning" tone="peach" />
                     <StatusBadge text={getCalendarAnchorSourceLabel(warning.source)} tone="peach" />
                 </Box>
-                <Typography sx={{ fontSize: '0.86rem', color: TEXT_MID, lineHeight: 1.6 }}>
+                <Typography sx={{ fontSize: '0.86rem', color: TEXT_MID, lineHeight: 1.6, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                     {warning.fieldLabel}
                 </Typography>
-                <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.25, fontWeight: 700 }}>
+                <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.25, fontWeight: 700, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                     {warning.title}
                 </Typography>
-                <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 0.25 }}>
+                <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 0.25, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                     {warning.detail}
                 </Typography>
             </Box>
-            <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+            <Box sx={{ textAlign: { xs: 'left', sm: 'right' }, flexShrink: 0 }}>
                 <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: PEACH_DARK, mb: 0.2 }}>
                     {warning.dateIso
                         ? formatDateOnlyLabel(warning.dateIso, { day: '2-digit', month: 'short', year: 'numeric' }) || warning.dateIso
@@ -756,7 +758,7 @@ function AreaPieChart({
                 }}
             >
                 <Typography sx={{ fontSize: '0.9rem', color: TEXT_MID, lineHeight: 1.7, maxWidth: 300 }}>
-                    Mapped area was found, but those fields are not yet classified as Sugarcane, Break Crop, or Furrow Period.
+                    Mapped area was found, but those fields are not yet classified as Sugarcane, Break Crop, or Fallow Period.
                 </Typography>
             </Box>
         )
@@ -1343,7 +1345,7 @@ export function HomePage() {
                         summary.totalBreakCropArea += areaHa
                         summary.breakCropFieldCount += 1
                         break
-                    case 'Furrow Period':
+                    case 'Fallow Period':
                         summary.totalFallowArea += areaHa
                         summary.fallowFieldCount += 1
                         break
@@ -1384,7 +1386,7 @@ export function HomePage() {
                 fieldCount: areaSummary.breakCropFieldCount,
             },
             {
-                label: 'Furrow Period',
+                label: 'Fallow Period',
                 areaHa: Number(areaSummary.totalFallowArea.toFixed(2)),
                 color: PEACH,
                 fieldCount: areaSummary.fallowFieldCount,
@@ -1469,7 +1471,7 @@ export function HomePage() {
                                     title="Mapped Area Overview"
                                 >
                                     <Typography sx={{ fontSize: '0.95rem', color: TEXT_MID, lineHeight: 1.8, maxWidth: 540, mb: 2.4 }}>
-                                        Latest hectares from sugarcane_field_management, grouped by crop type: sugarcane, break crop, and furrow period.
+                                        Latest hectares from sugarcane_field_management, grouped by crop type: sugarcane, break crop, and fallow period.
                                     </Typography>
                                     <AreaPieChart
                                         data={areaOverviewData}

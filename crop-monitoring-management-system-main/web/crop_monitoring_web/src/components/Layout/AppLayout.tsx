@@ -49,11 +49,10 @@ import { buildUpcomingTaskNotices, getTaskDueLabel } from '@/utils/upcomingTaskN
 
 const DRAWER_WIDTH = 308
 
-const PAGE_META: Record<string, { eyebrow: string; title: string; note: string; icon: React.ReactNode }> = {
+const PAGE_META: Record<string, { eyebrow: string; title: string; note?: string; icon: React.ReactNode }> = {
   '/': {
     eyebrow: 'Overview',
     title: 'Field Pulse',
-    note: 'Monitor alerts, form flow, calendar work, and mapped field activity from sugarcane_field_management.',
     icon: <HomeRounded fontSize="small" />,
   },
   '/data': {
@@ -71,7 +70,6 @@ const PAGE_META: Record<string, { eyebrow: string; title: string; note: string; 
   '/field-statistics': {
     eyebrow: 'Analytics',
     title: 'Field Statistics',
-    note: 'Read mapped area, crop coverage, and chart summaries from sugarcane_field_management.',
     icon: <InsightsRounded fontSize="small" />,
   },
   '/map': {
@@ -376,9 +374,11 @@ export function AppLayout() {
               <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontWeight: 800, fontSize: { xs: 22, md: 28 }, color: 'text.primary', lineHeight: 1.02 }}>
                 {pageMeta.title}
               </Typography>
-              <Typography sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.45, mt: 0.4, maxWidth: 620, display: { xs: 'none', md: 'block' } }}>
-                {pageMeta.note}
-              </Typography>
+              {pageMeta.note ? (
+                <Typography sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.45, mt: 0.4, maxWidth: 620, display: { xs: 'none', md: 'block' } }}>
+                  {pageMeta.note}
+                </Typography>
+              ) : null}
             </Box>
           </Box>
 
@@ -536,7 +536,8 @@ export function AppLayout() {
             MenuListProps={{ sx: { p: 0.6 } }}
             PaperProps={{
               sx: {
-                width: 336,
+                width: { xs: 'calc(100vw - 24px)', sm: 384 },
+                maxWidth: 'calc(100vw - 24px)',
                 mt: 1.2,
                 borderRadius: '22px !important',
                 border: '1px solid rgba(47,127,79,0.16)',
@@ -587,7 +588,13 @@ export function AppLayout() {
                 <MenuItem
                   key={task.key}
                   onClick={() => handleNavigate('/calendar')}
-                  sx={{ borderRadius: 3.5, alignItems: 'flex-start', gap: 1.2, py: 1.15 }}
+                  sx={{
+                    borderRadius: 3.5,
+                    alignItems: 'flex-start',
+                    gap: 1.2,
+                    py: 1.15,
+                    whiteSpace: 'normal',
+                  }}
                 >
                   <Avatar
                     sx={{
@@ -598,16 +605,43 @@ export function AppLayout() {
                       color: avatarTone.fg,
                     }}
                   >
-                    <CalendarMonthRounded sx={{ fontSize: 18 }} />
+                      <CalendarMonthRounded sx={{ fontSize: 18 }} />
                   </Avatar>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: 12.8, color: 'text.primary', lineHeight: 1.3 }}>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: 12.8,
+                        color: 'text.primary',
+                        lineHeight: 1.35,
+                        whiteSpace: 'normal',
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
                       {task.activity}
                     </Typography>
-                    <Typography sx={{ fontSize: 11.5, color: 'text.secondary', lineHeight: 1.4, mt: 0.25 }}>
+                    <Typography
+                      sx={{
+                        fontSize: 11.5,
+                        color: 'text.secondary',
+                        lineHeight: 1.45,
+                        mt: 0.25,
+                        whiteSpace: 'normal',
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
                       {task.fieldLabel} · {task.weekLabel}
                     </Typography>
-                    <Typography sx={{ fontSize: 11.25, color: 'text.secondary', lineHeight: 1.4, mt: 0.35 }}>
+                    <Typography
+                      sx={{
+                        fontSize: 11.25,
+                        color: 'text.secondary',
+                        lineHeight: 1.45,
+                        mt: 0.35,
+                        whiteSpace: 'normal',
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
                       {getTaskDueLabel(task.daysUntil)} · {formatDateOnlyLabel(task.dateIso) ?? task.dateIso}
                     </Typography>
                   </Box>

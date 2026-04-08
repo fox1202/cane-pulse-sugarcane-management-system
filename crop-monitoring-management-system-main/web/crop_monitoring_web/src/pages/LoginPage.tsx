@@ -78,7 +78,7 @@ const LOGIN_SCENES: LoginScene[] = [
         image: sugarcane4,
         label: 'Field statistics',
         eyebrow: 'Analytics overview',
-        title: 'Track cultivated area, cane area, furrow area, and growth stages.',
+        title: 'Track cultivated area, cane area, fallow area, and growth stages.',
         description: 'The statistics workspace helps you review mapped fields, crop coverage, and plant cane versus ratoon summaries.',
         objectPosition: 'center 40%',
     },
