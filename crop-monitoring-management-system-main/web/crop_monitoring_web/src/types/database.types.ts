@@ -324,6 +324,7 @@ export interface SugarcaneMonitoringRecord {
     remarks?: string;
     image_url?: string;
     well_known_text?: string;
+    raw_values?: Record<string, unknown>;
     created_at: string;
     updated_at: string;
 }

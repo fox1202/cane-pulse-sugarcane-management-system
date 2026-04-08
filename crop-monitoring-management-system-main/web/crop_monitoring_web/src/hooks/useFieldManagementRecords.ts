@@ -11,9 +11,10 @@ export function useFieldManagementRecords() {
         queryKey: ['field-records', 'sugarcane_field_management', 'all-rows'],
         queryFn: () => fetchSugarcaneMonitoringObservations(undefined, { includeUndated: true }),
         staleTime: 10 * 1000,
-        refetchOnWindowFocus: false,
+        refetchOnWindowFocus: true,
         refetchOnReconnect: true,
-        refetchInterval: false,
+        refetchInterval: 5 * 1000,
+        refetchIntervalInBackground: true,
     })
 
     useEffect(() => {

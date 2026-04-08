@@ -135,6 +135,10 @@ function getCurrentSheet(observation: ObservationTableRecord) {
     return isMobileObservationRecord(observation) ? observation.monitoring_sheet : undefined
 }
 
+function getRawSheetValues(observation: ObservationTableRecord): Record<string, unknown> | undefined {
+    return getCurrentSheet(observation)?.raw_values
+}
+
 function formatDateValue(value?: string, pattern: string = 'dd MMM yyyy') {
     if (!value) return '-'
 
@@ -170,6 +174,47 @@ function formatTextValue(value?: string | number | null) {
     return '-'
 }
 
+function pickTextValue(...values: unknown[]): string | number | undefined {
+    for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value
+        }
+
+        if (typeof value === 'string' && value.trim()) {
+            return value
+        }
+    }
+
+    return undefined
+}
+
+function pickNumericValue(...values: unknown[]): number | undefined {
+    for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value
+        }
+
+        if (typeof value === 'string' && value.trim()) {
+            const normalized = Number(value.toString().trim().replace(/\s+/g, '').replace(/,/g, ''))
+            if (Number.isFinite(normalized)) {
+                return normalized
+            }
+        }
+    }
+
+    return undefined
+}
+
+function pickDateValue(...values: unknown[]): string | undefined {
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim()) {
+            return value
+        }
+    }
+
+    return undefined
+}
+
 function toRecordedTime(value?: string) {
     if (!value) return 0
     const timestamp = new Date(value).getTime()
@@ -179,45 +224,95 @@ function toRecordedTime(value?: string) {
 function buildFlattenedObservationRow(observation: ObservationTableRecord): FlattenedObservationRow {
     const currentSheet = getCurrentSheet(observation)
     const entryForm = getEntryForm(observation)
-    const fieldRemarks = currentSheet?.field_remarks || currentSheet?.remarks || entryForm?.field_remarks || entryForm?.remarks || observation.crop_monitoring?.remarks
+    const rawSheet = getRawSheetValues(observation)
+    const fieldRemarks = pickTextValue(
+        currentSheet?.field_remarks,
+        currentSheet?.remarks,
+        entryForm?.field_remarks,
+        entryForm?.remarks,
+        rawSheet?.field_remarks,
+        rawSheet?.remarks,
+        observation.crop_monitoring?.remarks
+    )
 
     return {
-        dateRecorded: formatDateValue(currentSheet?.date_recorded || entryForm?.date_recorded || observation.date_recorded),
-        fieldId: formatTextValue(currentSheet?.field_id || currentSheet?.field_name || entryForm?.field_id || observation.field_name || entryForm?.selected_field),
-        section: formatTextValue(currentSheet?.section_name || observation.section_name),
-        blockId: formatTextValue(currentSheet?.block_id || observation.block_id),
-        area: formatNumericValue(currentSheet?.area ?? entryForm?.area ?? entryForm?.block_size),
-        irrigationType: formatTextValue(currentSheet?.irrigation_type || entryForm?.irrigation_type || observation.irrigation_management?.irrigation_type),
-        waterSource: formatTextValue(currentSheet?.water_source || entryForm?.water_source || observation.irrigation_management?.water_source),
-        tam: formatTextValue(currentSheet?.tam_mm || entryForm?.tam_mm || (entryForm?.tamm_area != null ? String(entryForm.tamm_area) : '')),
-        soilType: formatTextValue(currentSheet?.soil_type || entryForm?.soil_type || observation.soil_characteristics?.soil_type),
-        soilPh: formatNumericValue(currentSheet?.soil_ph ?? entryForm?.soil_ph ?? observation.soil_characteristics?.soil_ph),
+        dateRecorded: formatDateValue(pickDateValue(currentSheet?.date_recorded, entryForm?.date_recorded, rawSheet?.date_recorded, observation.date_recorded)),
+        fieldId: formatTextValue(pickTextValue(currentSheet?.field_id, currentSheet?.field_name, entryForm?.field_id, rawSheet?.field_id, rawSheet?.field_name, rawSheet?.Trial, observation.field_name, entryForm?.selected_field)),
+        section: formatTextValue(pickTextValue(currentSheet?.section_name, rawSheet?.section_name, rawSheet?.section, observation.section_name)),
+        blockId: formatTextValue(pickTextValue(currentSheet?.block_id, rawSheet?.block_id, observation.block_id)),
+        area: formatNumericValue(pickNumericValue(currentSheet?.area, entryForm?.area, entryForm?.block_size, rawSheet?.area)),
+        irrigationType: formatTextValue(pickTextValue(currentSheet?.irrigation_type, entryForm?.irrigation_type, rawSheet?.irrigation_type, observation.irrigation_management?.irrigation_type)),
+        waterSource: formatTextValue(pickTextValue(currentSheet?.water_source, entryForm?.water_source, rawSheet?.water_source, observation.irrigation_management?.water_source)),
+        tam: formatTextValue(pickTextValue(currentSheet?.tam_mm, entryForm?.tam_mm, rawSheet?.tam_mm, rawSheet?.tam, entryForm?.tamm_area)),
+        soilType: formatTextValue(pickTextValue(currentSheet?.soil_type, entryForm?.soil_type, rawSheet?.soil_type, observation.soil_characteristics?.soil_type)),
+        soilPh: formatNumericValue(pickNumericValue(currentSheet?.soil_ph, entryForm?.soil_ph, rawSheet?.soil_ph, rawSheet?.ph, rawSheet?.pH, observation.soil_characteristics?.soil_ph)),
         fieldRemarks: formatTextValue(fieldRemarks),
-        trialNumber: formatTextValue(currentSheet?.trial_number ?? entryForm?.trial_number ?? ''),
-        trialName: formatTextValue(currentSheet?.trial_name || entryForm?.trial_name),
-        contactPerson: formatTextValue(currentSheet?.contact_person || entryForm?.contact_person),
-        cropType: formatTextValue(currentSheet?.crop_type || entryForm?.crop_type || observation.crop_information?.crop_type),
-        cropClass: formatTextValue(currentSheet?.crop_class || entryForm?.crop_class),
-        plantingDate: formatDateValue(currentSheet?.planting_date || entryForm?.planting_date || observation.crop_information?.planting_date),
-        previousCuttingDate: formatDateValue(currentSheet?.previous_cutting_date || currentSheet?.previous_cutting || entryForm?.previous_cutting_date || entryForm?.cutting_date),
-        expectedHarvestDate: formatDateValue(currentSheet?.expected_harvest_date || entryForm?.expected_harvest_date || observation.crop_information?.expected_harvest_date),
-        stress: formatTextValue(currentSheet?.stress || entryForm?.stress || observation.crop_monitoring?.stress),
-        residueType: formatTextValue(currentSheet?.residue_type || entryForm?.residue_type),
-        residueManagementMethod: formatTextValue(currentSheet?.residue_management_method || entryForm?.residue_management_method),
-        residueRemarks: formatTextValue(currentSheet?.residual_management_remarks || entryForm?.residual_management_remarks),
-        fertilizerType: formatTextValue(currentSheet?.fertilizer_type || entryForm?.fertilizer_type || observation.nutrient_management?.fertilizer_type),
-        nutrientApplicationDate: formatDateValue(currentSheet?.nutrient_application_date || currentSheet?.fertilizer_application_date || entryForm?.nutrient_application_date || observation.nutrient_management?.application_date),
-        applicationRate: formatNumericValue(currentSheet?.application_rate ?? entryForm?.application_rate ?? observation.nutrient_management?.application_rate),
-        foliarSamplingDate: formatDateValue(currentSheet?.foliar_sampling_date || entryForm?.foliar_sampling_date),
-        herbicideName: formatTextValue(currentSheet?.herbicide_name || currentSheet?.weed_control || entryForm?.herbicide_name || observation.control_methods?.weed_control),
-        weedApplicationDate: formatDateValue(currentSheet?.weed_application_date || entryForm?.weed_application_date),
-        weedApplicationRate: formatNumericValue(currentSheet?.weed_application_rate ?? entryForm?.weed_application_rate),
-        pestRemarks: formatTextValue(currentSheet?.pest_remarks || currentSheet?.pest_control || entryForm?.pest_remarks || observation.control_methods?.pest_control || observation.crop_protection?.remarks),
-        diseaseRemarks: formatTextValue(currentSheet?.disease_remarks || currentSheet?.disease_control || entryForm?.disease_remarks || observation.control_methods?.disease_control),
-        harvestDate: formatDateValue(currentSheet?.harvest_date || entryForm?.harvest_date || observation.harvest?.harvest_date),
-        yield: formatNumericValue(currentSheet?.harvest_yield ?? currentSheet?.yield ?? entryForm?.yield ?? observation.harvest?.yield),
-        qualityRemarks: formatTextValue(currentSheet?.quality_remarks || entryForm?.quality_remarks),
-        created: formatDateTimeValue(currentSheet?.created_at || entryForm?.created_at || observation.created_at),
+        trialNumber: formatTextValue(pickTextValue(currentSheet?.trial_number, entryForm?.trial_number, rawSheet?.trial_number)),
+        trialName: formatTextValue(pickTextValue(currentSheet?.trial_name, entryForm?.trial_name, rawSheet?.trial_name)),
+        contactPerson: formatTextValue(pickTextValue(currentSheet?.contact_person, entryForm?.contact_person, rawSheet?.contact_person, rawSheet?.contact_person_scientist)),
+        cropType: formatTextValue(pickTextValue(currentSheet?.crop_type, entryForm?.crop_type, rawSheet?.crop_type, observation.crop_information?.crop_type)),
+        cropClass: formatTextValue(pickTextValue(currentSheet?.crop_class, entryForm?.crop_class, rawSheet?.crop_class)),
+        plantingDate: formatDateValue(pickDateValue(currentSheet?.planting_date, entryForm?.planting_date, rawSheet?.planting_date, observation.crop_information?.planting_date)),
+        previousCuttingDate: formatDateValue(pickDateValue(currentSheet?.previous_cutting_date, currentSheet?.previous_cutting, entryForm?.previous_cutting_date, entryForm?.cutting_date, rawSheet?.previous_cutting_date, rawSheet?.previous_cutting, rawSheet?.cutting_date)),
+        expectedHarvestDate: formatDateValue(pickDateValue(currentSheet?.expected_harvest_date, entryForm?.expected_harvest_date, rawSheet?.expected_harvest_date, observation.crop_information?.expected_harvest_date)),
+        stress: formatTextValue(pickTextValue(currentSheet?.stress, entryForm?.stress, rawSheet?.stress, observation.crop_monitoring?.stress)),
+        residueType: formatTextValue(pickTextValue(currentSheet?.residue_type, entryForm?.residue_type, rawSheet?.residue_type)),
+        residueManagementMethod: formatTextValue(pickTextValue(currentSheet?.residue_management_method, entryForm?.residue_management_method, rawSheet?.residue_management_method, rawSheet?.management_method)),
+        residueRemarks: formatTextValue(pickTextValue(currentSheet?.residual_management_remarks, entryForm?.residual_management_remarks, rawSheet?.residual_management_remarks, rawSheet?.residue_remarks)),
+        fertilizerType: formatTextValue(pickTextValue(
+            currentSheet?.fertilizer_type,
+            rawSheet?.fertilizer_type,
+            entryForm?.fertilizer_type,
+            observation.nutrient_management?.fertilizer_type,
+            rawSheet?.fertilizer_type_1
+        )),
+        nutrientApplicationDate: formatDateValue(pickDateValue(
+            currentSheet?.nutrient_application_date,
+            currentSheet?.fertilizer_application_date,
+            rawSheet?.application_date,
+            rawSheet?.nutrient_application_date,
+            rawSheet?.fertilizer_application_date,
+            entryForm?.nutrient_application_date,
+            observation.nutrient_management?.application_date,
+            typeof rawSheet?.fertilizer_application_date_1 === 'string' ? rawSheet.fertilizer_application_date_1 : undefined
+        )),
+        applicationRate: formatNumericValue(pickNumericValue(
+            currentSheet?.application_rate,
+            rawSheet?.application_rate,
+            entryForm?.application_rate,
+            observation.nutrient_management?.application_rate,
+            rawSheet?.fertilizer_application_rate_1
+        )),
+        foliarSamplingDate: formatDateValue(pickDateValue(currentSheet?.foliar_sampling_date, entryForm?.foliar_sampling_date, rawSheet?.foliar_sampling_date)),
+        herbicideName: formatTextValue(pickTextValue(
+            currentSheet?.herbicide_name,
+            rawSheet?.herbicide_name,
+            entryForm?.herbicide_name,
+            currentSheet?.weed_control,
+            rawSheet?.weed_control,
+            observation.control_methods?.weed_control,
+            rawSheet?.herbicide_name_1
+        )),
+        weedApplicationDate: formatDateValue(pickDateValue(
+            currentSheet?.weed_application_date,
+            rawSheet?.weed_application_date,
+            entryForm?.weed_application_date,
+            rawSheet?.herbicide_application_date,
+            typeof rawSheet?.herbicide_application_date_1 === 'string' ? rawSheet.herbicide_application_date_1 : undefined
+        )),
+        weedApplicationRate: formatNumericValue(pickNumericValue(
+            currentSheet?.weed_application_rate,
+            rawSheet?.weed_application_rate,
+            entryForm?.weed_application_rate,
+            rawSheet?.herbicide_application_rate,
+            rawSheet?.herbicide_application_rate_1
+        )),
+        pestRemarks: formatTextValue(pickTextValue(rawSheet?.pest_control, rawSheet?.pest_remarks, currentSheet?.pest_remarks, currentSheet?.pest_control, entryForm?.pest_remarks, observation.control_methods?.pest_control, observation.crop_protection?.remarks)),
+        diseaseRemarks: formatTextValue(pickTextValue(rawSheet?.disease_control, rawSheet?.disease_remarks, currentSheet?.disease_remarks, currentSheet?.disease_control, entryForm?.disease_remarks, observation.control_methods?.disease_control)),
+        harvestDate: formatDateValue(pickDateValue(rawSheet?.harvest_date, rawSheet?.actual_cutting_date, rawSheet?.cutting_date, currentSheet?.harvest_date, entryForm?.harvest_date, observation.harvest?.harvest_date)),
+        yield: formatNumericValue(pickNumericValue(rawSheet?.yield, rawSheet?.harvest_yield, currentSheet?.harvest_yield, currentSheet?.yield, entryForm?.yield, observation.harvest?.yield)),
+        qualityRemarks: formatTextValue(pickTextValue(currentSheet?.quality_remarks, entryForm?.quality_remarks, rawSheet?.quality_remarks, rawSheet?.cane_quality_remarks)),
+        created: formatDateTimeValue(pickDateValue(currentSheet?.created_at, entryForm?.created_at, rawSheet?.created_at, observation.created_at)),
     }
 }
 

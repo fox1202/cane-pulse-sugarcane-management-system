@@ -1030,6 +1030,7 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
         remarks: firstNonEmptyString(row.remarks, row.field_remarks) ?? undefined,
         image_url: toNullableString(row.image_url) ?? undefined,
         well_known_text: toNullableString(row.well_known_text) ?? undefined,
+        raw_values: { ...row },
         created_at: String(row.created_at || ''),
         updated_at: String(row.updated_at || row.created_at || ''),
     }

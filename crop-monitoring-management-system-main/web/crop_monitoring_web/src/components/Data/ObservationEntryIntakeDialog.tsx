@@ -26,6 +26,7 @@ import {
     type PredefinedField,
 } from '@/services/database.service';
 import { useAuth } from '@/contexts/AuthContext';
+import { LIVE_DATA_UPDATED_EVENT } from '@/lib/liveData';
 import {
     SATELLITE_HYBRID_LABELS_SOURCE,
     SATELLITE_TILE_SOURCES,
@@ -1387,12 +1388,17 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
             const savedEntry = await createObservationEntryFormSubmission(submission, submissionFields);
 
-            if (isCreatingCustomField) {
-                await Promise.all([
-                    queryClient.invalidateQueries({ queryKey: ['live-predefined-fields'] }),
-                    queryClient.invalidateQueries({ queryKey: ['overview-predefined-fields'] }),
-                ]);
-            }
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['field-records'] }),
+                queryClient.invalidateQueries({ queryKey: ['sugarcane-monitoring'] }),
+                queryClient.invalidateQueries({ queryKey: ['mobile-observation-records'] }),
+                queryClient.invalidateQueries({ queryKey: ['dashboard-sugarcane-analytics'] }),
+                queryClient.invalidateQueries({ queryKey: ['live-predefined-fields'] }),
+                queryClient.invalidateQueries({ queryKey: ['overview-predefined-fields'] }),
+                ...(isCreatingCustomField ? [queryClient.invalidateQueries({ queryKey: ['observation-entry-forms'] })] : []),
+            ]);
+
+            window.dispatchEvent(new CustomEvent(LIVE_DATA_UPDATED_EVENT));
 
             await onSubmitted();
             onSaved?.('Successfully saved to the database.');

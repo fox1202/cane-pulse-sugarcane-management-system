@@ -17,6 +17,7 @@ export function LiveQuerySync() {
                 queryClient.invalidateQueries({ queryKey: ['observations'] })
                 queryClient.invalidateQueries({ queryKey: ['sugarcane-monitoring'] })
                 queryClient.invalidateQueries({ queryKey: ['mobile-observation-records'] })
+                queryClient.invalidateQueries({ queryKey: ['field-records'] })
                 queryClient.invalidateQueries({ queryKey: ['dashboard-sugarcane-analytics'] })
                 queryClient.invalidateQueries({ queryKey: ['observation-entry-forms'] })
 
