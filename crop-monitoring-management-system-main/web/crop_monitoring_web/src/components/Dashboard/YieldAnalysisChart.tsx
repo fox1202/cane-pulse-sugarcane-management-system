@@ -32,6 +32,7 @@ import {
   getObservationDateValue,
   toFiniteObservationNumber,
 } from '@/utils/observationAnalytics'
+import { getAreaCropGroup } from '@/utils/cropGrouping'
 import { isValid, parseISO } from 'date-fns'
 
 interface YieldAnalysisChartProps {
@@ -1040,16 +1041,6 @@ function resolveRecordAreaHa(
       ?? entryForm?.geom_polygon
       ?? observation.field_registry?.geom
   )
-}
-
-function getAreaCropGroup(value?: string | null): AreaCropGroup {
-  const normalized = (value ?? '').trim().toLowerCase()
-
-  if (!normalized) return 'Unspecified'
-  if (/break\s*crop|breakcrop/.test(normalized)) return 'Break Crop'
-  if (/fallow|furrow|fullow/.test(normalized)) return 'Fallow Period'
-  if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
-  return 'Unspecified'
 }
 
 function getSugarcaneClassLabel(

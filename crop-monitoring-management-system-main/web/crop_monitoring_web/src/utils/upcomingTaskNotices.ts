@@ -1,5 +1,6 @@
 import { getFarmingCalendarTemplate, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
 import type { PredefinedField } from '@/services/database.service'
+import { getAreaCropGroup } from '@/utils/cropGrouping'
 import type { SugarcaneMonitoringRecord } from '@/types/database.types'
 import { getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
 
@@ -17,8 +18,6 @@ interface MonitoringFieldLookups {
     byIdentity: Map<string, PredefinedField>
     byName: Map<string, PredefinedField[]>
 }
-
-type AreaCropGroup = 'Sugarcane' | 'Break Crop' | 'Fallow Period' | 'Unspecified'
 
 export type TaskSeverity = 'overdue' | 'today' | 'soon' | 'planned'
 
@@ -96,16 +95,6 @@ function getTodayDateOnly(): string {
     const month = String(today.getMonth() + 1).padStart(2, '0')
     const day = String(today.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
-}
-
-function getAreaCropGroup(value?: string | null): AreaCropGroup {
-    const normalized = (value ?? '').trim().toLowerCase()
-
-    if (!normalized) return 'Unspecified'
-    if (/break\s*crop|breakcrop/.test(normalized)) return 'Break Crop'
-    if (/fallow|furrow|fullow/.test(normalized)) return 'Fallow Period'
-    if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
-    return 'Unspecified'
 }
 
 function addDaysToDateOnly(dateIso: string, daysToAdd: number): string | null {

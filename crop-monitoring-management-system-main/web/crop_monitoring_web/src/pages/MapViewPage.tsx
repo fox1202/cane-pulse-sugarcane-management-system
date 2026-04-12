@@ -47,6 +47,7 @@ import { LIVE_DATA_UPDATED_EVENT } from '@/lib/liveData'
 import type { Field } from '@/types/database.types'
 import { MapCenterObject } from '@/components/Map/MapCenterObject'
 import { SUGARCANE_CROP_CLASS_OPTIONS as SUGARCANE_CROP_CLASS_FALLBACKS } from '@/utils/cropClassOptions'
+import { getAreaCropGroup } from '@/utils/cropGrouping'
 import {
     SATELLITE_TILE_SOURCES,
     SATELLITE_HYBRID_LABELS_SOURCE,
@@ -153,13 +154,7 @@ function toOrdinal(value: number): string {
 }
 
 function getMapCropGroup(value?: string | null): MapCropGroup {
-    const normalized = String(value ?? '').trim().toLowerCase()
-
-    if (!normalized) return 'Unspecified'
-    if (/break\s*crop|breakcrop|soyabeans?|sugarbeans?|sunn\s*hemp|velvet\s*beans?|maize/.test(normalized)) return 'Break Crop'
-    if (/fallow|furrow|fullow|\bnone\b/.test(normalized)) return 'Fallow Period'
-    if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
-    return 'Unspecified'
+    return getAreaCropGroup(value, { treatNoneAsFallow: true })
 }
 
 function normalizeRequestedFilterValue(value?: string | null): string | null {

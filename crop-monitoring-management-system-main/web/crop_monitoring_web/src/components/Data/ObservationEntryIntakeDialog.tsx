@@ -38,6 +38,7 @@ import type {
     SugarcaneMonitoringRecord,
 } from '@/types/database.types';
 import { SUGARCANE_CROP_CLASS_OPTIONS } from '@/utils/cropClassOptions';
+import { deriveSugarcaneExpectedHarvestDate } from '@/utils/dateOnly';
 import { buildObservationCalendarSearch } from '@/utils/farmingCalendarLinks';
 
 interface ObservationEntryIntakeDialogProps {
@@ -385,6 +386,14 @@ function buildFreshFormData(
         ...currentSubmission,
         collector_id: collectorId,
     };
+    const resolvedCropType = matchedField?.crop_type || preserved.crop_type || empty.crop_type;
+    const resolvedExpectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
+        preserved.planting_date,
+        resolvedCropType,
+        preserved.expected_harvest_date,
+        preserved.previous_cutting_date || preserved.cutting_date,
+        preserved.harvest_date
+    ) || '';
 
     if (!matchedField) {
         return {
@@ -400,7 +409,8 @@ function buildFreshFormData(
             longitude: 0,
             spatial_data: undefined,
             geom_polygon: undefined,
-            crop_type: preserved.crop_type || empty.crop_type,
+            crop_type: resolvedCropType,
+            expected_harvest_date: resolvedExpectedHarvestDate,
         };
     }
 
@@ -419,7 +429,8 @@ function buildFreshFormData(
         longitude: matchedField.longitude ?? empty.longitude,
         spatial_data: matchedField.geom ?? undefined,
         geom_polygon: matchedField.geom ?? undefined,
-        crop_type: matchedField.crop_type || preserved.crop_type || empty.crop_type,
+        crop_type: resolvedCropType,
+        expected_harvest_date: resolvedExpectedHarvestDate,
         irrigation_type: matchedField.irrigation_type || preserved.irrigation_type || '',
         water_source: matchedField.water_source || preserved.water_source || '',
         tam_mm: matchedField.tam_mm || preserved.tam_mm || '',
@@ -704,6 +715,13 @@ function buildLoadedSavedRecordData(
         .map((item) => normalizeHerbicideApplicationInput(item))
         .filter((item): item is HerbicideApplication => item !== null);
     const remarks = savedEntry.remarks || savedEntry.field_remarks || '';
+    const derivedExpectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
+        savedEntry.planting_date,
+        savedEntry.crop_type,
+        savedEntry.expected_harvest_date,
+        previousCuttingDate,
+        savedEntry.harvest_date
+    ) || '';
 
     const loaded = buildFreshFormData(
         {
@@ -758,7 +776,7 @@ function buildLoadedSavedRecordData(
         planting_date: savedEntry.planting_date || '',
         previous_cutting_date: previousCuttingDate,
         cutting_date: cuttingDate,
-        expected_harvest_date: savedEntry.expected_harvest_date || '',
+        expected_harvest_date: derivedExpectedHarvestDate,
         irrigation_type: savedEntry.irrigation_type || loaded.irrigation_type || '',
         water_source: savedEntry.water_source || loaded.water_source || '',
         tam_mm: savedEntry.tam_mm || loaded.tam_mm || '',
@@ -1091,6 +1109,80 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
     const updateField = (field: keyof ObservationEntryFormSubmissionInput, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleAreaChange = (value: string) => {
+        const parsedArea = parseOptionalNumericInput(value);
+
+        setFormData((prev) => ({
+            ...prev,
+            area: parsedArea,
+            block_size: parsedArea,
+        }));
+    };
+
+    const handlePlantingDateChange = (value: string) => {
+        setFormData((prev) => {
+            const cropType = prev.crop_type || 'Sugarcane';
+            const shouldAutoFill = !cropType || cropType.trim().toLowerCase() === 'sugarcane';
+
+            return {
+                ...prev,
+                planting_date: value,
+                expected_harvest_date: shouldAutoFill
+                    ? deriveSugarcaneExpectedHarvestDate(
+                        value,
+                        cropType,
+                        prev.expected_harvest_date,
+                        prev.previous_cutting_date || prev.cutting_date,
+                        prev.harvest_date
+                    ) || ''
+                    : prev.expected_harvest_date || '',
+            };
+        });
+    };
+
+    const handlePreviousCuttingDateChange = (value: string) => {
+        setFormData((prev) => {
+            const cropType = prev.crop_type || 'Sugarcane';
+            const shouldAutoFill = !cropType || cropType.trim().toLowerCase() === 'sugarcane';
+
+            return {
+                ...prev,
+                previous_cutting_date: value,
+                cutting_date: value,
+                expected_harvest_date: shouldAutoFill
+                    ? deriveSugarcaneExpectedHarvestDate(
+                        prev.planting_date,
+                        cropType,
+                        prev.expected_harvest_date,
+                        value,
+                        prev.harvest_date
+                    ) || ''
+                    : prev.expected_harvest_date || '',
+            };
+        });
+    };
+
+    const handleHarvestDateChange = (value: string) => {
+        setFormData((prev) => {
+            const cropType = prev.crop_type || 'Sugarcane';
+            const shouldAutoFill = !cropType || cropType.trim().toLowerCase() === 'sugarcane';
+
+            return {
+                ...prev,
+                harvest_date: value,
+                expected_harvest_date: shouldAutoFill
+                    ? deriveSugarcaneExpectedHarvestDate(
+                        prev.planting_date,
+                        cropType,
+                        prev.expected_harvest_date,
+                        prev.previous_cutting_date || prev.cutting_date,
+                        value
+                    ) || ''
+                    : prev.expected_harvest_date || '',
+            };
+        });
     };
 
     const applyFertilizerApplicationRows = (rows: FertilizerApplication[]) => {
@@ -1586,12 +1678,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                         )}
                         <Grid size={{ xs: 12, md: isCreatingCustomField ? 6 : 4 }}>
                             <TextField
+                                type="number"
                                 fullWidth
                                 label="Hectares (ha)"
                                 value={formData.area ?? formData.block_size ?? ''}
-                                InputProps={{ readOnly: true }}
-                                disabled
-                                helperText={isCreatingCustomField ? 'Area is estimated from the drawn boundary.' : undefined}
+                                onChange={(e) => handleAreaChange(e.target.value)}
+                                inputProps={{ min: 0, step: '0.01' }}
+                                helperText={isCreatingCustomField
+                                    ? 'Area is estimated from the drawn boundary first, but you can edit it before saving.'
+                                    : 'Auto-filled from the selected field, but editable before saving.'}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -1729,6 +1824,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         ...prev,
                                         crop_type: nextCropType,
                                         crop_class: nextOptions.includes(prev.crop_class || '') ? prev.crop_class : '',
+                                        expected_harvest_date: deriveSugarcaneExpectedHarvestDate(
+                                            prev.planting_date,
+                                            nextCropType,
+                                            prev.expected_harvest_date,
+                                            prev.previous_cutting_date || prev.cutting_date,
+                                            prev.harvest_date
+                                        ) || prev.expected_harvest_date || '',
                                     }));
                                 }}
                                 SelectProps={{
@@ -1767,7 +1869,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Planting Date"
                                 InputLabelProps={{ shrink: true }}
                                 value={formData.planting_date || ''}
-                                onChange={(e) => updateField('planting_date', e.target.value)}
+                                onChange={(e) => handlePlantingDateChange(e.target.value)}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -1787,11 +1889,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Previous Cutting Date"
                                 InputLabelProps={{ shrink: true }}
                                 value={formData.previous_cutting_date || formData.cutting_date || ''}
-                                onChange={(e) => setFormData((prev) => ({
-                                    ...prev,
-                                    previous_cutting_date: e.target.value,
-                                    cutting_date: e.target.value,
-                                }))}
+                                onChange={(e) => handlePreviousCuttingDateChange(e.target.value)}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -1802,6 +1900,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 InputLabelProps={{ shrink: true }}
                                 value={formData.expected_harvest_date || ''}
                                 onChange={(e) => updateField('expected_harvest_date', e.target.value)}
+                                helperText={formData.crop_type === 'Sugarcane' && formData.planting_date
+                                    ? 'Auto-filled as 1 year after the planting date for sugarcane.'
+                                    : formData.crop_type === 'Sugarcane' && (formData.previous_cutting_date || formData.cutting_date)
+                                        ? 'Falls back to 1 year after the previous cutting date when planting date is missing.'
+                                    : formData.crop_type === 'Sugarcane' && formData.harvest_date
+                                        ? 'Falls back to the harvest date when planting date is missing.'
+                                    : undefined}
                             />
                         </Grid>
                         {(plantingCalendarSearch || cuttingCalendarSearch) && (
@@ -2119,7 +2224,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Harvest Date"
                                 InputLabelProps={{ shrink: true }}
                                 value={formData.harvest_date || ''}
-                                onChange={(e) => updateField('harvest_date', e.target.value)}
+                                onChange={(e) => handleHarvestDateChange(e.target.value)}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -2164,29 +2269,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     }}
                 >
                     Cancel
-                </Button>
-                <Button
-                    onClick={() => handleSubmit('add_another')}
-                    variant="outlined"
-                    disabled={saving}
-                    sx={{
-                        borderRadius: '999px',
-                        px: 2.3,
-                        py: 0.95,
-                        borderColor: 'rgba(244,183,64,0.42)',
-                        bgcolor: 'rgba(255,255,255,0.9)',
-                        color: '#8a6500',
-                        fontWeight: 800,
-                        textTransform: 'none',
-                        boxShadow: '0 10px 24px rgba(244,183,64,0.12)',
-                        '&:hover': {
-                            borderColor: 'rgba(244,183,64,0.7)',
-                            bgcolor: 'rgba(244,183,64,0.1)',
-                            boxShadow: '0 12px 28px rgba(244,183,64,0.16)',
-                        },
-                    }}
-                >
-                    {saving && saveMode === 'add_another' ? 'Saving...' : 'Save & Add Another Update'}
                 </Button>
                 <Button
                     onClick={() => handleSubmit('close')}

@@ -28,6 +28,7 @@ import { getFarmingCalendarTemplate, type FarmingCalendarTemplate } from '@/data
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
 import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
 import type { SugarcaneMonitoringRecord } from '@/types/database.types'
+import { getAreaCropGroup } from '@/utils/cropGrouping'
 import { formatDateOnlyLabel, getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
 
 const MINT = '#56b870'
@@ -156,8 +157,6 @@ interface AreaFieldSnapshot {
     cropType: string
     areaHa: number
 }
-
-type AreaCropGroup = 'Sugarcane' | 'Break Crop' | 'Fallow Period' | 'Unspecified'
 
 interface AreaOverviewDatum {
     label: string
@@ -353,16 +352,6 @@ function getTodayDateOnly(): string {
 
 function isTrialLike(value?: string | null): boolean {
     return /\btrial\b/i.test((value ?? '').trim())
-}
-
-function getAreaCropGroup(value?: string | null): AreaCropGroup {
-    const normalized = (value ?? '').trim().toLowerCase()
-
-    if (!normalized) return 'Unspecified'
-    if (/break\s*crop|breakcrop/.test(normalized)) return 'Break Crop'
-    if (/fallow|furrow|fullow/.test(normalized)) return 'Fallow Period'
-    if (/sugar\s*cane|plant\s*cane|\bratoon\b|\bcane\b/.test(normalized)) return 'Sugarcane'
-    return 'Unspecified'
 }
 
 function formatAreaHa(value: number): string {

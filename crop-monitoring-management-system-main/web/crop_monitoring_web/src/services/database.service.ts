@@ -9,7 +9,7 @@ import type {
     SugarcaneMonitoringRecord,
 } from '@/types/database.types'
 import { HARDCODED_FIELDS, HARDCODED_FIELD_SHAPEFILE } from '@/data/hardcodedFieldShapefile'
-import { hasDateOnlyValue, normalizeDateOnlyValue } from '@/utils/dateOnly'
+import { deriveSugarcaneExpectedHarvestDate, hasDateOnlyValue, normalizeDateOnlyValue } from '@/utils/dateOnly'
 import { deriveGrowthStageLabel } from '@/utils/growthStage'
 
 const USE_HARDCODED_FIELD_REGISTRY = false
@@ -935,6 +935,14 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
     ) ?? undefined
     const weedApplicationDate = toNullableDateValue(row.weed_application_date) ?? undefined
     const harvestDate = toNullableDateValue(row.harvest_date ?? row.actual_cutting_date) ?? undefined
+    const plantingDate = toNullableDateValue(row.planting_date) ?? undefined
+    const expectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
+        plantingDate,
+        toNullableString(row.crop_type),
+        row.expected_harvest_date,
+        previousCutting,
+        harvestDate
+    ) ?? undefined
     const geometry = row.geom_polygon ?? row.geom ?? row.geometry ?? row.spatial_data ?? undefined
     const derivedCoordinates = deriveFieldCoordinatesFromGeometry(geometry)
     const fertilizerApplications = normalizeFertilizerApplications(row.fertilizer_applications ?? extractFertilizerApplicationsFromColumns(row), {
@@ -976,10 +984,10 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
         variety: toNullableString(row.variety) ?? undefined,
         ratoon_number: toNullableNumber(row.ratoon_number) ?? undefined,
         crop_stage: derivedCropStage ?? undefined,
-        planting_date: toNullableDateValue(row.planting_date) ?? undefined,
+        planting_date: plantingDate,
         previous_cutting: previousCutting,
         previous_cutting_date: previousCutting,
-        expected_harvest_date: toNullableDateValue(row.expected_harvest_date) ?? undefined,
+        expected_harvest_date: expectedHarvestDate,
         stress: toNullableString(row.stress) ?? undefined,
         tam_mm: firstNonEmptyString(row.tam_mm, row.tam) ?? undefined,
         soil_type: toNullableString(row.soil_type) ?? undefined,
@@ -1250,6 +1258,13 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
         cutting_date: submission.cutting_date,
         date_recorded: submission.date_recorded,
     })
+    const expectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
+        submission.planting_date,
+        submission.crop_type || submission.crop_class,
+        submission.expected_harvest_date,
+        submission.previous_cutting_date || submission.cutting_date,
+        submission.harvest_date
+    )
 
     return {
         Trial: toNullableString(submission.field_name || submission.field_id),
@@ -1277,7 +1292,7 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
         stress: toNullableString(submission.stress),
         planting_date: toNullableDateValue(submission.planting_date),
         cutting_date: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
-        expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
+        expected_harvest_date: toNullableDateValue(expectedHarvestDate),
         residue_type: toNullableString(submission.residue_type),
         management_method: toNullableString(submission.residue_management_method),
         residue_remarks: toNullableString(submission.residual_management_remarks),
@@ -1378,6 +1393,14 @@ function buildComparableHerbicideApplications(
 }
 
 function buildSubmissionDuplicateFingerprint(submission: ObservationEntryFormSubmissionInput): string {
+    const expectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
+        submission.planting_date,
+        submission.crop_type || submission.crop_class,
+        submission.expected_harvest_date,
+        submission.previous_cutting_date || submission.cutting_date,
+        submission.harvest_date
+    )
+
     const fingerprint = {
         field_name: normalizeComparableText(firstNonEmptyString(submission.field_name, submission.field_id, submission.selected_field)),
         section_name: normalizeComparableText(submission.section_name),
@@ -1392,7 +1415,7 @@ function buildSubmissionDuplicateFingerprint(submission: ObservationEntryFormSub
         variety: normalizeComparableText(submission.variety),
         planting_date: toNullableDateValue(submission.planting_date),
         previous_cutting_date: toNullableDateValue(submission.previous_cutting_date ?? submission.cutting_date),
-        expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
+        expected_harvest_date: toNullableDateValue(expectedHarvestDate),
         irrigation_type: normalizeComparableText(submission.irrigation_type),
         water_source: normalizeComparableText(submission.water_source),
         tam: normalizeComparableNumber(submission.tam_mm ?? submission.tamm_area, 4),
@@ -1427,6 +1450,14 @@ function buildSubmissionDuplicateFingerprint(submission: ObservationEntryFormSub
 }
 
 function buildMonitoringRowDuplicateFingerprint(row: SugarcaneMonitoringRecord): string {
+    const expectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
+        row.planting_date,
+        row.crop_type || row.crop_class,
+        row.expected_harvest_date,
+        row.previous_cutting_date || row.previous_cutting,
+        row.harvest_date
+    )
+
     const fingerprint = {
         field_name: normalizeComparableText(firstNonEmptyString(row.field_name, row.field_id)),
         section_name: normalizeComparableText(row.section_name),
@@ -1441,7 +1472,7 @@ function buildMonitoringRowDuplicateFingerprint(row: SugarcaneMonitoringRecord):
         variety: normalizeComparableText(row.variety),
         planting_date: toNullableDateValue(row.planting_date),
         previous_cutting_date: toNullableDateValue(row.previous_cutting_date ?? row.previous_cutting),
-        expected_harvest_date: toNullableDateValue(row.expected_harvest_date),
+        expected_harvest_date: toNullableDateValue(expectedHarvestDate),
         irrigation_type: normalizeComparableText(row.irrigation_type),
         water_source: normalizeComparableText(row.water_source),
         tam: normalizeComparableNumber(row.tam_mm, 4),

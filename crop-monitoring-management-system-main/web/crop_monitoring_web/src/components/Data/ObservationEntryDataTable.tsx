@@ -89,7 +89,6 @@ export const SUGARCANE_MONITORING_SHEET_COLUMNS: SugarcaneMonitoringSheetColumn[
     { key: 'contact_person', label: 'contact_person_scientist', minWidth: 210, wrap: true, getValue: (record) => formatTextValue(record.contact_person) },
     { key: 'crop_type', label: 'crop_type', minWidth: 140, getValue: (record) => formatTextValue(record.crop_type) },
     { key: 'crop_class', label: 'crop_class', minWidth: 150, getValue: (record) => formatTextValue(record.crop_class) },
-    { key: 'variety', label: 'variety', minWidth: 150, getValue: (record) => formatTextValue(record.variety) },
     { key: 'planting_date', label: 'planting_date', minWidth: 160, calendarAnchor: 'planting', getValue: (record) => formatDateValue(record.planting_date) },
     { key: 'previous_cutting_date', label: 'cutting_date', minWidth: 190, calendarAnchor: 'cutting', getValue: (record) => formatDateValue(record.previous_cutting_date ?? record.previous_cutting) },
     { key: 'expected_harvest_date', label: 'expected_harvest_date', minWidth: 210, getValue: (record) => formatDateValue(record.expected_harvest_date) },

@@ -128,3 +128,47 @@ export function getDateOnlyTimestamp(value: unknown): number {
     const [year, month, day] = normalized.split('-').map(Number)
     return new Date(year, month - 1, day).getTime()
 }
+
+export function addYearsToDateOnly(value: unknown, years: number): string | null {
+    const normalized = normalizeDateOnlyValue(value)
+    if (!normalized || !Number.isInteger(years)) {
+        return null
+    }
+
+    const [year, month, day] = normalized.split('-').map(Number)
+    const exact = buildNormalizedDate(year + years, month, day)
+    if (exact) {
+        return exact
+    }
+
+    // Keep leap-day values usable in non-leap years.
+    if (month === 2 && day === 29) {
+        return buildNormalizedDate(year + years, 2, 28)
+    }
+
+    return null
+}
+
+export function deriveSugarcaneExpectedHarvestDate(
+    plantingDate: unknown,
+    cropType?: unknown,
+    explicitExpectedHarvestDate?: unknown,
+    previousCuttingDate?: unknown,
+    harvestDate?: unknown
+): string | null {
+    const explicit = normalizeDateOnlyValue(explicitExpectedHarvestDate)
+    if (explicit) {
+        return explicit
+    }
+
+    const normalizedCropType = String(cropType ?? '').trim().toLowerCase()
+    if (normalizedCropType && normalizedCropType !== 'sugarcane') {
+        return null
+    }
+
+    return (
+        addYearsToDateOnly(plantingDate, 1)
+        || addYearsToDateOnly(previousCuttingDate, 1)
+        || normalizeDateOnlyValue(harvestDate)
+    )
+}
