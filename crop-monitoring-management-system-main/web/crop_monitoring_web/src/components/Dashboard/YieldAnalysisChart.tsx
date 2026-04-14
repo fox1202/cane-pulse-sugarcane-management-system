@@ -1150,9 +1150,26 @@ function isFallbackLabel(value?: string | null): boolean {
   return !normalized || normalized.startsWith('unspecified')
 }
 
-function formatDatabaseCropClassLabel(value?: string | null): string {
-  const normalized = (value ?? '').trim()
-  return normalized || 'Blank / Null'
+function resolveDatabaseCropClassLabel(cropClass?: string | null, cropType?: string | null): string {
+  const normalizedClass = (cropClass ?? '').trim()
+  if (normalizedClass) {
+    return normalizedClass
+  }
+
+  const normalizedType = (cropType ?? '').trim()
+  if (!normalizedType) {
+    return 'Blank / Null'
+  }
+
+  if (getAreaCropGroup(normalizedType, { treatNoneAsFallow: true }) === 'Sugarcane') {
+    return 'Unspecified cane'
+  }
+
+  if (/^break\s*crop$/i.test(normalizedType)) {
+    return 'Unspecified break crop'
+  }
+
+  return normalizedType
 }
 
 function resolvePredefinedFieldAreaHa(field: PredefinedField): number | null {
@@ -1178,17 +1195,38 @@ function buildPredefinedFieldIdentity(field: Pick<PredefinedField, 'field_name' 
     .join('|')
 }
 
-function getPredefinedFieldTimestamp(field: PredefinedField): number {
-  const candidates = [field.updated_at, field.created_at, field.date_recorded]
+function getOptionalTimestamp(value?: string | null): number {
+  const parsed = Date.parse(String(value ?? ''))
+  return Number.isFinite(parsed) ? parsed : 0
+}
 
-  for (const candidate of candidates) {
-    const parsed = Date.parse(String(candidate ?? ''))
-    if (Number.isFinite(parsed)) {
-      return parsed
-    }
+function getPredefinedFieldRecordedTimestamp(field: PredefinedField): number {
+  return getOptionalTimestamp(field.date_recorded)
+}
+
+function isNewerPredefinedFieldRecord(candidate: PredefinedField, current: PredefinedField): boolean {
+  const candidateRecorded = getPredefinedFieldRecordedTimestamp(candidate)
+  const currentRecorded = getPredefinedFieldRecordedTimestamp(current)
+
+  if (candidateRecorded !== currentRecorded) {
+    return candidateRecorded > currentRecorded
   }
 
-  return 0
+  const candidateUpdated = getOptionalTimestamp(candidate.updated_at)
+  const currentUpdated = getOptionalTimestamp(current.updated_at)
+
+  if (candidateUpdated !== currentUpdated) {
+    return candidateUpdated > currentUpdated
+  }
+
+  const candidateCreated = getOptionalTimestamp(candidate.created_at)
+  const currentCreated = getOptionalTimestamp(current.created_at)
+
+  if (candidateCreated !== currentCreated) {
+    return candidateCreated > currentCreated
+  }
+
+  return String(candidate.id ?? '') > String(current.id ?? '')
 }
 
 function formatMetricValue(value: number | null, unit = '', digits = 2): string {
@@ -1404,6 +1442,29 @@ function getBreakCropLabel(cropClass?: string | null, variety?: string | null): 
   return 'Unspecified break crop'
 }
 
+function getMeasuredFieldCropClassLabel(field: FieldSnapshot): string {
+  if (field.cropGroup === 'Sugarcane') {
+    return field.sugarcaneClass || 'Unspecified cane'
+  }
+
+  if (field.cropGroup === 'Break Crop') {
+    return field.breakCropType || 'Unspecified break crop'
+  }
+
+  if (field.cropGroup === 'Fallow Period') {
+    return 'None'
+  }
+
+  return resolveDatabaseCropClassLabel(field.databaseCropClass, field.cropTypeRaw)
+}
+
+function canFilterByCropClassLabel(label: string): boolean {
+  const normalized = label.trim().toLowerCase()
+  return normalized !== 'blank / null'
+    && normalized !== 'unspecified cane'
+    && normalized !== 'unspecified break crop'
+}
+
 function getPhBand(value: number): { label: string; range: string; color: string } {
   if (value < 5.5) {
     return {
@@ -1549,7 +1610,13 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         monitoring?.crop_class
       )
       const cropClass = pickText(entryForm?.crop_class, monitoring?.crop_class)
-      const databaseCropClass = pickText(monitoring?.crop_class)
+      const databaseCropClass = pickText(
+        monitoring?.crop_class,
+        monitoring?.crop_type,
+        entryForm?.crop_class,
+        entryForm?.crop_type,
+        observation.crop_information?.crop_type
+      )
       const cropGroup = getAreaCropGroup(`${rawCropType} ${cropClass}`.trim() || rawCropType)
       const variety = pickText(
         observation.crop_information?.variety,
@@ -1915,52 +1982,58 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     [measuredFields]
   )
 
-  const cropClassAreaCoverageData = useMemo(
-    () => {
-      const latestByField = new Map<string, PredefinedField>()
-
-      liveFields.forEach((field) => {
-        const identity = buildPredefinedFieldIdentity(field)
-        if (!identity.replace(/\|/g, '')) {
-          return
-        }
-
-        const existing = latestByField.get(identity)
-        if (!existing || getPredefinedFieldTimestamp(field) >= getPredefinedFieldTimestamp(existing)) {
-          latestByField.set(identity, field)
-        }
-      })
-
-      return Array.from(latestByField.values())
-        .reduce<Map<string, { value: number; fieldCount: number }>>((grouped, field) => {
-          const areaHa = resolvePredefinedFieldAreaHa(field)
-          if (areaHa === null || areaHa <= 0) {
-            return grouped
-          }
-
-          const label = formatDatabaseCropClassLabel(field.crop_class)
-          const existing = grouped.get(label) ?? { value: 0, fieldCount: 0 }
-          existing.value += areaHa
-          existing.fieldCount += 1
-          grouped.set(label, existing)
-          return grouped
-        }, new Map())
-    },
-    [liveFields]
-  )
-
   const cropClassAreaChartData = useMemo(
-    () => Array.from(cropClassAreaCoverageData.entries())
-      .map(([label, summary]) => ({
-        label,
-        value: Number(summary.value.toFixed(2)),
-        fieldCount: summary.fieldCount,
-        color: AREA_COLORS.unspecified,
-      }))
-      .sort((left, right) => right.value - left.value || left.label.localeCompare(right.label))
-      .map((item, index) => ({
+    () => {
+      const baseData = measuredFields.length > 0
+        ? createCoverageData(measuredFields, getMeasuredFieldCropClassLabel)
+        : (() => {
+          const latestByField = new Map<string, PredefinedField>()
+
+          liveFields.forEach((field) => {
+            const identity = buildPredefinedFieldIdentity(field)
+            if (!identity.replace(/\|/g, '')) {
+              return
+            }
+
+            const existing = latestByField.get(identity)
+            if (!existing || isNewerPredefinedFieldRecord(field, existing)) {
+              latestByField.set(identity, field)
+            }
+          })
+
+          return Array.from(latestByField.values())
+            .reduce<Map<string, { value: number; fieldCount: number }>>((grouped, field) => {
+              const areaHa = resolvePredefinedFieldAreaHa(field)
+              if (areaHa === null || areaHa <= 0) {
+                return grouped
+              }
+
+              const label = resolveDatabaseCropClassLabel(field.crop_class, field.crop_type)
+              const existing = grouped.get(label) ?? { value: 0, fieldCount: 0 }
+              existing.value += areaHa
+              existing.fieldCount += 1
+              grouped.set(label, existing)
+              return grouped
+            }, new Map())
+        })()
+
+      const items = Array.isArray(baseData)
+        ? baseData
+        : Array.from(baseData.entries())
+          .map(([label, summary]) => ({
+            label,
+            value: Number(summary.value.toFixed(2)),
+            fieldCount: summary.fieldCount,
+            color: AREA_COLORS.unspecified,
+          }))
+          .sort((left, right) => right.value - left.value || left.label.localeCompare(right.label))
+          .map((item, index) => ({
+            ...item,
+            color: PALETTE[index % PALETTE.length],
+          }))
+
+      return items.map((item) => ({
         ...item,
-        color: PALETTE[index % PALETTE.length],
         navigation: (() => {
           const cropGroup = getAreaCropGroup(item.label, { treatNoneAsFallow: true })
           const searchParams: DashboardMapSearchParams = {}
@@ -1969,19 +2042,22 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
             searchParams.cropType = cropGroup
           }
 
-          if (item.label !== 'Blank / Null') {
+          if (canFilterByCropClassLabel(item.label)) {
             searchParams.cropClass = item.label
           }
 
           return Object.keys(searchParams).length > 0 ? { searchParams } : undefined
         })(),
-      })),
-    [cropClassAreaCoverageData]
+      }))
+    },
+    [liveFields, measuredFields]
   )
 
   const totalCropClassArea = useMemo(
-    () => cropClassAreaChartData.reduce((sum, item) => sum + item.value, 0),
-    [cropClassAreaChartData]
+    () => measuredFields.length > 0
+      ? Number(totalMeasuredArea.toFixed(2))
+      : cropClassAreaChartData.reduce((sum, item) => sum + item.value, 0),
+    [cropClassAreaChartData, measuredFields.length, totalMeasuredArea]
   )
 
   const sugarcaneRatoonData = useMemo(
