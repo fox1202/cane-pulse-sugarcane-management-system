@@ -22,12 +22,10 @@ import {
     Pie,
     PieChart as RechartsPieChart,
     ResponsiveContainer,
-    Tooltip as RechartsTooltip,
 } from 'recharts'
-import { getFarmingCalendarTemplate, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
+import { getFarmingCalendarTemplate, HARVEST_PROXIMITY_TASKS, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
 import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
-import type { SugarcaneMonitoringRecord } from '@/types/database.types'
 import { getAreaCropGroup } from '@/utils/cropGrouping'
 import { formatDateOnlyLabel, getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
 
@@ -142,15 +140,6 @@ function StatusBadge({ text, tone = 'mint' }: { text: string; tone?: 'mint' | 'p
     )
 }
 
-interface FieldSnapshot {
-    fieldKey: string
-    fieldLabel: string
-    cropType: string
-    areaHa: number | null
-    isTrial: boolean
-    recordedDate: string
-}
-
 interface AreaFieldSnapshot {
     fieldKey: string
     fieldLabel: string
@@ -173,6 +162,7 @@ interface CalendarFieldSeed {
     plantingDate: string
     cutDate: string
     recordedDate: string
+    expectedHarvestDate: string
 }
 
 type TaskSeverity = 'overdue' | 'today' | 'soon' | 'planned'
@@ -316,19 +306,6 @@ function getGeometryAreaHa(geometry: any): number | null {
     return Number((areaSqMeters / 10_000).toFixed(2))
 }
 
-function resolveMonitoringAreaHa(record: SugarcaneMonitoringRecord): number | null {
-    if (typeof record.area === 'number' && Number.isFinite(record.area) && record.area > 0) {
-        return Number(record.area.toFixed(2))
-    }
-
-    const recordGeometryArea = getGeometryAreaHa(record.geom_polygon)
-    if (recordGeometryArea !== null && recordGeometryArea > 0) {
-        return recordGeometryArea
-    }
-
-    return null
-}
-
 function resolvePredefinedFieldAreaHa(field: PredefinedField): number | null {
     if (typeof field.area === 'number' && Number.isFinite(field.area) && field.area > 0) {
         return Number(field.area.toFixed(2))
@@ -350,12 +327,44 @@ function getTodayDateOnly(): string {
     return `${year}-${month}-${day}`
 }
 
-function isTrialLike(value?: string | null): boolean {
-    return /\btrial\b/i.test((value ?? '').trim())
-}
-
 function formatAreaHa(value: number): string {
     return `${value.toFixed(2)} ha`
+}
+
+function getOptionalDateTimestamp(value?: string | null): number {
+    const normalized = (value ?? '').trim()
+
+    if (!normalized) {
+        return 0
+    }
+
+    const parsed = Date.parse(normalized)
+    return Number.isFinite(parsed) ? parsed : 0
+}
+
+function isFieldRecordNewer(candidate: PredefinedField, current: PredefinedField): boolean {
+    const candidateRecordedDate = getDateOnlyTimestamp(normalizeDateOnlyValue(candidate.date_recorded) || '')
+    const currentRecordedDate = getDateOnlyTimestamp(normalizeDateOnlyValue(current.date_recorded) || '')
+
+    if (candidateRecordedDate !== currentRecordedDate) {
+        return candidateRecordedDate > currentRecordedDate
+    }
+
+    const candidateUpdatedAt = getOptionalDateTimestamp(candidate.updated_at)
+    const currentUpdatedAt = getOptionalDateTimestamp(current.updated_at)
+
+    if (candidateUpdatedAt !== currentUpdatedAt) {
+        return candidateUpdatedAt > currentUpdatedAt
+    }
+
+    const candidateCreatedAt = getOptionalDateTimestamp(candidate.created_at)
+    const currentCreatedAt = getOptionalDateTimestamp(current.created_at)
+
+    if (candidateCreatedAt !== currentCreatedAt) {
+        return candidateCreatedAt > currentCreatedAt
+    }
+
+    return String(candidate.id ?? '') > String(current.id ?? '')
 }
 
 function getDueLabel(daysUntil: number): string {
@@ -708,6 +717,8 @@ function AreaPieChart({
     totalAreaHa: number
 }) {
     const chartData = data.filter((entry) => entry.areaHa > 0)
+    const [hoveredAreaLabel, setHoveredAreaLabel] = useState<string | null>(null)
+    const activeEntry = chartData.find((entry) => entry.label === hoveredAreaLabel) ?? chartData[0] ?? null
 
     if (totalAreaHa <= 0) {
         return (
@@ -781,6 +792,48 @@ function AreaPieChart({
             </Box>
 
             <Box sx={{ position: 'relative', height: { xs: 300, sm: 320 } }}>
+                {activeEntry ? (
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            top: 8,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 2,
+                            minWidth: 190,
+                            maxWidth: 'calc(100% - 24px)',
+                            px: 1.25,
+                            py: 0.9,
+                            borderRadius: '16px',
+                            border: `1px solid ${activeEntry.color}33`,
+                            bgcolor: 'rgba(255,255,255,0.94)',
+                            boxShadow: '0 14px 32px rgba(35,64,52,0.1)',
+                            pointerEvents: 'none',
+                            backdropFilter: 'blur(12px)',
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.35 }}>
+                            <Box
+                                sx={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: '999px',
+                                    bgcolor: activeEntry.color,
+                                    flexShrink: 0,
+                                }}
+                            />
+                            <Typography sx={{ fontSize: '0.88rem', fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
+                                {activeEntry.label}
+                            </Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', fontWeight: 700, lineHeight: 1.35 }}>
+                            {formatAreaHa(activeEntry.areaHa)} • {activeEntry.fieldCount} field{activeEntry.fieldCount === 1 ? '' : 's'}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.72rem', color: TEXT_MID, lineHeight: 1.35, mt: 0.15 }}>
+                            {totalAreaHa > 0 ? `${((activeEntry.areaHa / totalAreaHa) * 100).toFixed(1)}% of mapped area` : '0.0% of mapped area'}
+                        </Typography>
+                    </Box>
+                ) : null}
                 <ResponsiveContainer width="100%" height="100%">
                     <RechartsPieChart>
                         <Pie
@@ -796,20 +849,14 @@ function AreaPieChart({
                             strokeWidth={4}
                         >
                             {chartData.map((entry) => (
-                                <Cell key={entry.label} fill={entry.color} />
+                                <Cell
+                                    key={entry.label}
+                                    fill={entry.color}
+                                    onMouseEnter={() => setHoveredAreaLabel(entry.label)}
+                                    onMouseLeave={() => setHoveredAreaLabel(null)}
+                                />
                             ))}
                         </Pie>
-                        <RechartsTooltip
-                            formatter={(value, name) => {
-                                const numericValue = typeof value === 'number' ? value : Number(value ?? 0)
-                                return [`${numericValue.toFixed(2)} ha`, String(name)]
-                            }}
-                            contentStyle={{
-                                borderRadius: 14,
-                                border: '1px solid rgba(86,184,112,0.16)',
-                                boxShadow: '0 14px 32px rgba(35,64,52,0.1)',
-                            }}
-                        />
                     </RechartsPieChart>
                 </ResponsiveContainer>
                 <Box
@@ -835,7 +882,6 @@ function AreaPieChart({
 
             <Box
                 sx={{
-                    mt: 1.6,
                     display: 'grid',
                     gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(140px, 1fr))' },
                     gap: 1,
@@ -864,10 +910,10 @@ function AreaPieChart({
                             {entry.label}
                         </Typography>
                         <Typography sx={{ fontSize: '1.1rem', fontWeight: 800, color: 'text.primary', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.1 }}>
-                            {entry.fieldCount}
+                            {formatAreaHa(entry.areaHa)}
                         </Typography>
-                        <Typography sx={{ fontSize: '0.78rem', color: TEXT_MID, mt: 0.2 }}>
-                            field{entry.fieldCount === 1 ? '' : 's'}
+                        <Typography sx={{ fontSize: '0.78rem', color: TEXT_MID, mt: 0.2, lineHeight: 1.6 }}>
+                            {entry.fieldCount} field{entry.fieldCount === 1 ? '' : 's'} • {totalAreaHa > 0 ? `${((entry.areaHa / totalAreaHa) * 100).toFixed(1)}%` : '0.0%'} of mapped area
                         </Typography>
                     </Box>
                 ))}
@@ -1136,68 +1182,6 @@ export function HomePage() {
         refetchOnReconnect: true,
     })
 
-    const fieldSnapshots = useMemo<FieldSnapshot[]>(() => {
-        const latestByField = new Map<string, FieldSnapshot>()
-
-        liveFields.forEach((field) => {
-            const fieldKey = buildFieldIdentity(field.field_name, field.section_name, field.block_id)
-            if (!fieldKey || fieldKey === '||') {
-                return
-            }
-
-            latestByField.set(fieldKey, {
-                fieldKey,
-                fieldLabel: buildFieldLabel(field.field_name, field.section_name, field.block_id),
-                cropType: (field.crop_type ?? '').trim() || 'Unspecified',
-                areaHa: resolvePredefinedFieldAreaHa(field),
-                isTrial: [field.field_name, field.section_name, field.block_id].some((value) => isTrialLike(value)),
-                recordedDate: normalizeDateOnlyValue(field.date_recorded) || '',
-            })
-        })
-
-        const sortedMonitoring = [...monitoring].sort(
-            (left, right) => getDateOnlyTimestamp(normalizeDateOnlyValue(right.date_recorded) || '')
-                - getDateOnlyTimestamp(normalizeDateOnlyValue(left.date_recorded) || '')
-        )
-
-        sortedMonitoring.forEach((record) => {
-            const fieldKey = buildFieldIdentity(record.field_name, record.section_name, record.block_id)
-            if (!fieldKey || fieldKey === '||') {
-                return
-            }
-
-            const cropType = (record.crop_type ?? record.crop_class ?? '').trim() || 'Unspecified'
-            const areaHa = resolveMonitoringAreaHa(record)
-            const recordedDate = normalizeDateOnlyValue(record.date_recorded) || ''
-            const existing = latestByField.get(fieldKey)
-
-            if (!existing) {
-                latestByField.set(fieldKey, {
-                    fieldKey,
-                    fieldLabel: buildFieldLabel(record.field_name, record.section_name, record.block_id),
-                    cropType,
-                    areaHa,
-                    isTrial: [record.field_name, record.section_name, record.block_id].some((value) => isTrialLike(value)),
-                    recordedDate,
-                })
-                return
-            }
-
-            if ((existing.cropType === 'Unspecified' || !existing.cropType) && cropType !== 'Unspecified') {
-                existing.cropType = cropType
-            }
-            if ((existing.areaHa === null || existing.areaHa <= 0) && areaHa !== null && areaHa > 0) {
-                existing.areaHa = areaHa
-            }
-            if (!existing.recordedDate && recordedDate) {
-                existing.recordedDate = recordedDate
-            }
-        })
-
-        return Array.from(latestByField.values())
-            .sort((left, right) => getDateOnlyTimestamp(right.recordedDate) - getDateOnlyTimestamp(left.recordedDate))
-    }, [liveFields, monitoring])
-
     const calendarFieldSeeds = useMemo<CalendarFieldSeed[]>(() => {
         const sortedMonitoring = [...monitoring].sort(
             (left, right) => getDateOnlyTimestamp(right.date_recorded) - getDateOnlyTimestamp(left.date_recorded)
@@ -1216,6 +1200,7 @@ export function HomePage() {
             const plantingDate = normalizeDateOnlyValue(record.planting_date) || ''
             const cutDate = normalizeDateOnlyValue(record.previous_cutting_date ?? record.previous_cutting) || ''
             const recordedDate = normalizeDateOnlyValue(record.date_recorded) || ''
+            const expectedHarvestDate = normalizeDateOnlyValue(record.expected_harvest_date) || ''
 
             if (!existing) {
                 byField.set(fieldKey, {
@@ -1226,6 +1211,7 @@ export function HomePage() {
                     plantingDate,
                     cutDate,
                     recordedDate,
+                    expectedHarvestDate,
                 })
                 return
             }
@@ -1235,10 +1221,14 @@ export function HomePage() {
             if (!existing.plantingDate && plantingDate) existing.plantingDate = plantingDate
             if (!existing.cutDate && cutDate) existing.cutDate = cutDate
             if (!existing.recordedDate && recordedDate) existing.recordedDate = recordedDate
+            if (!existing.expectedHarvestDate && expectedHarvestDate) existing.expectedHarvestDate = expectedHarvestDate
         })
 
         return Array.from(byField.values())
-            .filter((seed) => isCalendarRelevantCrop(seed.cropType, seed.cropClass))
+            .filter((seed) =>
+                isCalendarRelevantCrop(seed.cropType, seed.cropClass) &&
+                (Boolean(seed.plantingDate) || Boolean(seed.cutDate) || Boolean(seed.expectedHarvestDate))
+            )
             .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
     }, [monitoring])
 
@@ -1252,41 +1242,71 @@ export function HomePage() {
             const anchorMeta = getCalendarAnchorMeta(seed, template)
             const anchorDate = anchorMeta.dateIso
 
-            if (!anchorDate) {
-                return
+            if (anchorDate) {
+                template.tasks.forEach((task) => {
+                    const dateIso = addDaysToDateOnly(
+                        anchorDate,
+                        (task.weekNumber - template.anchorWeekNumber) * 7
+                    )
+
+                    if (!dateIso) {
+                        return
+                    }
+
+                    const taskTimestamp = getDateOnlyTimestamp(dateIso)
+                    const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
+
+                    const kind = getCalendarTaskKind(task.activity)
+                    const taskKey = `${seed.fieldKey}|${template.id}|${task.weekNumber}|${kind}|${task.activity.toLowerCase()}`
+
+                    if (!uniqueTasks.has(taskKey)) {
+                        uniqueTasks.set(taskKey, {
+                            key: taskKey,
+                            kind,
+                            activity: task.activity,
+                            dateIso,
+                            fieldLabel: seed.fieldLabel,
+                            cropType: seed.cropType || seed.cropClass || 'Sugarcane',
+                            weekLabel: task.weekLabel,
+                            scheduleType: template.title,
+                            severity: getTaskSeverity(daysUntil),
+                            daysUntil,
+                        })
+                    }
+                })
             }
 
-            template.tasks.forEach((task) => {
-                const dateIso = addDaysToDateOnly(
-                    anchorDate,
-                    (task.weekNumber - template.anchorWeekNumber) * 7
-                )
+            const harvestDate = normalizeDateOnlyValue(seed.expectedHarvestDate)
+            if (harvestDate) {
+                HARVEST_PROXIMITY_TASKS.forEach((task) => {
+                    const dateIso = addDaysToDateOnly(harvestDate, task.offsetDays)
 
-                if (!dateIso) {
-                    return
-                }
+                    if (!dateIso) {
+                        return
+                    }
 
-                const taskTimestamp = getDateOnlyTimestamp(dateIso)
-                const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
+                    const taskTimestamp = getDateOnlyTimestamp(dateIso)
+                    const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
 
-                const kind = getCalendarTaskKind(task.activity)
-                const taskKey = `${seed.fieldKey}|${template.id}|${task.weekNumber}|${kind}|${task.activity.toLowerCase()}`
+                    const kind = getCalendarTaskKind(task.activity)
+                    const taskKey = `${seed.fieldKey}|harvest-proximity|${task.offsetDays}|${kind}`
 
-                if (!uniqueTasks.has(taskKey)) {
-                    uniqueTasks.set(taskKey, {
-                        key: taskKey,
-                        kind,
-                        activity: task.activity,
-                        dateIso,
-                        fieldLabel: seed.fieldLabel,
-                        cropType: seed.cropType || seed.cropClass || 'Sugarcane',
-                        weekLabel: task.weekLabel,
-                        scheduleType: template.title,
-                        severity: getTaskSeverity(daysUntil),
-                        daysUntil,
-                    })
-                }
-            })
+                    if (!uniqueTasks.has(taskKey)) {
+                        uniqueTasks.set(taskKey, {
+                            key: taskKey,
+                            kind,
+                            activity: task.activity,
+                            dateIso,
+                            fieldLabel: seed.fieldLabel,
+                            cropType: seed.cropType || seed.cropClass || 'Sugarcane',
+                            weekLabel: task.weekLabel,
+                            scheduleType: 'Harvest Schedule',
+                            severity: getTaskSeverity(daysUntil),
+                            daysUntil,
+                        })
+                    }
+                })
+            }
         })
 
         return Array.from(uniqueTasks.values()).sort(sortUpcomingTasks)
@@ -1299,7 +1319,7 @@ export function HomePage() {
             const anchorMeta = getCalendarAnchorMeta(seed, template)
             const warning = buildCalendarScheduleWarning(seed, template, anchorMeta)
 
-            if (warning && !warnings.has(warning.key)) {
+            if (warning && warning.source === null && !warnings.has(warning.key)) {
                 warnings.set(warning.key, warning)
             }
         })
@@ -1308,16 +1328,36 @@ export function HomePage() {
     }, [calendarFieldSeeds])
 
     const mappedAreaFields = useMemo<AreaFieldSnapshot[]>(() => {
-        return fieldSnapshots
+        const latestLiveFields = new Map<string, PredefinedField>()
+
+        liveFields.forEach((field) => {
+            const fieldKey = buildFieldIdentity(field.field_name, field.section_name, field.block_id)
+
+            if (!fieldKey || fieldKey === '||') {
+                return
+            }
+
+            const existing = latestLiveFields.get(fieldKey)
+
+            if (!existing || isFieldRecordNewer(field, existing)) {
+                latestLiveFields.set(fieldKey, field)
+            }
+        })
+
+        return Array.from(latestLiveFields.values())
+            .map((field) => ({
+                fieldKey: buildFieldIdentity(field.field_name, field.section_name, field.block_id),
+                fieldLabel: buildFieldLabel(field.field_name, field.section_name, field.block_id),
+                cropType: (field.crop_type ?? '').trim() || 'Unspecified',
+                areaHa: resolvePredefinedFieldAreaHa(field),
+            }))
             .filter((snapshot) => snapshot.areaHa !== null && snapshot.areaHa > 0)
             .map((snapshot) => ({
-                fieldKey: snapshot.fieldKey,
-                fieldLabel: snapshot.fieldLabel,
-                cropType: snapshot.cropType,
+                ...snapshot,
                 areaHa: snapshot.areaHa as number,
             }))
             .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
-    }, [fieldSnapshots])
+    }, [liveFields])
     const areaSummary = useMemo(
         () => mappedAreaFields.reduce(
             (summary, snapshot) => {
@@ -1460,7 +1500,7 @@ export function HomePage() {
                                     title="Mapped Area Overview"
                                 >
                                     <Typography sx={{ fontSize: '0.95rem', color: TEXT_MID, lineHeight: 1.8, maxWidth: 540, mb: 2.4 }}>
-                                        Latest hectares from live monitoring records, grouped by crop type: sugarcane, break crop, and fallow period.
+                                        Exact hectares from the current database, grouped by crop type so the total mapped area matches the live field records.
                                     </Typography>
                                     <AreaPieChart
                                         data={areaOverviewData}
@@ -1604,32 +1644,24 @@ export function HomePage() {
                 <Grid container spacing={3} sx={{ mb: 8 }}>
                     {[
                         {
-                            title: 'Field Records',
-                            desc: 'Review live crop observations that have real recorded dates, such as 25 March 2026.',
-                            path: '/data',
-                            icon: <TableChartOutlined sx={{ fontSize: 26 }} />,
-                            delay: 0.15,
-                            accent: false,
-                            loadMode: 'monitoring-records' as const,
-                        },
-                        {
                             title: 'Map View',
                             desc: 'Move into the spatial workspace for boundaries, centroids, and hybrid basemap context in one place.',
                             path: '/map',
                             icon: <MapOutlined sx={{ fontSize: 26 }} />,
-                            delay: 0.25,
+                            delay: 0.15,
                             accent: false,
                         },
                         {
-                            title: 'Monitoring',
-                            desc: 'Open the live monitoring feed with agronomy summaries, recent field activity, and analysis-ready records.',
-                            path: '/monitoring',
-                            icon: <AgricultureOutlined sx={{ fontSize: 26 }} />,
-                            delay: 0.35,
-                            accent: true,
+                            title: 'Field Records',
+                            desc: 'Review live crop observations that have real recorded dates, such as 25 March 2026.',
+                            path: '/data',
+                            icon: <TableChartOutlined sx={{ fontSize: 26 }} />,
+                            delay: 0.25,
+                            accent: false,
+                            loadMode: 'monitoring-records' as const,
                         },
                     ].map((item) => (
-                        <Grid size={{ xs: 12, md: 4 }} key={item.title} sx={{ display: 'flex' }}>
+                        <Grid size={{ xs: 12, md: 6 }} key={item.title} sx={{ display: 'flex' }}>
                             <ModuleCard {...item} />
                         </Grid>
                     ))}

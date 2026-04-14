@@ -4,17 +4,34 @@ import {
   CircularProgress,
   Container,
 } from '@mui/material'
+import { useQuery } from '@tanstack/react-query'
 import { YieldAnalysisChart } from '@/components/Dashboard/YieldAnalysisChart'
 import { useMobileObservationRecords } from '@/hooks/useMobileObservationRecords'
+import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
 
 const CREAM = '#fffaf3'
 
 export function FieldStatisticsPage() {
   const {
     data: observations = [],
-    isLoading,
-    error,
+    isLoading: observationsLoading,
+    error: observationsError,
   } = useMobileObservationRecords({ includeUndated: true })
+
+  const {
+    data: liveFields = [],
+    isLoading: liveFieldsLoading,
+    error: liveFieldsError,
+  } = useQuery<PredefinedField[], Error>({
+    queryKey: ['field-statistics-live-fields'],
+    queryFn: fetchLivePredefinedFields,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+  })
+
+  const isLoading = observationsLoading || liveFieldsLoading
+  const error = observationsError ?? liveFieldsError
 
   return (
     <Box sx={{ bgcolor: CREAM, minHeight: '100vh', position: 'relative' }}>
@@ -44,7 +61,7 @@ export function FieldStatisticsPage() {
             <CircularProgress />
           </Box>
         ) : (
-          <YieldAnalysisChart observations={observations} />
+          <YieldAnalysisChart observations={observations} liveFields={liveFields} />
         )}
       </Container>
     </Box>

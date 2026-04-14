@@ -18,7 +18,7 @@
  */
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import L from 'leaflet'
 import {
     Box,
@@ -32,6 +32,7 @@ import {
     IconButton,
 } from '@mui/material'
 import {
+    HomeRounded,
     MyLocation,
     SatelliteAlt,
     GridOn,
@@ -192,8 +193,34 @@ function getSugarcaneSortOrder(label: string): number {
     return 999
 }
 
+const COLLECTOR_NAME_PREFERENCES = new Map<string, string>([
+    ['cmukanga', 'C Mukanga'],
+    ['drgmabaya', 'Dr G. Mabaya'],
+    ['drltmpofu', 'Dr L. T. Mpofu'],
+    ['drmpofu', 'Dr L. T. Mpofu'],
+    ['drtpchibarabada', 'Dr T. P. Chibarabada'],
+    ['mrchinorumba', 'Mr S. Chinorumba'],
+    ['mrschinorumba', 'Mr S. Chinorumba'],
+    ['mrpzvoutete', 'Mr P. Zvoutete'],
+])
+
+function getCollectorLookupKey(value?: string | null): string {
+    return String(value ?? '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+}
+
+function getCanonicalCollectorLabel(value?: string | null): string {
+    const collapsed = String(value ?? '').trim().replace(/\s+/g, ' ')
+    if (!collapsed) return ''
+
+    return COLLECTOR_NAME_PREFERENCES.get(getCollectorLookupKey(collapsed)) ?? collapsed
+}
+
 function normalizeCollectorToken(value?: string | null): string {
-    return String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+    return getCollectorLookupKey(getCanonicalCollectorLabel(value))
 }
 
 // ─── Map Bounds Fitter ─────────────────────────────────────────────────────────
@@ -353,12 +380,33 @@ function HudPanel({ children, sx = {}, accentColor = CYAN, disableScanlines = fa
 }
 
 // ─── Legend Row ───────────────────────────────────────────────────────────────
-function LegendRow({ color, label, shape = 'circle' }: { color: string; label: string; shape?: 'circle' | 'line' }) {
+function LegendRow({
+    color,
+    label,
+    shape = 'circle',
+    dashed = false,
+}: {
+    color: string
+    label: string
+    shape?: 'circle' | 'line'
+    dashed?: boolean
+}) {
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             {shape === 'circle'
                 ? <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: color, flexShrink: 0, boxShadow: `0 0 6px ${color}55` }} />
-                : <Box sx={{ width: 16, height: 2, bgcolor: color, opacity: 0.7, borderRadius: 1, flexShrink: 0 }} />
+                : (
+                    <Box
+                        sx={{
+                            width: 16,
+                            height: 0,
+                            borderTop: `2px ${dashed ? 'dashed' : 'solid'} ${color}`,
+                            opacity: 0.8,
+                            borderRadius: 1,
+                            flexShrink: 0,
+                        }}
+                    />
+                )
             }
             <Typography sx={{ fontSize: '0.68rem', color: TEXT_MID, fontFamily: MONO }}>
                 {label}
@@ -458,7 +506,9 @@ function MobileRecordInfoPanel({ record }: { record: MobileObservationRecord }) 
     const expectedHarvestDate = getMobileExpectedHarvestDate(record)
     const remarks             = getMobileRemarks(record)
     const trialLabel          = [currentSheet?.trial_name || record.entry_form?.trial_name, currentSheet?.trial_number || record.entry_form?.trial_number].filter(Boolean).join(' · ')
-    const collectorLabel      = currentSheet?.contact_person || record.entry_form?.contact_person || record.collector_id || ''
+    const collectorLabel      = getCanonicalCollectorLabel(
+        currentSheet?.contact_person || record.entry_form?.contact_person || record.collector_id || ''
+    )
 
     return (
         <Box sx={{ mt: 0.8 }}>
@@ -761,7 +811,7 @@ const getCollectionColor = (
     if (sourceLabel === 'mobile recorded polygon') return AMBER_WARN
     if (isRecorded) return GREEN_OK
     if (!field) return CYAN
-    return RED_CRIT
+    return GREEN_OK
 }
 
 const getCollectionLabel = (
@@ -804,10 +854,10 @@ const getBoundaryStyle = (
     }
 
     return {
-        color: isRecorded ? GREEN_OK : RED_CRIT,
+        color: GREEN_OK,
         weight: isRecorded ? 4 : 3.2,
-        fillOpacity: isRecorded ? 0.18 : 0.08,
-        fillColor: isRecorded ? GREEN_OK : RED_CRIT,
+        fillOpacity: isRecorded ? 0.18 : 0.06,
+        fillColor: GREEN_OK,
         opacity: 1,
         dashArray: isRecorded ? undefined : '10 6',
     }
@@ -964,6 +1014,7 @@ const getFocusBoundaryKeys = (focus?: MapFocusObservation | null): string[] => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function MapViewPage() {
     const location = useLocation()
+    const navigate = useNavigate()
     const routeState = (location.state as MapNavigationState | null) ?? null
     const focusObservation = routeState?.focusObservation ?? null
     const requestedMapFilters = useMemo(() => resolveRequestedMapFilters(location.search), [location.search])
@@ -992,7 +1043,7 @@ export function MapViewPage() {
     const {
         data: mobileRecords = [],
         isLoading: isMobileRecordsLoading,
-    } = useMobileObservationRecords()
+    } = useMobileObservationRecords({ includeUndated: true })
 
     const normalizeCropType = useCallback((value?: string | null) => {
         const raw = String(value ?? '').trim()
@@ -1007,7 +1058,7 @@ export function MapViewPage() {
     )
 
     const normalizeSoilType = useCallback(
-        (value?: string | null) => String(value ?? '').trim().replace(/\s+/g, ' '),
+        (value?: string | null) => String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase(),
         []
     )
 
@@ -1066,12 +1117,12 @@ export function MapViewPage() {
     }, [normalizeCropClass, normalizeCropType])
 
     const getCollectorLabel = useCallback((record?: MobileObservationRecord | null, _field?: Partial<Field> | null): string => {
-        return String(
+        return getCanonicalCollectorLabel(
             record?.monitoring_sheet?.contact_person
             || record?.entry_form?.contact_person
             || record?.collector_id
             || ''
-        ).trim().replace(/\s+/g, ' ')
+        )
     }, [])
 
     const mobileRecordsForCropType = useMemo(
@@ -1086,10 +1137,10 @@ export function MapViewPage() {
         setCollectionFilter(focusObservation ? 'recorded' : 'all')
         setSelectedCropType(requestedMapFilters.cropType ?? (focusObservation ? 'all' : DEFAULT_SELECTED_CROP_TYPE))
         setSelectedCropClass(requestedMapFilters.cropClass ?? 'all')
-        setSelectedSoilType(requestedMapFilters.soilType ?? 'all')
+        setSelectedSoilType(requestedMapFilters.soilType ? normalizeSoilType(requestedMapFilters.soilType) : 'all')
         setSelectedCollector('all')
         setSelectedBoundaryKey(null)
-    }, [focusObservation, requestedMapFilters])
+    }, [focusObservation, requestedMapFilters, normalizeSoilType])
 
     const loadMapData = useCallback(async () => {
         setIsLoading(true)
@@ -1335,7 +1386,7 @@ export function MapViewPage() {
 
     const getFieldSoilType = useCallback((field: Field, matchedRecord?: MobileObservationRecord | null): string => {
         const linkedRecord = matchedRecord ?? getMobileRecordForBoundary(field, mobileRecordsForCropType)
-        return linkedRecord ? normalizeSoilType(getMobileSoilType(linkedRecord)) : ''
+        return normalizeSoilType(field.soil_type || (linkedRecord ? getMobileSoilType(linkedRecord) : ''))
     }, [mobileRecordsForCropType, normalizeSoilType])
 
     const collectorOptions = useMemo(
@@ -1647,7 +1698,9 @@ export function MapViewPage() {
                     ? getFieldCropClass(matchedField, matchedRecordForType)
                     : ''
             const soilRecord = matchedRecordForType ?? matchedRecordedRecord
-            const effectiveSoilType = soilRecord ? normalizeSoilType(getMobileSoilType(soilRecord)) : ''
+            const effectiveSoilType = normalizeSoilType(
+                matchedField?.soil_type || (soilRecord ? getMobileSoilType(soilRecord) : '')
+            )
 
             if (selectedCropType !== 'all' && normalizeCropType(effectiveCropType) !== selectedCropType) {
                 return false
@@ -1700,7 +1753,9 @@ export function MapViewPage() {
                     ? getFieldCropClass(matchedField, matchedRecordForType)
                     : ''
             const soilRecord = matchedRecordForType ?? matchedRecordedRecord
-            const effectiveSoilType = soilRecord ? normalizeSoilType(getMobileSoilType(soilRecord)) : ''
+            const effectiveSoilType = normalizeSoilType(
+                matchedField?.soil_type || (soilRecord ? getMobileSoilType(soilRecord) : '')
+            )
             const isRecorded = Boolean(matchedRecordedRecord)
 
             if (selectedCropType !== 'all' && normalizeCropType(effectiveCropType) !== selectedCropType) {
@@ -2252,6 +2307,11 @@ export function MapViewPage() {
                             <Box sx={{ position: 'absolute', top: 18, left: 18, right: 18, zIndex: 1000, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.2, flexWrap: 'wrap', pointerEvents: 'none' }}>
                                 {/* Map Controls */}
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.88)', border: '1px solid rgba(27,94,32,0.12)', boxShadow: '0 12px 30px rgba(21,31,24,0.08)', pointerEvents: 'auto' }}>
+                                    <Tooltip title="Back to Overview" placement="left">
+                                        <IconButton onClick={() => navigate('/')} size="small" sx={{ width: 42, height: 42, color: CYAN_DIM, borderRadius: '14px', '&:hover': { bgcolor: alpha(CYAN, 0.07), color: CYAN } }}>
+                                            <HomeRounded sx={{ fontSize: 18 }} />
+                                        </IconButton>
+                                    </Tooltip>
                                     <Tooltip title="Locate Me" placement="left">
                                         <IconButton onClick={handleLocateMe} size="small" sx={{ width: 42, height: 42, color: CYAN_DIM, borderRadius: '14px', '&:hover': { bgcolor: alpha(CYAN, 0.07), color: CYAN } }}>
                                             <MyLocation sx={{ fontSize: 18 }} />
@@ -2306,8 +2366,8 @@ export function MapViewPage() {
                                 <HudPanel sx={{ p: 2, minWidth: 220, pointerEvents: 'auto' }} accentColor={CYAN}>
                                     <SectionBadge label="Legend" color={CYAN} />
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1, mt: 1.35 }}>
-                                        <LegendRow color={GREEN_OK}   label="Boundary with mobile/form record" />
-                                        <LegendRow color={RED_CRIT}   label="Boundary without mobile/form record" />
+                                        <LegendRow color={GREEN_OK}   label="Boundary with mobile/form record" shape="line" />
+                                        <LegendRow color={GREEN_OK}   label="Boundary without mobile/form record" shape="line" dashed />
                                         <LegendRow color={AMBER_WARN} label="Mobile-only recorded polygon" shape="line" />
                                         <LegendRow color={CYAN}       label="Unlinked reference boundary" shape="line" />
                                     </Box>

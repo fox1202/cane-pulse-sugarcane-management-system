@@ -24,7 +24,6 @@ const SupabaseConnectionTest = lazy(() => import('@/pages/SupabaseConnectionTest
 const RawDataViewerPage = lazy(() => import('@/pages/RawDataViewerPage').then(m => ({ default: m.RawDataViewerPage })))
 const ObservationEntryFormPage = lazy(() => import('@/pages/ObservationEntryFormPage').then(m => ({ default: m.ObservationEntryFormPage })))
 const FieldStatisticsPage = lazy(() => import('@/pages/FieldStatisticsPage').then(m => ({ default: m.FieldStatisticsPage })))
-const SugarcaneMonitoringPage = lazy(() => import('@/pages/SugarcaneMonitoringPage').then(m => ({ default: m.default })))
 const FarmingCalendarPage = lazy(() => import('@/pages/FarmingCalendarPage').then(m => ({ default: m.FarmingCalendarPage })))
 
 // Create a client
@@ -105,6 +104,16 @@ function App() {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignUpPage />} />
+              <Route
+                path="/map"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <MapViewPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/forgot-password" element={<Suspense fallback={<LoadingFallback />}><ForgotPasswordPage /></Suspense>} />
               <Route path="/update-password" element={<Suspense fallback={<LoadingFallback />}><UpdatePasswordPage /></Suspense>} />
 
@@ -122,14 +131,6 @@ function App() {
                   element={
                     <Suspense fallback={<LoadingFallback />}>
                       <DataManagementPage />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="map"
-                  element={
-                    <Suspense fallback={<LoadingFallback />}>
-                      <MapViewPage />
                     </Suspense>
                   }
                 />
@@ -181,14 +182,7 @@ function App() {
                     </Suspense>
                   }
                 />
-                <Route
-                  path="monitoring"
-                  element={
-                    <Suspense fallback={<LoadingFallback />}>
-                      <SugarcaneMonitoringPage />
-                    </Suspense>
-                  }
-                />
+                <Route path="monitoring" element={<Navigate to="/" replace />} />
                 <Route
                   path="demo"
                   element={

@@ -1,4 +1,4 @@
-import { getFarmingCalendarTemplate, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
+import { getFarmingCalendarTemplate, HARVEST_PROXIMITY_TASKS, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
 import type { PredefinedField } from '@/services/database.service'
 import { getAreaCropGroup } from '@/utils/cropGrouping'
 import type { SugarcaneMonitoringRecord } from '@/types/database.types'
@@ -12,6 +12,7 @@ interface CalendarFieldSeed {
     plantingDate: string
     cutDate: string
     recordedDate: string
+    expectedHarvestDate: string
 }
 
 interface MonitoringFieldLookups {
@@ -123,10 +124,10 @@ function getCalendarTemplateForField(seed: CalendarFieldSeed): FarmingCalendarTe
 
 function getCalendarAnchorDate(seed: CalendarFieldSeed, template: FarmingCalendarTemplate): string | null {
     if (template.fieldAnchor === 'cut_date') {
-        return normalizeDateOnlyValue(seed.cutDate || seed.plantingDate || seed.recordedDate)
+        return normalizeDateOnlyValue(seed.cutDate || seed.plantingDate) ?? null
     }
 
-    return normalizeDateOnlyValue(seed.plantingDate || seed.cutDate || seed.recordedDate)
+    return normalizeDateOnlyValue(seed.plantingDate || seed.cutDate) ?? null
 }
 
 function isCalendarRelevantCrop(cropType?: string | null, cropClass?: string | null): boolean {
@@ -205,6 +206,7 @@ export function buildUpcomingTaskNotices(
         const plantingDate = normalizeDateOnlyValue(record.planting_date) || ''
         const cutDate = normalizeDateOnlyValue(record.previous_cutting_date ?? record.previous_cutting) || ''
         const recordedDate = normalizeDateOnlyValue(record.date_recorded) || ''
+        const expectedHarvestDate = normalizeDateOnlyValue(record.expected_harvest_date) || ''
 
         if (!existing) {
             byField.set(fieldKey, {
@@ -215,6 +217,7 @@ export function buildUpcomingTaskNotices(
                 plantingDate,
                 cutDate,
                 recordedDate,
+                expectedHarvestDate,
             })
             return
         }
@@ -224,10 +227,14 @@ export function buildUpcomingTaskNotices(
         if (!existing.plantingDate && plantingDate) existing.plantingDate = plantingDate
         if (!existing.cutDate && cutDate) existing.cutDate = cutDate
         if (!existing.recordedDate && recordedDate) existing.recordedDate = recordedDate
+        if (!existing.expectedHarvestDate && expectedHarvestDate) existing.expectedHarvestDate = expectedHarvestDate
     })
 
     const calendarFieldSeeds = Array.from(byField.values())
-        .filter((seed) => isCalendarRelevantCrop(seed.cropType, seed.cropClass))
+        .filter((seed) =>
+            isCalendarRelevantCrop(seed.cropType, seed.cropClass) &&
+            (Boolean(seed.plantingDate) || Boolean(seed.cutDate) || Boolean(seed.expectedHarvestDate))
+        )
         .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
 
     const todayIso = getTodayDateOnly()
@@ -238,41 +245,71 @@ export function buildUpcomingTaskNotices(
         const template = getCalendarTemplateForField(seed)
         const anchorDate = getCalendarAnchorDate(seed, template)
 
-        if (!anchorDate) {
-            return
+        if (anchorDate) {
+            template.tasks.forEach((task) => {
+                const dateIso = addDaysToDateOnly(
+                    anchorDate,
+                    (task.weekNumber - template.anchorWeekNumber) * 7
+                )
+
+                if (!dateIso) {
+                    return
+                }
+
+                const taskTimestamp = getDateOnlyTimestamp(dateIso)
+                const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
+
+                const kind = getCalendarTaskKind(task.activity)
+                const taskKey = `${seed.fieldKey}|${template.id}|${task.weekNumber}|${kind}|${task.activity.toLowerCase()}`
+
+                if (!uniqueTasks.has(taskKey)) {
+                    uniqueTasks.set(taskKey, {
+                        key: taskKey,
+                        kind,
+                        activity: task.activity,
+                        dateIso,
+                        fieldLabel: seed.fieldLabel,
+                        cropType: seed.cropType || seed.cropClass || 'Sugarcane',
+                        weekLabel: task.weekLabel,
+                        scheduleType: template.title,
+                        severity: getTaskSeverity(daysUntil),
+                        daysUntil,
+                    })
+                }
+            })
         }
 
-        template.tasks.forEach((task) => {
-            const dateIso = addDaysToDateOnly(
-                anchorDate,
-                (task.weekNumber - template.anchorWeekNumber) * 7
-            )
+        const harvestDate = normalizeDateOnlyValue(seed.expectedHarvestDate)
+        if (harvestDate) {
+            HARVEST_PROXIMITY_TASKS.forEach((task) => {
+                const dateIso = addDaysToDateOnly(harvestDate, task.offsetDays)
 
-            if (!dateIso) {
-                return
-            }
+                if (!dateIso) {
+                    return
+                }
 
-            const taskTimestamp = getDateOnlyTimestamp(dateIso)
-            const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
+                const taskTimestamp = getDateOnlyTimestamp(dateIso)
+                const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
 
-            const kind = getCalendarTaskKind(task.activity)
-            const taskKey = `${seed.fieldKey}|${template.id}|${task.weekNumber}|${kind}|${task.activity.toLowerCase()}`
+                const kind = getCalendarTaskKind(task.activity)
+                const taskKey = `${seed.fieldKey}|harvest-proximity|${task.offsetDays}|${kind}`
 
-            if (!uniqueTasks.has(taskKey)) {
-                uniqueTasks.set(taskKey, {
-                    key: taskKey,
-                    kind,
-                    activity: task.activity,
-                    dateIso,
-                    fieldLabel: seed.fieldLabel,
-                    cropType: seed.cropType || seed.cropClass || 'Sugarcane',
-                    weekLabel: task.weekLabel,
-                    scheduleType: template.title,
-                    severity: getTaskSeverity(daysUntil),
-                    daysUntil,
-                })
-            }
-        })
+                if (!uniqueTasks.has(taskKey)) {
+                    uniqueTasks.set(taskKey, {
+                        key: taskKey,
+                        kind,
+                        activity: task.activity,
+                        dateIso,
+                        fieldLabel: seed.fieldLabel,
+                        cropType: seed.cropType || seed.cropClass || 'Sugarcane',
+                        weekLabel: task.weekLabel,
+                        scheduleType: 'Harvest Schedule',
+                        severity: getTaskSeverity(daysUntil),
+                        daysUntil,
+                    })
+                }
+            })
+        }
     })
 
     return Array.from(uniqueTasks.values()).sort(sortUpcomingTasks)

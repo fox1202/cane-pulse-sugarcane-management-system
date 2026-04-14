@@ -726,6 +726,7 @@ export function linkFieldsWithMobileRecords(
             latitude: hasCoordinates(field.latitude, field.longitude) ? field.latitude : linkedRecord.latitude,
             longitude: hasCoordinates(field.latitude, field.longitude) ? field.longitude : linkedRecord.longitude,
             crop_type: field.crop_type || getMobileCropType(linkedRecord) || undefined,
+            soil_type: field.soil_type || getMobileSoilType(linkedRecord) || undefined,
             latest_variety: field.latest_variety || getMobileVariety(linkedRecord) || undefined,
             latest_stage: field.latest_stage || linkedRecord.crop_information?.crop_stage || undefined,
             latest_irrigation_type: field.latest_irrigation_type || getMobileIrrigation(linkedRecord) || undefined,

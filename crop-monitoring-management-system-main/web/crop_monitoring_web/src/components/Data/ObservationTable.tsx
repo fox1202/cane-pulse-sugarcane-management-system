@@ -58,6 +58,10 @@ interface FlattenedObservationRow {
     cropType: string
     cropClass: string
     plantingDate: string
+    soilSamplingDate: string
+    soilTestPdfUrl: string
+    foliarSamplingDate: string
+    foliarAnalysisPdfUrl: string
     previousCuttingDate: string
     expectedHarvestDate: string
     stress: string
@@ -67,7 +71,6 @@ interface FlattenedObservationRow {
     fertilizerType: string
     nutrientApplicationDate: string
     applicationRate: string
-    foliarSamplingDate: string
     herbicideName: string
     weedApplicationDate: string
     weedApplicationRate: string
@@ -84,6 +87,7 @@ interface ObservationColumn {
     label: string
     minWidth?: number
     wrap?: boolean
+    isLink?: boolean
 }
 
 const OBSERVATION_COLUMNS: ObservationColumn[] = [
@@ -103,6 +107,10 @@ const OBSERVATION_COLUMNS: ObservationColumn[] = [
     { key: 'cropType', label: 'Crop Type', minWidth: 140 },
     { key: 'cropClass', label: 'Crop Class', minWidth: 150 },
     { key: 'plantingDate', label: 'Planting Date', minWidth: 150 },
+    { key: 'soilSamplingDate', label: 'Soil Sampling Date', minWidth: 165 },
+    { key: 'soilTestPdfUrl', label: 'Soil Sampling Results', minWidth: 170, isLink: true },
+    { key: 'foliarSamplingDate', label: 'Foliar Sampling Date', minWidth: 170 },
+    { key: 'foliarAnalysisPdfUrl', label: 'Foliar Sampling Results', minWidth: 180, isLink: true },
     { key: 'previousCuttingDate', label: 'Previous Cutting Date', minWidth: 180 },
     { key: 'expectedHarvestDate', label: 'Expected Harvest Date', minWidth: 180 },
     { key: 'residueType', label: 'Residue Type', minWidth: 140 },
@@ -111,7 +119,6 @@ const OBSERVATION_COLUMNS: ObservationColumn[] = [
     { key: 'fertilizerType', label: 'Fertilizer Type', minWidth: 150 },
     { key: 'nutrientApplicationDate', label: 'Nutrient Application Date', minWidth: 200 },
     { key: 'applicationRate', label: 'Application Rate', minWidth: 140 },
-    { key: 'foliarSamplingDate', label: 'Foliar Sampling Date', minWidth: 170 },
     { key: 'herbicideName', label: 'Herbicide Name', minWidth: 150 },
     { key: 'weedApplicationDate', label: 'Weed Application Date', minWidth: 180 },
     { key: 'weedApplicationRate', label: 'Weed Application Rate', minWidth: 170 },
@@ -215,6 +222,16 @@ function pickDateValue(...values: unknown[]): string | undefined {
     return undefined
 }
 
+function pickLinkValue(...values: unknown[]): string | undefined {
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim()) {
+            return value.trim()
+        }
+    }
+
+    return undefined
+}
+
 function toRecordedTime(value?: string) {
     if (!value) return 0
     const timestamp = new Date(value).getTime()
@@ -253,6 +270,20 @@ function buildFlattenedObservationRow(observation: ObservationTableRecord): Flat
         cropType: formatTextValue(pickTextValue(currentSheet?.crop_type, entryForm?.crop_type, rawSheet?.crop_type, observation.crop_information?.crop_type)),
         cropClass: formatTextValue(pickTextValue(currentSheet?.crop_class, entryForm?.crop_class, rawSheet?.crop_class)),
         plantingDate: formatDateValue(pickDateValue(currentSheet?.planting_date, entryForm?.planting_date, rawSheet?.planting_date, observation.crop_information?.planting_date)),
+        soilSamplingDate: formatDateValue(pickDateValue(currentSheet?.soil_sampling_date, entryForm?.soil_sampling_date, rawSheet?.soil_sampling_date)),
+        soilTestPdfUrl: pickLinkValue(
+            currentSheet?.soil_test_pdf_url,
+            currentSheet?.soil_test_pdf_path,
+            entryForm?.soil_test_pdf_url,
+            rawSheet?.soil_test_pdf_url,
+            rawSheet?.soil_test_pdf_path
+        ) ?? '',
+        foliarSamplingDate: formatDateValue(pickDateValue(currentSheet?.foliar_sampling_date, entryForm?.foliar_sampling_date, rawSheet?.foliar_sampling_date)),
+        foliarAnalysisPdfUrl: pickLinkValue(
+            currentSheet?.foliar_analysis_pdf_url,
+            entryForm?.foliar_analysis_pdf_url,
+            rawSheet?.foliar_analysis_pdf_url
+        ) ?? '',
         previousCuttingDate: formatDateValue(pickDateValue(currentSheet?.previous_cutting_date, currentSheet?.previous_cutting, entryForm?.previous_cutting_date, entryForm?.cutting_date, rawSheet?.previous_cutting_date, rawSheet?.previous_cutting, rawSheet?.cutting_date)),
         expectedHarvestDate: formatDateValue(pickDateValue(currentSheet?.expected_harvest_date, entryForm?.expected_harvest_date, rawSheet?.expected_harvest_date, observation.crop_information?.expected_harvest_date)),
         stress: formatTextValue(pickTextValue(currentSheet?.stress, entryForm?.stress, rawSheet?.stress, observation.crop_monitoring?.stress)),
@@ -283,7 +314,6 @@ function buildFlattenedObservationRow(observation: ObservationTableRecord): Flat
             observation.nutrient_management?.application_rate,
             rawSheet?.fertilizer_application_rate_1
         )),
-        foliarSamplingDate: formatDateValue(pickDateValue(currentSheet?.foliar_sampling_date, entryForm?.foliar_sampling_date, rawSheet?.foliar_sampling_date)),
         herbicideName: formatTextValue(pickTextValue(
             currentSheet?.herbicide_name,
             rawSheet?.herbicide_name,
@@ -327,16 +357,22 @@ export const ObservationTable: React.FC<ObservationTableProps> = ({
     onSelectionChange,
 }) => {
     const theme = useTheme()
-    const [order, setOrder] = useState<Order>('desc')
+    const [order, setOrder] = useState<Order>('asc')
 
     const sortedObservations = React.useMemo(() => {
         return [...observations].sort((a, b) => {
-            const aValue = toRecordedTime(a.date_recorded)
-            const bValue = toRecordedTime(b.date_recorded)
+            const aTrial = buildFlattenedObservationRow(a).fieldId
+            const bTrial = buildFlattenedObservationRow(b).fieldId
+            const trialComparison = aTrial.localeCompare(bTrial, undefined, {
+                numeric: true,
+                sensitivity: 'base',
+            })
 
-            if (bValue < aValue) return order === 'asc' ? 1 : -1
-            if (bValue > aValue) return order === 'asc' ? -1 : 1
-            return 0
+            if (trialComparison !== 0) {
+                return order === 'asc' ? trialComparison : -trialComparison
+            }
+
+            return toRecordedTime(b.date_recorded) - toRecordedTime(a.date_recorded)
         })
     }, [observations, order])
 
@@ -385,7 +421,7 @@ export const ObservationTable: React.FC<ObservationTableProps> = ({
                         </TableCell>
                         {OBSERVATION_COLUMNS.map((column) => (
                             <TableCell key={column.key} sx={{ minWidth: column.minWidth, fontWeight: 700 }}>
-                                {column.key === 'dateRecorded' ? (
+                                {column.key === 'fieldId' ? (
                                     <TableSortLabel
                                         active
                                         direction={order}
@@ -432,16 +468,34 @@ export const ObservationTable: React.FC<ObservationTableProps> = ({
                                             verticalAlign: 'top',
                                         }}
                                     >
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                whiteSpace: column.wrap ? 'normal' : 'nowrap',
-                                                wordBreak: column.wrap ? 'break-word' : 'normal',
-                                                lineHeight: 1.5,
-                                            }}
-                                        >
-                                            {row[column.key]}
-                                        </Typography>
+                                        {column.isLink && row[column.key] ? (
+                                            <Typography
+                                                component="a"
+                                                href={row[column.key]}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                variant="body2"
+                                                sx={{
+                                                    color: 'primary.main',
+                                                    textDecoration: 'underline',
+                                                    whiteSpace: 'nowrap',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                View PDF
+                                            </Typography>
+                                        ) : (
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    whiteSpace: column.wrap ? 'normal' : 'nowrap',
+                                                    wordBreak: column.wrap ? 'break-word' : 'normal',
+                                                    lineHeight: 1.5,
+                                                }}
+                                            >
+                                                {row[column.key] || '-'}
+                                            </Typography>
+                                        )}
                                     </TableCell>
                                 ))}
                                 <TableCell align="right" sx={{ verticalAlign: 'top' }}>

@@ -4,6 +4,7 @@ import {
     Alert,
     Box,
     Button,
+    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -22,6 +23,8 @@ import {
     createPredefinedField,
     fetchLivePredefinedFields,
     getPredefinedFieldByName,
+    uploadSoilTestPdf,
+    uploadFoliarAnalysisPdf,
     type ObservationEntryFormSubmissionInput,
     type PredefinedField,
 } from '@/services/database.service';
@@ -38,7 +41,6 @@ import type {
     SugarcaneMonitoringRecord,
 } from '@/types/database.types';
 import { SUGARCANE_CROP_CLASS_OPTIONS } from '@/utils/cropClassOptions';
-import { deriveSugarcaneExpectedHarvestDate } from '@/utils/dateOnly';
 import { buildObservationCalendarSearch } from '@/utils/farmingCalendarLinks';
 
 interface ObservationEntryIntakeDialogProps {
@@ -196,6 +198,9 @@ function createEmptySubmission(collectorId: string): ObservationEntryFormSubmiss
         crop_class: '',
         variety: '',
         planting_date: '',
+        soil_sampling_date: '',
+        soil_test_pdf_url: '',
+        foliar_analysis_pdf_url: '',
         previous_cutting_date: '',
         cutting_date: '',
         expected_harvest_date: '',
@@ -387,14 +392,6 @@ function buildFreshFormData(
         collector_id: collectorId,
     };
     const resolvedCropType = matchedField?.crop_type || preserved.crop_type || empty.crop_type;
-    const resolvedExpectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
-        preserved.planting_date,
-        resolvedCropType,
-        preserved.expected_harvest_date,
-        preserved.previous_cutting_date || preserved.cutting_date,
-        preserved.harvest_date
-    ) || '';
-
     if (!matchedField) {
         return {
             ...preserved,
@@ -410,7 +407,7 @@ function buildFreshFormData(
             spatial_data: undefined,
             geom_polygon: undefined,
             crop_type: resolvedCropType,
-            expected_harvest_date: resolvedExpectedHarvestDate,
+            expected_harvest_date: preserved.expected_harvest_date || '',
         };
     }
 
@@ -430,7 +427,7 @@ function buildFreshFormData(
         spatial_data: matchedField.geom ?? undefined,
         geom_polygon: matchedField.geom ?? undefined,
         crop_type: resolvedCropType,
-        expected_harvest_date: resolvedExpectedHarvestDate,
+        expected_harvest_date: preserved.expected_harvest_date || '',
         irrigation_type: matchedField.irrigation_type || preserved.irrigation_type || '',
         water_source: matchedField.water_source || preserved.water_source || '',
         tam_mm: matchedField.tam_mm || preserved.tam_mm || '',
@@ -715,13 +712,7 @@ function buildLoadedSavedRecordData(
         .map((item) => normalizeHerbicideApplicationInput(item))
         .filter((item): item is HerbicideApplication => item !== null);
     const remarks = savedEntry.remarks || savedEntry.field_remarks || '';
-    const derivedExpectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
-        savedEntry.planting_date,
-        savedEntry.crop_type,
-        savedEntry.expected_harvest_date,
-        previousCuttingDate,
-        savedEntry.harvest_date
-    ) || '';
+    const derivedExpectedHarvestDate = savedEntry.expected_harvest_date || '';
 
     const loaded = buildFreshFormData(
         {
@@ -774,6 +765,9 @@ function buildLoadedSavedRecordData(
         crop_class: savedEntry.crop_class || '',
         variety: savedEntry.variety || '',
         planting_date: savedEntry.planting_date || '',
+        soil_sampling_date: savedEntry.soil_sampling_date || '',
+        soil_test_pdf_url: savedEntry.soil_test_pdf_url || '',
+        foliar_analysis_pdf_url: savedEntry.foliar_analysis_pdf_url || '',
         previous_cutting_date: previousCuttingDate,
         cutting_date: cuttingDate,
         expected_harvest_date: derivedExpectedHarvestDate,
@@ -903,6 +897,10 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const dialogContentRef = useRef<HTMLDivElement | null>(null);
     const [formData, setFormData] = useState<ObservationEntryFormSubmissionInput>(createEmptySubmission(user?.id || ''));
     const [saving, setSaving] = useState(false);
+    const [pdfUploading, setPdfUploading] = useState(false);
+    const [pdfError, setPdfError] = useState<string | null>(null);
+    const [foliarPdfUploading, setFoliarPdfUploading] = useState(false);
+    const [foliarPdfError, setFoliarPdfError] = useState<string | null>(null);
     const [saveMode, setSaveMode] = useState<'close' | 'add_another' | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [parseSummary, setParseSummary] = useState<string | null>(null);
@@ -1122,67 +1120,25 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     };
 
     const handlePlantingDateChange = (value: string) => {
-        setFormData((prev) => {
-            const cropType = prev.crop_type || 'Sugarcane';
-            const shouldAutoFill = !cropType || cropType.trim().toLowerCase() === 'sugarcane';
-
-            return {
-                ...prev,
-                planting_date: value,
-                expected_harvest_date: shouldAutoFill
-                    ? deriveSugarcaneExpectedHarvestDate(
-                        value,
-                        cropType,
-                        prev.expected_harvest_date,
-                        prev.previous_cutting_date || prev.cutting_date,
-                        prev.harvest_date
-                    ) || ''
-                    : prev.expected_harvest_date || '',
-            };
-        });
+        setFormData((prev) => ({
+            ...prev,
+            planting_date: value,
+        }));
     };
 
     const handlePreviousCuttingDateChange = (value: string) => {
-        setFormData((prev) => {
-            const cropType = prev.crop_type || 'Sugarcane';
-            const shouldAutoFill = !cropType || cropType.trim().toLowerCase() === 'sugarcane';
-
-            return {
-                ...prev,
-                previous_cutting_date: value,
-                cutting_date: value,
-                expected_harvest_date: shouldAutoFill
-                    ? deriveSugarcaneExpectedHarvestDate(
-                        prev.planting_date,
-                        cropType,
-                        prev.expected_harvest_date,
-                        value,
-                        prev.harvest_date
-                    ) || ''
-                    : prev.expected_harvest_date || '',
-            };
-        });
+        setFormData((prev) => ({
+            ...prev,
+            previous_cutting_date: value,
+            cutting_date: value,
+        }));
     };
 
     const handleHarvestDateChange = (value: string) => {
-        setFormData((prev) => {
-            const cropType = prev.crop_type || 'Sugarcane';
-            const shouldAutoFill = !cropType || cropType.trim().toLowerCase() === 'sugarcane';
-
-            return {
-                ...prev,
-                harvest_date: value,
-                expected_harvest_date: shouldAutoFill
-                    ? deriveSugarcaneExpectedHarvestDate(
-                        prev.planting_date,
-                        cropType,
-                        prev.expected_harvest_date,
-                        prev.previous_cutting_date || prev.cutting_date,
-                        value
-                    ) || ''
-                    : prev.expected_harvest_date || '',
-            };
-        });
+        setFormData((prev) => ({
+            ...prev,
+            harvest_date: value,
+        }));
     };
 
     const applyFertilizerApplicationRows = (rows: FertilizerApplication[]) => {
@@ -1824,13 +1780,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         ...prev,
                                         crop_type: nextCropType,
                                         crop_class: nextOptions.includes(prev.crop_class || '') ? prev.crop_class : '',
-                                        expected_harvest_date: deriveSugarcaneExpectedHarvestDate(
-                                            prev.planting_date,
-                                            nextCropType,
-                                            prev.expected_harvest_date,
-                                            prev.previous_cutting_date || prev.cutting_date,
-                                            prev.harvest_date
-                                        ) || prev.expected_harvest_date || '',
                                     }));
                                 }}
                                 SelectProps={{
@@ -1876,11 +1825,247 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             <TextField
                                 type="date"
                                 fullWidth
+                                label="Soil Sampling Date"
+                                InputLabelProps={{ shrink: true }}
+                                value={formData.soil_sampling_date || ''}
+                                onChange={(e) => updateField('soil_sampling_date', e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 8 }}>
+                            <Box
+                                sx={{
+                                    border: '1px solid',
+                                    borderColor: pdfError ? 'error.main' : 'rgba(0,0,0,0.23)',
+                                    borderRadius: 1,
+                                    p: 1.5,
+                                    position: 'relative',
+                                    '&:hover': { borderColor: 'text.primary' },
+                                }}
+                            >
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        position: 'absolute',
+                                        top: -10,
+                                        left: 10,
+                                        bgcolor: 'background.paper',
+                                        px: 0.5,
+                                        color: pdfError ? 'error.main' : 'text.secondary',
+                                        fontSize: '0.75rem',
+                                    }}
+                                >
+                                    Soil Test Report (PDF)
+                                </Typography>
+                                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        component="label"
+                                        disabled={pdfUploading}
+                                        sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                                    >
+                                        {pdfUploading ? (
+                                            <Stack direction="row" spacing={1} alignItems="center">
+                                                <CircularProgress size={14} />
+                                                <span>Uploading…</span>
+                                            </Stack>
+                                        ) : (
+                                            formData.soil_test_pdf_url ? 'Replace PDF' : 'Upload PDF'
+                                        )}
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            hidden
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0]
+                                                if (!file) return
+                                                setPdfError(null)
+                                                setPdfUploading(true)
+                                                try {
+                                                    const fieldKey = [
+                                                        formData.section_name,
+                                                        formData.block_id,
+                                                        formData.field_name,
+                                                    ].filter(Boolean).join('_') || 'unknown'
+                                                    const url = await uploadSoilTestPdf(file, fieldKey)
+                                                    updateField('soil_test_pdf_url', url)
+                                                } catch (err) {
+                                                    setPdfError(err instanceof Error ? err.message : 'Upload failed')
+                                                } finally {
+                                                    setPdfUploading(false)
+                                                    e.target.value = ''
+                                                }
+                                            }}
+                                        />
+                                    </Button>
+                                    {formData.soil_test_pdf_url ? (
+                                        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+                                            <Typography
+                                                component="a"
+                                                href={formData.soil_test_pdf_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                sx={{
+                                                    fontSize: '0.78rem',
+                                                    color: 'primary.main',
+                                                    textDecoration: 'underline',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                    flex: 1,
+                                                    minWidth: 0,
+                                                }}
+                                            >
+                                                View uploaded PDF
+                                            </Typography>
+                                            <Button
+                                                size="small"
+                                                color="error"
+                                                variant="text"
+                                                sx={{ flexShrink: 0, minWidth: 0, p: 0.5 }}
+                                                onClick={() => {
+                                                    updateField('soil_test_pdf_url', '')
+                                                    setPdfError(null)
+                                                }}
+                                            >
+                                                Remove
+                                            </Button>
+                                        </Stack>
+                                    ) : (
+                                        <Typography variant="caption" color="text.secondary">
+                                            No file uploaded
+                                        </Typography>
+                                    )}
+                                </Stack>
+                                {pdfError && (
+                                    <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                                        {pdfError}
+                                    </Typography>
+                                )}
+                            </Box>
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                type="date"
+                                fullWidth
                                 label="Foliar Sampling Date"
                                 InputLabelProps={{ shrink: true }}
                                 value={normalizeDateInputValue(formData.foliar_sampling_date)}
                                 onChange={(e) => handleFoliarSamplingDateChange(e.target.value)}
                             />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 8 }}>
+                            <Box
+                                sx={{
+                                    border: '1px solid',
+                                    borderColor: foliarPdfError ? 'error.main' : 'rgba(0,0,0,0.23)',
+                                    borderRadius: 1,
+                                    p: 1.5,
+                                    position: 'relative',
+                                    '&:hover': { borderColor: 'text.primary' },
+                                }}
+                            >
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        position: 'absolute',
+                                        top: -10,
+                                        left: 10,
+                                        bgcolor: 'background.paper',
+                                        px: 0.5,
+                                        color: foliarPdfError ? 'error.main' : 'text.secondary',
+                                        fontSize: '0.75rem',
+                                    }}
+                                >
+                                    Foliar Analysis Results (PDF)
+                                </Typography>
+                                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        component="label"
+                                        disabled={foliarPdfUploading}
+                                        sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                                    >
+                                        {foliarPdfUploading ? (
+                                            <Stack direction="row" spacing={1} alignItems="center">
+                                                <CircularProgress size={14} />
+                                                <span>Uploading…</span>
+                                            </Stack>
+                                        ) : (
+                                            formData.foliar_analysis_pdf_url ? 'Replace PDF' : 'Upload PDF'
+                                        )}
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            hidden
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0]
+                                                if (!file) return
+                                                setFoliarPdfError(null)
+                                                setFoliarPdfUploading(true)
+                                                try {
+                                                    const fieldKey = [
+                                                        formData.section_name,
+                                                        formData.block_id,
+                                                        formData.field_name,
+                                                    ].filter(Boolean).join('_') || 'unknown'
+                                                    const url = await uploadFoliarAnalysisPdf(file, fieldKey)
+                                                    updateField('foliar_analysis_pdf_url', url)
+                                                } catch (err) {
+                                                    setFoliarPdfError(err instanceof Error ? err.message : 'Upload failed')
+                                                } finally {
+                                                    setFoliarPdfUploading(false)
+                                                    e.target.value = ''
+                                                }
+                                            }}
+                                        />
+                                    </Button>
+                                    {formData.foliar_analysis_pdf_url ? (
+                                        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+                                            <Typography
+                                                component="a"
+                                                href={formData.foliar_analysis_pdf_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                sx={{
+                                                    fontSize: '0.78rem',
+                                                    color: 'primary.main',
+                                                    textDecoration: 'underline',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                    flex: 1,
+                                                    minWidth: 0,
+                                                }}
+                                            >
+                                                View uploaded PDF
+                                            </Typography>
+                                            <Button
+                                                size="small"
+                                                color="error"
+                                                variant="text"
+                                                sx={{ flexShrink: 0, minWidth: 0, p: 0.5 }}
+                                                onClick={() => {
+                                                    updateField('foliar_analysis_pdf_url', '')
+                                                    setFoliarPdfError(null)
+                                                }}
+                                            >
+                                                Remove
+                                            </Button>
+                                        </Stack>
+                                    ) : (
+                                        <Typography variant="caption" color="text.secondary">
+                                            No file uploaded
+                                        </Typography>
+                                    )}
+                                </Stack>
+                                {foliarPdfError && (
+                                    <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                                        {foliarPdfError}
+                                    </Typography>
+                                )}
+                            </Box>
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
@@ -1900,13 +2085,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 InputLabelProps={{ shrink: true }}
                                 value={formData.expected_harvest_date || ''}
                                 onChange={(e) => updateField('expected_harvest_date', e.target.value)}
-                                helperText={formData.crop_type === 'Sugarcane' && formData.planting_date
-                                    ? 'Auto-filled as 1 year after the planting date for sugarcane.'
-                                    : formData.crop_type === 'Sugarcane' && (formData.previous_cutting_date || formData.cutting_date)
-                                        ? 'Falls back to 1 year after the previous cutting date when planting date is missing.'
-                                    : formData.crop_type === 'Sugarcane' && formData.harvest_date
-                                        ? 'Falls back to the harvest date when planting date is missing.'
-                                    : undefined}
                             />
                         </Grid>
                         {(plantingCalendarSearch || cuttingCalendarSearch) && (
@@ -2031,7 +2209,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 <Stack spacing={2}>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary' }}>
-                                            Fertilizer Application {index + 1}
+                                            Fertilizer Application
                                         </Typography>
                                         {index > 0 && (
                                             <Button

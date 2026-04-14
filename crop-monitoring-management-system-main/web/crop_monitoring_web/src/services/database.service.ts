@@ -9,7 +9,7 @@ import type {
     SugarcaneMonitoringRecord,
 } from '@/types/database.types'
 import { HARDCODED_FIELDS, HARDCODED_FIELD_SHAPEFILE } from '@/data/hardcodedFieldShapefile'
-import { deriveSugarcaneExpectedHarvestDate, hasDateOnlyValue, normalizeDateOnlyValue } from '@/utils/dateOnly'
+import { hasDateOnlyValue, normalizeDateOnlyValue } from '@/utils/dateOnly'
 import { deriveGrowthStageLabel } from '@/utils/growthStage'
 
 const USE_HARDCODED_FIELD_REGISTRY = false
@@ -19,6 +19,7 @@ const MONITORING_TABLE_NAME = FIELD_REGISTRY_TABLE_NAMES[0]
 export interface PredefinedField extends Field {
     id?: string
     geom?: any
+    crop_class?: string
     soil_ph?: number
 }
 
@@ -59,6 +60,7 @@ export interface MobileObservationEntryFormFields {
     crop_class?: string
     variety?: string
     planting_date?: string
+    soil_sampling_date?: string
     previous_cutting_date?: string
     cutting_date?: string
     expected_harvest_date?: string
@@ -108,6 +110,9 @@ export interface ObservationEntryFormSubmissionInput {
     crop_class?: string
     variety?: string
     planting_date?: string
+    soil_sampling_date?: string
+    soil_test_pdf_url?: string
+    foliar_analysis_pdf_url?: string
     previous_cutting_date?: string
     cutting_date?: string
     expected_harvest_date?: string
@@ -242,6 +247,18 @@ async function persistFieldManagementMonitoringRowWithSchemaFallback(
 
 function normalizeLookupToken(value?: string | null): string {
     return (value ?? '').trim().toLowerCase()
+}
+
+function toPublicStorageUrl(bucket: string, value: unknown): string | undefined {
+    const normalized = toNullableString(value)
+    if (!normalized) return undefined
+
+    if (/^https?:\/\//i.test(normalized)) {
+        return normalized
+    }
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(normalized)
+    return data.publicUrl || undefined
 }
 
 function listOfMaps(value: unknown): Record<string, unknown>[] {
@@ -766,6 +783,7 @@ function mapPredefinedFieldRow(row: Record<string, unknown>): PredefinedField {
         created_by: toNullableString(row.created_by) ?? undefined,
         date_recorded: toNullableString(row.date_recorded) ?? undefined,
         crop_type: toNullableString(row.crop_type) ?? undefined,
+        crop_class: toNullableString(row.crop_class) ?? undefined,
         is_synced: typeof row.is_synced === 'boolean' ? row.is_synced : undefined,
         local_updated_at: toNullableString(row.local_updated_at) ?? undefined,
         updated_at: toNullableString(row.updated_at) ?? undefined,
@@ -936,13 +954,7 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
     const weedApplicationDate = toNullableDateValue(row.weed_application_date) ?? undefined
     const harvestDate = toNullableDateValue(row.harvest_date ?? row.actual_cutting_date) ?? undefined
     const plantingDate = toNullableDateValue(row.planting_date) ?? undefined
-    const expectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
-        plantingDate,
-        toNullableString(row.crop_type),
-        row.expected_harvest_date,
-        previousCutting,
-        harvestDate
-    ) ?? undefined
+    const expectedHarvestDate = toNullableDateValue(row.expected_harvest_date) ?? undefined
     const geometry = row.geom_polygon ?? row.geom ?? row.geometry ?? row.spatial_data ?? undefined
     const derivedCoordinates = deriveFieldCoordinatesFromGeometry(geometry)
     const fertilizerApplications = normalizeFertilizerApplications(row.fertilizer_applications ?? extractFertilizerApplicationsFromColumns(row), {
@@ -985,6 +997,10 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
         ratoon_number: toNullableNumber(row.ratoon_number) ?? undefined,
         crop_stage: derivedCropStage ?? undefined,
         planting_date: plantingDate,
+        soil_sampling_date: toNullableDateValue(row.soil_sampling_date) ?? undefined,
+        soil_test_pdf_url: toPublicStorageUrl('soil-test-pdfs', row.soil_test_pdf_url ?? row.soil_test_pdf_path),
+        soil_test_pdf_path: toNullableString(row.soil_test_pdf_path) ?? undefined,
+        foliar_analysis_pdf_url: toNullableString(row.foliar_analysis_pdf_url) ?? undefined,
         previous_cutting: previousCutting,
         previous_cutting_date: previousCutting,
         expected_harvest_date: expectedHarvestDate,
@@ -1200,6 +1216,9 @@ function mapSugarcaneMonitoringRowToEntryForm(
         crop_class: row.crop_class || row.crop_type || linkedField?.crop_type || '',
         variety: row.variety || '',
         planting_date: row.planting_date || '',
+        soil_sampling_date: row.soil_sampling_date || '',
+        soil_test_pdf_url: row.soil_test_pdf_url || '',
+        foliar_analysis_pdf_url: row.foliar_analysis_pdf_url || '',
         previous_cutting_date: row.previous_cutting_date || row.previous_cutting || '',
         cutting_date: row.previous_cutting_date || row.previous_cutting || '',
         expected_harvest_date: row.expected_harvest_date || '',
@@ -1258,14 +1277,6 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
         cutting_date: submission.cutting_date,
         date_recorded: submission.date_recorded,
     })
-    const expectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
-        submission.planting_date,
-        submission.crop_type || submission.crop_class,
-        submission.expected_harvest_date,
-        submission.previous_cutting_date || submission.cutting_date,
-        submission.harvest_date
-    )
-
     return {
         Trial: toNullableString(submission.field_name || submission.field_id),
         field_name: toNullableString(submission.field_name || submission.field_id),
@@ -1291,8 +1302,11 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
         crop_stage: toNullableString(derivedCropStage),
         stress: toNullableString(submission.stress),
         planting_date: toNullableDateValue(submission.planting_date),
+        soil_sampling_date: toNullableDateValue(submission.soil_sampling_date),
+        soil_test_pdf_url: toNullableString(submission.soil_test_pdf_url),
+        foliar_analysis_pdf_url: toNullableString(submission.foliar_analysis_pdf_url),
         cutting_date: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
-        expected_harvest_date: toNullableDateValue(expectedHarvestDate),
+        expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
         residue_type: toNullableString(submission.residue_type),
         management_method: toNullableString(submission.residue_management_method),
         residue_remarks: toNullableString(submission.residual_management_remarks),
@@ -1393,14 +1407,6 @@ function buildComparableHerbicideApplications(
 }
 
 function buildSubmissionDuplicateFingerprint(submission: ObservationEntryFormSubmissionInput): string {
-    const expectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
-        submission.planting_date,
-        submission.crop_type || submission.crop_class,
-        submission.expected_harvest_date,
-        submission.previous_cutting_date || submission.cutting_date,
-        submission.harvest_date
-    )
-
     const fingerprint = {
         field_name: normalizeComparableText(firstNonEmptyString(submission.field_name, submission.field_id, submission.selected_field)),
         section_name: normalizeComparableText(submission.section_name),
@@ -1415,7 +1421,7 @@ function buildSubmissionDuplicateFingerprint(submission: ObservationEntryFormSub
         variety: normalizeComparableText(submission.variety),
         planting_date: toNullableDateValue(submission.planting_date),
         previous_cutting_date: toNullableDateValue(submission.previous_cutting_date ?? submission.cutting_date),
-        expected_harvest_date: toNullableDateValue(expectedHarvestDate),
+        expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
         irrigation_type: normalizeComparableText(submission.irrigation_type),
         water_source: normalizeComparableText(submission.water_source),
         tam: normalizeComparableNumber(submission.tam_mm ?? submission.tamm_area, 4),
@@ -1450,14 +1456,6 @@ function buildSubmissionDuplicateFingerprint(submission: ObservationEntryFormSub
 }
 
 function buildMonitoringRowDuplicateFingerprint(row: SugarcaneMonitoringRecord): string {
-    const expectedHarvestDate = deriveSugarcaneExpectedHarvestDate(
-        row.planting_date,
-        row.crop_type || row.crop_class,
-        row.expected_harvest_date,
-        row.previous_cutting_date || row.previous_cutting,
-        row.harvest_date
-    )
-
     const fingerprint = {
         field_name: normalizeComparableText(firstNonEmptyString(row.field_name, row.field_id)),
         section_name: normalizeComparableText(row.section_name),
@@ -1472,7 +1470,7 @@ function buildMonitoringRowDuplicateFingerprint(row: SugarcaneMonitoringRecord):
         variety: normalizeComparableText(row.variety),
         planting_date: toNullableDateValue(row.planting_date),
         previous_cutting_date: toNullableDateValue(row.previous_cutting_date ?? row.previous_cutting),
-        expected_harvest_date: toNullableDateValue(expectedHarvestDate),
+        expected_harvest_date: toNullableDateValue(row.expected_harvest_date),
         irrigation_type: normalizeComparableText(row.irrigation_type),
         water_source: normalizeComparableText(row.water_source),
         tam: normalizeComparableNumber(row.tam_mm, 4),
@@ -1855,6 +1853,31 @@ export async function fetchAllData() {
 
 export async function uploadObservationImage(_file: File, _observationId: string): Promise<string> {
     throw new Error('Image upload is not connected in this web build.')
+}
+
+async function uploadPdfToStorage(bucket: string, file: File, fieldKey: string): Promise<string> {
+    const timestamp = Date.now()
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `${fieldKey}/${timestamp}_${safeName}`
+
+    const { error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file, { contentType: 'application/pdf', upsert: false })
+
+    if (error) {
+        throw new Error(`PDF upload failed: ${error.message}`)
+    }
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+    return data.publicUrl
+}
+
+export async function uploadSoilTestPdf(file: File, fieldKey: string): Promise<string> {
+    return uploadPdfToStorage('soil-test-pdfs', file, fieldKey)
+}
+
+export async function uploadFoliarAnalysisPdf(file: File, fieldKey: string): Promise<string> {
+    return uploadPdfToStorage('foliar-analysis-pdfs', file, fieldKey)
 }
 
 export async function createObservationEntryFormSubmission(

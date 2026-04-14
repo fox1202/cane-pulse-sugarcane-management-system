@@ -84,12 +84,6 @@ const PAGE_META: Record<string, { eyebrow: string; title: string; note?: string;
     note: 'Follow season windows, month tasks, and calendar-linked actions from the imported workbook.',
     icon: <CalendarMonthRounded fontSize="small" />,
   },
-  '/monitoring': {
-    eyebrow: 'Live Feed',
-    title: 'Monitoring',
-    note: 'Track current sugarcane records, summaries, and agronomy signals as they update.',
-    icon: <AgricultureRounded fontSize="small" />,
-  },
   '/security': {
     eyebrow: 'Control',
     title: 'Security Center',

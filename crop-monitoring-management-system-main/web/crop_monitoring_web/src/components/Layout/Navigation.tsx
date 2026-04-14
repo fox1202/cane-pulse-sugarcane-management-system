@@ -36,7 +36,6 @@ const PRIMARY_NAV: NavItemDef[] = [
   { path: '/entry-forms', label: 'Entry Forms', sub: 'Web form intake', icon: <AgricultureRounded fontSize="small" /> },
   { path: '/field-statistics', label: 'Field Statistics', sub: 'Charts and coverage', icon: <InsightsRounded fontSize="small" /> },
   { path: '/calendar', label: 'Farming Calendar', sub: 'Season timing', icon: <CalendarMonthRounded fontSize="small" /> },
-  { path: '/monitoring', label: 'Monitoring', sub: 'Live sugarcane feed', icon: <InsightsRounded fontSize="small" /> },
   { path: '/map', label: 'Map View', sub: 'Trials and boundaries', icon: <MapRounded fontSize="small" /> },
 ]
 

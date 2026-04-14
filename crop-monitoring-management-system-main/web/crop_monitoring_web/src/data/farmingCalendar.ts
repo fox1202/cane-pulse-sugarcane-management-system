@@ -183,3 +183,42 @@ export const FARMING_CALENDAR_TEMPLATES: FarmingCalendarTemplate[] = [
 export function getFarmingCalendarTemplate(templateId: FarmingCalendarTemplate['id']): FarmingCalendarTemplate {
     return FARMING_CALENDAR_TEMPLATES.find((template) => template.id === templateId) ?? FARMING_CALENDAR_TEMPLATES[0]
 }
+
+export interface HarvestProximityTask {
+    offsetDays: number
+    weekLabel: string
+    activity: string
+}
+
+export const HARVEST_PROXIMITY_TASKS: HarvestProximityTask[] = [
+    {
+        offsetDays: -84,
+        weekLabel: '12 wks to harvest',
+        activity: 'Request crushing allocation and confirm harvest scheduling with the mill.',
+    },
+    {
+        offsetDays: -56,
+        weekLabel: '8 wks to harvest',
+        activity: 'Begin dry-off irrigation management – reduce irrigation in the lead-up to harvest.',
+    },
+    {
+        offsetDays: -42,
+        weekLabel: '6 wks to harvest',
+        activity: 'Conduct final eldana, smut, and pest scouting before harvest.',
+    },
+    {
+        offsetDays: -28,
+        weekLabel: '4 wks to harvest',
+        activity: 'Confirm burning program, haulage access, and field readiness for harvest.',
+    },
+    {
+        offsetDays: -14,
+        weekLabel: '2 wks to harvest',
+        activity: 'Complete final dry-off and prepare burning and haulage logistics.',
+    },
+    {
+        offsetDays: 0,
+        weekLabel: 'Harvest',
+        activity: 'Burning, cutting, and haulage operations commence.',
+    },
+]

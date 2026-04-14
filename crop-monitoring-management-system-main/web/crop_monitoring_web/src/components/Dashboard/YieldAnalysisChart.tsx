@@ -17,6 +17,7 @@ import {
   Pie,
   PieChart,
   ResponsiveContainer,
+  Treemap,
   Tooltip,
   XAxis,
   YAxis,
@@ -25,6 +26,7 @@ import { useNavigate } from 'react-router-dom'
 import type {
   MobileObservationEntryFormFields,
   MobileObservationRecord,
+  PredefinedField,
 } from '@/services/database.service'
 import type { FullObservation } from '@/types/database.types'
 import {
@@ -37,6 +39,7 @@ import { isValid, parseISO } from 'date-fns'
 
 interface YieldAnalysisChartProps {
   observations: Array<FullObservation | MobileObservationRecord>
+  liveFields?: PredefinedField[]
 }
 
 type AnalyticsObservation = (FullObservation | MobileObservationRecord) & {
@@ -66,6 +69,7 @@ type AnalyticsRecord = {
   cropGroup: AreaCropGroup
   cropTypeRaw: string
   cropClass: string
+  databaseCropClass: string
   variety: string
   sugarcaneClass: string
   breakCropType: string
@@ -87,6 +91,7 @@ type FieldSnapshot = {
   cropGroup: AreaCropGroup
   cropTypeRaw: string
   cropClass: string
+  databaseCropClass: string
   variety: string
   sugarcaneClass: string
   breakCropType: string
@@ -467,13 +472,21 @@ function AreaPieSummary({
   data: CoverageDatum[]
   onSelectCrop?: (item: CoverageDatum) => void
 }) {
+  const orderedCoverage = [...data].sort((left, right) => right.value - left.value)
+  const coverageNotes: Record<string, string> = {
+    Sugarcane: 'Main footprint',
+    'Break Crop': 'Rotation layer',
+    'Fallow Period': 'Rest window',
+    Unspecified: 'Needs review',
+  }
+
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.6 }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.2 }}>
       <LegendList
         items={data.map((item) => ({ label: item.label, color: item.color }))}
       />
 
-      <Box sx={{ flex: 1, minHeight: 220, position: 'relative' }}>
+      <Box sx={{ flex: 1, minHeight: 200, position: 'relative' }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -482,8 +495,8 @@ function AreaPieSummary({
               nameKey="label"
               cx="50%"
               cy="50%"
-              innerRadius={72}
-              outerRadius={116}
+              innerRadius={62}
+              outerRadius={102}
               paddingAngle={3}
               stroke="rgba(255,255,255,0.95)"
               strokeWidth={3}
@@ -546,10 +559,46 @@ function AreaPieSummary({
         </Box>
       </Box>
 
-      <Grid container spacing={1.2}>
-        {data.map((item) => (
-          <Grid key={item.label} size={{ xs: 12, sm: 4 }}>
-            <Paper
+      <Paper
+        sx={{
+          borderRadius: '22px',
+          border: `1px solid ${alpha(AREA_COLORS.sugarcane, 0.14)}`,
+          bgcolor: alpha(AREA_COLORS.sugarcane, 0.035),
+          boxShadow: 'none',
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1.8fr) 0.8fr 0.8fr 0.8fr',
+            gap: 1,
+            px: 1.35,
+            py: 0.95,
+            borderBottom: `1px solid ${alpha(AREA_COLORS.sugarcane, 0.1)}`,
+            bgcolor: alpha(AREA_COLORS.sugarcane, 0.06),
+          }}
+        >
+          <Typography sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'text.secondary' }}>
+            Land Use
+          </Typography>
+          <Typography sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'text.secondary', textAlign: 'right' }}>
+            Share
+          </Typography>
+          <Typography sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'text.secondary', textAlign: 'right' }}>
+            Area
+          </Typography>
+          <Typography sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'text.secondary', textAlign: 'right' }}>
+            Fields
+          </Typography>
+        </Box>
+
+        {orderedCoverage.map((item, index) => {
+          const share = totalArea > 0 ? (item.value / totalArea) * 100 : 0
+
+          return (
+            <Box
+              key={item.label}
               onClick={onSelectCrop ? () => onSelectCrop(item) : undefined}
               onKeyDown={onSelectCrop ? (event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -560,46 +609,61 @@ function AreaPieSummary({
               role={onSelectCrop ? 'button' : undefined}
               tabIndex={onSelectCrop ? 0 : undefined}
               sx={{
-                p: 1.35,
-                borderRadius: '18px',
-                border: `1px solid ${alpha(item.color, 0.16)}`,
-                bgcolor: alpha(item.color, 0.08),
-                boxShadow: 'none',
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1.8fr) 0.8fr 0.8fr 0.8fr',
+                gap: 1,
+                alignItems: 'center',
+                px: 1.35,
+                py: 0.9,
+                borderBottom: index === orderedCoverage.length - 1
+                  ? 'none'
+                  : `1px solid ${alpha(item.color, 0.08)}`,
                 cursor: onSelectCrop ? 'pointer' : 'default',
                 transition: onSelectCrop
-                  ? 'transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease'
+                  ? 'background-color 180ms ease, transform 180ms ease'
                   : undefined,
                 '&:hover': onSelectCrop ? {
-                  transform: 'translateY(-2px)',
-                  borderColor: alpha(item.color, 0.28),
-                  bgcolor: alpha(item.color, 0.13),
-                  boxShadow: `0 14px 28px ${alpha(item.color, 0.16)}`,
+                  bgcolor: alpha(item.color, 0.08),
                 } : undefined,
                 '&:focus-visible': onSelectCrop ? {
-                  outline: `2px solid ${alpha(item.color, 0.52)}`,
-                  outlineOffset: 3,
+                  outline: `2px solid ${alpha(item.color, 0.44)}`,
+                  outlineOffset: -2,
                 } : undefined,
               }}
             >
-              <Typography sx={{ fontSize: 11, fontWeight: 800, color: item.color, textTransform: 'uppercase', letterSpacing: '0.08em', mb: 0.45 }}>
-                {item.label}
+              <Box sx={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '999px',
+                    bgcolor: item.color,
+                    flexShrink: 0,
+                  }}
+                />
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: 'text.primary', lineHeight: 1.15 }}>
+                    {item.label}
+                  </Typography>
+                  <Typography sx={{ fontSize: 11, color: 'text.secondary', lineHeight: 1.15 }}>
+                    {coverageNotes[item.label] || 'Area snapshot'}
+                  </Typography>
+                </Box>
+              </Box>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: item.color, textAlign: 'right' }}>
+                {share.toFixed(1)}%
               </Typography>
-              <Typography sx={{ fontSize: 16, fontWeight: 900, color: 'text.primary', lineHeight: 1.1 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: 'text.primary', textAlign: 'right' }}>
                 {item.value.toFixed(2)} ha
               </Typography>
-              <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 0.35 }}>
-                {item.fieldCount} field(s)
+              <Typography sx={{ fontSize: 12, color: 'text.secondary', textAlign: 'right' }}>
+                {item.fieldCount}
               </Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+            </Box>
+          )
+        })}
+      </Paper>
 
-      {onSelectCrop && (
-        <Typography sx={{ fontSize: 11.5, color: 'text.secondary', textAlign: 'center' }}>
-          Click a crop slice or card to open matching fields on the map.
-        </Typography>
-      )}
     </Box>
   )
 }
@@ -751,6 +815,204 @@ function RankedPieSummary({
   )
 }
 
+function CropClassTreemapTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: CoverageDatum }> }) {
+  if (!active || !payload?.length) {
+    return null
+  }
+
+  const item = payload[0]?.payload
+  if (!item) {
+    return null
+  }
+
+  return (
+    <Box
+      sx={{
+        borderRadius: '14px',
+        border: '1px solid rgba(27, 94, 32, 0.14)',
+        boxShadow: '0 18px 40px rgba(17, 24, 16, 0.12)',
+        background: 'rgba(255,255,255,0.97)',
+        px: 1.4,
+        py: 1.2,
+        minWidth: 160,
+      }}
+    >
+      <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
+        {item.label}
+      </Typography>
+      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+        {formatAreaValue(item.value)}
+      </Typography>
+      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+        {item.fieldCount} field(s)
+      </Typography>
+    </Box>
+  )
+}
+
+function CropClassTreemapNode(props: any) {
+  const {
+    depth,
+    x = 0,
+    y = 0,
+    width = 0,
+    height = 0,
+    name,
+    value,
+    fieldCount,
+    color,
+    navigation,
+    onSelectItem,
+  } = props
+
+  if (depth !== 1 || width <= 0 || height <= 0) {
+    return null
+  }
+
+  const label = String(name ?? '')
+  const areaValue = Number(value ?? 0)
+  const areaFieldCount = Number(fieldCount ?? 0)
+  const areaColor = String(color ?? AREA_COLORS.mapped)
+  const item: CoverageDatum = {
+    label,
+    value: areaValue,
+    fieldCount: areaFieldCount,
+    color: areaColor,
+    navigation,
+  }
+  const isInteractive = Boolean(onSelectItem && navigation)
+  const canShowLabel = width >= 86 && height >= 34
+  const canShowMeta = width >= 128 && height >= 74
+
+  return (
+    <g
+      onClick={isInteractive ? () => onSelectItem(item) : undefined}
+      onKeyDown={isInteractive ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelectItem(item)
+        }
+      } : undefined}
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      style={isInteractive ? { cursor: 'pointer' } : undefined}
+    >
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        rx={16}
+        ry={16}
+        fill={areaColor}
+        fillOpacity={0.88}
+        stroke="rgba(255,255,255,0.95)"
+        strokeWidth={3}
+      />
+      <rect
+        x={x + 1.5}
+        y={y + 1.5}
+        width={Math.max(width - 3, 0)}
+        height={Math.max(height - 3, 0)}
+        rx={14}
+        ry={14}
+        fill="url(#cropClassTreemapGlow)"
+        opacity={0.28}
+      />
+      {canShowLabel && (
+        <text
+          x={x + 12}
+          y={y + 22}
+          fill="#fff"
+          fontSize={12}
+          fontWeight={800}
+          fontFamily={DISPLAY}
+        >
+          {label}
+        </text>
+      )}
+      {canShowMeta && (
+        <>
+          <text
+            x={x + 12}
+            y={y + 44}
+            fill="rgba(255,255,255,0.94)"
+            fontSize={12}
+            fontWeight={700}
+            fontFamily={MONO}
+          >
+            {formatAreaValue(areaValue)}
+          </text>
+          <text
+            x={x + 12}
+            y={y + 62}
+            fill="rgba(255,255,255,0.88)"
+            fontSize={11}
+            fontWeight={600}
+            fontFamily={MONO}
+          >
+            {areaFieldCount} field(s)
+          </text>
+        </>
+      )}
+    </g>
+  )
+}
+
+function CropClassTreemapSummary({
+  totalValue,
+  data,
+  onSelectItem,
+}: {
+  totalValue: number
+  data: CoverageDatum[]
+  onSelectItem?: (item: CoverageDatum) => void
+}) {
+  return (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.4 }}>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 260,
+          borderRadius: '22px',
+          overflow: 'hidden',
+          border: `1px solid ${alpha(AREA_COLORS.mapped, 0.14)}`,
+          bgcolor: alpha(AREA_COLORS.mapped, 0.04),
+        }}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <Treemap
+            data={data}
+            dataKey="value"
+            nameKey="label"
+            aspectRatio={1.9}
+            isAnimationActive
+            stroke="rgba(255,255,255,0.95)"
+            content={(props) => <CropClassTreemapNode {...props} onSelectItem={onSelectItem} />}
+          >
+            <defs>
+              <linearGradient id="cropClassTreemapGlow" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.34" />
+                <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <Tooltip content={<CropClassTreemapTooltip />} />
+          </Treemap>
+        </ResponsiveContainer>
+      </Box>
+
+      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1.2, flexWrap: 'wrap' }}>
+        <Typography sx={{ fontSize: 21, fontWeight: 900, color: 'text.primary', lineHeight: 1 }}>
+          {formatAreaValue(totalValue)}
+        </Typography>
+        <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: 'text.secondary', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          {data.length} crop class groups
+        </Typography>
+      </Box>
+    </Box>
+  )
+}
+
 function CoverageRows({
   items,
   emptyMessage,
@@ -886,6 +1148,47 @@ function pickPositiveFinite(...values: unknown[]): number | null {
 function isFallbackLabel(value?: string | null): boolean {
   const normalized = (value ?? '').trim().toLowerCase()
   return !normalized || normalized.startsWith('unspecified')
+}
+
+function formatDatabaseCropClassLabel(value?: string | null): string {
+  const normalized = (value ?? '').trim()
+  return normalized || 'Blank / Null'
+}
+
+function resolvePredefinedFieldAreaHa(field: PredefinedField): number | null {
+  if (typeof field.area === 'number' && Number.isFinite(field.area) && field.area > 0) {
+    return Number(field.area.toFixed(2))
+  }
+
+  const geometryArea = getGeometryAreaHa(field.geom)
+  if (geometryArea !== null && geometryArea > 0) {
+    return geometryArea
+  }
+
+  return null
+}
+
+function buildPredefinedFieldIdentity(field: Pick<PredefinedField, 'field_name' | 'section_name' | 'block_id'>): string {
+  return [
+    field.section_name,
+    field.block_id,
+    field.field_name,
+  ]
+    .map((value) => String(value ?? '').trim().toLowerCase())
+    .join('|')
+}
+
+function getPredefinedFieldTimestamp(field: PredefinedField): number {
+  const candidates = [field.updated_at, field.created_at, field.date_recorded]
+
+  for (const candidate of candidates) {
+    const parsed = Date.parse(String(candidate ?? ''))
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return 0
 }
 
 function formatMetricValue(value: number | null, unit = '', digits = 2): string {
@@ -1168,7 +1471,7 @@ function createCoverageData(
   }))
 }
 
-export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observations }) => {
+export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observations, liveFields = [] }) => {
   const theme = useTheme()
   const navigate = useNavigate()
 
@@ -1246,6 +1549,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         monitoring?.crop_class
       )
       const cropClass = pickText(entryForm?.crop_class, monitoring?.crop_class)
+      const databaseCropClass = pickText(monitoring?.crop_class)
       const cropGroup = getAreaCropGroup(`${rawCropType} ${cropClass}`.trim() || rawCropType)
       const variety = pickText(
         observation.crop_information?.variety,
@@ -1268,6 +1572,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         cropGroup,
         cropTypeRaw: rawCropType || 'Unspecified',
         cropClass: cropClass || 'Unspecified',
+        databaseCropClass,
         variety: variety || 'Unspecified',
         sugarcaneClass: cropGroup === 'Sugarcane'
           ? getSugarcaneClassLabel(cropClass, ratoonNumber, rawCropType)
@@ -1310,6 +1615,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
           cropGroup: record.cropGroup,
           cropTypeRaw: record.cropTypeRaw,
           cropClass: record.cropClass,
+          databaseCropClass: record.databaseCropClass,
           variety: record.variety,
           sugarcaneClass: record.sugarcaneClass,
           breakCropType: record.breakCropType,
@@ -1349,6 +1655,10 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         existing.cropClass = record.cropClass
       }
 
+      if (isFallbackLabel(existing.databaseCropClass) && !isFallbackLabel(record.databaseCropClass)) {
+        existing.databaseCropClass = record.databaseCropClass
+      }
+
       if (isFallbackLabel(existing.variety) && !isFallbackLabel(record.variety)) {
         existing.variety = record.variety
       }
@@ -1383,17 +1693,17 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
   )
 
   const sugarcaneFields = useMemo(
-    () => measuredFields.filter((field) => field.cropGroup === 'Sugarcane'),
+    () => measuredFields.filter((field) => getAreaCropGroup(field.databaseCropClass) === 'Sugarcane'),
     [measuredFields]
   )
 
   const breakCropFields = useMemo(
-    () => measuredFields.filter((field) => field.cropGroup === 'Break Crop'),
+    () => measuredFields.filter((field) => getAreaCropGroup(field.databaseCropClass) === 'Break Crop'),
     [measuredFields]
   )
 
   const fallowFields = useMemo(
-    () => measuredFields.filter((field) => field.cropGroup === 'Fallow Period'),
+    () => measuredFields.filter((field) => getAreaCropGroup(field.databaseCropClass) === 'Fallow Period'),
     [measuredFields]
   )
 
@@ -1605,6 +1915,75 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     [measuredFields]
   )
 
+  const cropClassAreaCoverageData = useMemo(
+    () => {
+      const latestByField = new Map<string, PredefinedField>()
+
+      liveFields.forEach((field) => {
+        const identity = buildPredefinedFieldIdentity(field)
+        if (!identity.replace(/\|/g, '')) {
+          return
+        }
+
+        const existing = latestByField.get(identity)
+        if (!existing || getPredefinedFieldTimestamp(field) >= getPredefinedFieldTimestamp(existing)) {
+          latestByField.set(identity, field)
+        }
+      })
+
+      return Array.from(latestByField.values())
+        .reduce<Map<string, { value: number; fieldCount: number }>>((grouped, field) => {
+          const areaHa = resolvePredefinedFieldAreaHa(field)
+          if (areaHa === null || areaHa <= 0) {
+            return grouped
+          }
+
+          const label = formatDatabaseCropClassLabel(field.crop_class)
+          const existing = grouped.get(label) ?? { value: 0, fieldCount: 0 }
+          existing.value += areaHa
+          existing.fieldCount += 1
+          grouped.set(label, existing)
+          return grouped
+        }, new Map())
+    },
+    [liveFields]
+  )
+
+  const cropClassAreaChartData = useMemo(
+    () => Array.from(cropClassAreaCoverageData.entries())
+      .map(([label, summary]) => ({
+        label,
+        value: Number(summary.value.toFixed(2)),
+        fieldCount: summary.fieldCount,
+        color: AREA_COLORS.unspecified,
+      }))
+      .sort((left, right) => right.value - left.value || left.label.localeCompare(right.label))
+      .map((item, index) => ({
+        ...item,
+        color: PALETTE[index % PALETTE.length],
+        navigation: (() => {
+          const cropGroup = getAreaCropGroup(item.label, { treatNoneAsFallow: true })
+          const searchParams: DashboardMapSearchParams = {}
+
+          if (cropGroup !== 'Unspecified') {
+            searchParams.cropType = cropGroup
+          }
+
+          if (item.label !== 'Blank / Null') {
+            searchParams.cropClass = item.label
+          }
+
+          return Object.keys(searchParams).length > 0 ? { searchParams } : undefined
+        })(),
+      })),
+    [cropClassAreaCoverageData]
+  )
+
+  const totalCropClassArea = useMemo(
+    () => cropClassAreaChartData.reduce((sum, item) => sum + item.value, 0),
+    [cropClassAreaChartData]
+  )
+
   const sugarcaneRatoonData = useMemo(
     () => createCoverageData(
       sugarcaneFields,
@@ -1814,10 +2193,9 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
       >
         <Box sx={{ gridColumn: { xl: 'span 7' } }}>
           <ChartShell
-            title="Crop Land Use Coverage"
-            subtitle="Mapped hectares grouped into sugarcane, break crop, and fallow period using the latest classified field snapshot."
+            title="Crop Type Land Use Coverage"
             eyebrow="Area Coverage"
-            height={450}
+            height={500}
             accentColor={AREA_COLORS.sugarcane}
           >
             {totalMeasuredArea > 0 && areaOverviewData.length > 0 ? (
@@ -1827,7 +2205,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                 onSelectCrop={handleAreaCoverageSelect}
               />
             ) : (
-              <EmptyState message="Record mapped field areas and crop types to unlock the crop land coverage chart." />
+              <EmptyState message="Record mapped field areas and database crop classes to unlock the crop land coverage chart." />
             )}
           </ChartShell>
         </Box>
@@ -1845,19 +2223,21 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
                 <LegendList items={phBandData.map((item) => ({ label: `${item.label} • ${item.range}`, color: item.color }))} />
                 <Box sx={{ flex: 1, minHeight: 0 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={phBandData} margin={{ top: 6, right: 20, left: 0, bottom: 6 }}>
+                    <BarChart data={phBandData} margin={{ top: 6, right: 20, left: 8, bottom: 26 }}>
                       <CartesianGrid strokeDasharray="4 4" stroke={alpha(theme.palette.primary.main, 0.12)} vertical={false} />
                       <XAxis
                         dataKey="label"
                         tickLine={false}
                         axisLine={false}
                         tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                        label={{ value: 'Soil pH Bands', position: 'insideBottom', offset: -8, fill: theme.palette.text.secondary, fontSize: 12 }}
                       />
                       <YAxis
                         tickLine={false}
                         axisLine={false}
                         tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
                         allowDecimals={false}
+                        label={{ value: 'Field Count', angle: -90, position: 'insideLeft', fill: theme.palette.text.secondary, fontSize: 12 }}
                       />
                       <Tooltip
                         contentStyle={TOOLTIP_STYLE}
@@ -1883,6 +2263,25 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
               </Box>
             ) : (
               <EmptyState message="Soil pH charts will appear here once fields include live pH readings." />
+            )}
+          </ChartShell>
+        </Box>
+
+        <Box sx={{ gridColumn: { xl: 'span 12' } }}>
+          <ChartShell
+            title="Crop Class Area Coverage"
+            eyebrow="Crop Classes"
+            height={430}
+            accentColor={AREA_COLORS.mapped}
+          >
+            {cropClassAreaChartData.length > 0 ? (
+              <CropClassTreemapSummary
+                totalValue={Number(totalCropClassArea.toFixed(2))}
+                data={cropClassAreaChartData}
+                onSelectItem={handleAreaCoverageSelect}
+              />
+            ) : (
+              <EmptyState message="Crop class area coverage will appear here once sugarcane_field_management includes mapped area and crop_class values." />
             )}
           </ChartShell>
         </Box>

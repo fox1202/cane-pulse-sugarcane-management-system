@@ -70,6 +70,15 @@ const getVariety = (observation: ObservationPageRecord) => (
     getMonitoringSheet(observation)?.variety || getEntryForm(observation)?.variety || observation.crop_information?.variety || ''
 )
 
+const getTrialSortValue = (observation: ObservationPageRecord) => (
+    getMonitoringSheet(observation)?.field_name
+    || getMonitoringSheet(observation)?.field_id
+    || getEntryForm(observation)?.field_name
+    || getEntryForm(observation)?.field_id
+    || observation.field_name
+    || ''
+)
+
 const matchesSearchTerm = (observation: ObservationPageRecord, searchTerm: string) => {
     const normalizedSearch = normalizeFilterToken(searchTerm)
     if (!normalizedSearch) {
@@ -210,6 +219,21 @@ function DataManagementPageContent() {
         )
     }, [observations, searchTerm, startDate, endDate])
 
+    const orderedObservations = useMemo(() => {
+        return [...filteredObservations].sort((a, b) => {
+            const trialComparison = getTrialSortValue(a).localeCompare(getTrialSortValue(b), undefined, {
+                numeric: true,
+                sensitivity: 'base',
+            })
+
+            if (trialComparison !== 0) {
+                return trialComparison
+            }
+
+            return (a.date_recorded || a.created_at || '').localeCompare(b.date_recorded || b.created_at || '')
+        })
+    }, [filteredObservations])
+
     const handleView = (obs: ObservationPageRecord) => {
         setViewedObservation(obs)
         setDetailOpen(true)
@@ -284,7 +308,7 @@ function DataManagementPageContent() {
         )
     }
 
-    const paginatedObservations = filteredObservations.slice(
+    const paginatedObservations = orderedObservations.slice(
         page * rowsPerPage,
         page * rowsPerPage + rowsPerPage
     )
