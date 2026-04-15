@@ -48,7 +48,11 @@ import { LIVE_DATA_UPDATED_EVENT } from '@/lib/liveData'
 import type { Field } from '@/types/database.types'
 import { MapCenterObject } from '@/components/Map/MapCenterObject'
 import { SUGARCANE_CROP_CLASS_OPTIONS as SUGARCANE_CROP_CLASS_FALLBACKS } from '@/utils/cropClassOptions'
-import { getAreaCropGroup } from '@/utils/cropGrouping'
+import {
+    FALLOW_PERIOD_CROP_CLASS_LABEL,
+    getAreaCropGroup,
+    normalizeFallowCropClassLabel,
+} from '@/utils/cropGrouping'
 import {
     SATELLITE_TILE_SOURCES,
     SATELLITE_HYBRID_LABELS_SOURCE,
@@ -107,7 +111,7 @@ const POPUP_META = 'rgba(182, 224, 191, 0.68)'
 const DEFAULT_CROP_TYPE = 'Sugarcane'
 const DEFAULT_SELECTED_CROP_TYPE = 'all'
 const BREAK_CROP_CLASS_FALLBACKS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Maize']
-const FALLOW_CROP_CLASS_FALLBACKS = ['None']
+const FALLOW_CROP_CLASS_FALLBACKS = [FALLOW_PERIOD_CROP_CLASS_LABEL]
 
 /** Shared font shorthand — avoids repeating the string 60+ times */
 const MONO: React.CSSProperties['fontFamily'] = '"Times New Roman", Times, serif'
@@ -163,6 +167,12 @@ function normalizeRequestedFilterValue(value?: string | null): string | null {
     return normalized || null
 }
 
+function normalizeRequestedCropClassValue(value?: string | null): string | null {
+    const normalized = normalizeRequestedFilterValue(value)
+    if (!normalized) return null
+    return normalizeFallowCropClassLabel(normalized) || normalized
+}
+
 function resolveRequestedMapFilters(search: string): RequestedMapFilters {
     const params = new URLSearchParams(search)
     const normalizedCropType = normalizeRequestedFilterValue(params.get('cropType'))
@@ -179,7 +189,7 @@ function resolveRequestedMapFilters(search: string): RequestedMapFilters {
 
     return {
         cropType,
-        cropClass: normalizeRequestedFilterValue(params.get('cropClass')),
+        cropClass: normalizeRequestedCropClassValue(params.get('cropClass')),
         soilType: normalizeRequestedFilterValue(params.get('soilType')),
     }
 }
@@ -1057,6 +1067,14 @@ export function MapViewPage() {
         []
     )
 
+    const normalizeCropClassFilterValue = useCallback(
+        (value?: string | null) => {
+            const normalized = normalizeCropClass(value)
+            return normalizeFallowCropClassLabel(normalized) || normalized
+        },
+        [normalizeCropClass]
+    )
+
     const normalizeSoilType = useCallback(
         (value?: string | null) => String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase(),
         []
@@ -1110,11 +1128,11 @@ export function MapViewPage() {
         }
 
         if (cropGroup === 'Fallow Period') {
-            return cropClass || 'None'
+            return normalizeCropClassFilterValue(cropClass) || FALLOW_PERIOD_CROP_CLASS_LABEL
         }
 
         return cropClass || cropTypeRaw
-    }, [normalizeCropClass, normalizeCropType])
+    }, [normalizeCropClass, normalizeCropClassFilterValue, normalizeCropType])
 
     const getCollectorLabel = useCallback((record?: MobileObservationRecord | null, _field?: Partial<Field> | null): string => {
         return getCanonicalCollectorLabel(
@@ -1292,7 +1310,7 @@ export function MapViewPage() {
         const availableClasses = Array.from(new Set(
             mobileRecordsForCropType
                 .map((record) => getMobileCropClass(record))
-                .map((value) => normalizeCropClass(value))
+                .map((value) => normalizeCropClassFilterValue(value))
                 .filter(Boolean)
         ))
 
@@ -1314,12 +1332,12 @@ export function MapViewPage() {
         }
 
         return availableClasses.sort((left, right) => left.localeCompare(right))
-    }, [selectedCropType, mobileRecordsForCropType, getMobileCropClass, normalizeCropClass])
+    }, [selectedCropType, mobileRecordsForCropType, getMobileCropClass, normalizeCropClassFilterValue])
 
     const matchesSelectedCropClass = useCallback((value?: string | null) => {
         if (selectedCropClass === 'all') return true
-        return normalizeCropClass(value) === selectedCropClass
-    }, [selectedCropClass, normalizeCropClass])
+        return normalizeCropClassFilterValue(value) === normalizeCropClassFilterValue(selectedCropClass)
+    }, [selectedCropClass, normalizeCropClassFilterValue])
 
     const matchesSelectedSoilType = useCallback((value?: string | null) => {
         if (selectedSoilType === 'all') return true
@@ -1378,7 +1396,7 @@ export function MapViewPage() {
         }
 
         if (selectedCropType === 'Fallow Period') {
-            return 'None'
+            return FALLOW_PERIOD_CROP_CLASS_LABEL
         }
 
         return ''

@@ -41,6 +41,7 @@ import type {
     SugarcaneMonitoringRecord,
 } from '@/types/database.types';
 import { SUGARCANE_CROP_CLASS_OPTIONS } from '@/utils/cropClassOptions';
+import { FALLOW_PERIOD_CROP_CLASS_LABEL } from '@/utils/cropGrouping';
 import { buildObservationCalendarSearch } from '@/utils/farmingCalendarLinks';
 
 interface ObservationEntryIntakeDialogProps {
@@ -62,7 +63,7 @@ const WATER_SOURCE_OPTIONS = ['Dam 1', 'Dam 2', 'Dam 3'];
 const SOIL_TYPE_OPTIONS = ['SaL', 'SaC', 'SaCL'];
 const CROP_TYPE_OPTIONS = ['Sugarcane', 'Break Crop', 'Fallow Period'];
 const BREAK_CROP_CLASS_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Maize'];
-const FALLOW_CROP_CLASS_OPTIONS = ['None'];
+const FALLOW_CROP_CLASS_OPTIONS = [FALLOW_PERIOD_CROP_CLASS_LABEL];
 const RESIDUE_TYPE_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Sugarcane', 'None'];
 const RESIDUE_MANAGEMENT_METHOD_OPTIONS = ['Ploughed in', 'Parting', 'Broadcasting', 'None'];
 const DRAW_NEW_FIELD_VALUE = '__draw_new_field__';

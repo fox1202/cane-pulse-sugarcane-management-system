@@ -34,7 +34,11 @@ import {
   getObservationDateValue,
   toFiniteObservationNumber,
 } from '@/utils/observationAnalytics'
-import { getAreaCropGroup } from '@/utils/cropGrouping'
+import {
+  FALLOW_PERIOD_CROP_CLASS_LABEL,
+  getAreaCropGroup,
+  normalizeFallowCropClassLabel,
+} from '@/utils/cropGrouping'
 import { isValid, parseISO } from 'date-fns'
 
 interface YieldAnalysisChartProps {
@@ -1153,7 +1157,7 @@ function isFallbackLabel(value?: string | null): boolean {
 function resolveDatabaseCropClassLabel(cropClass?: string | null, cropType?: string | null): string {
   const normalizedClass = (cropClass ?? '').trim()
   if (normalizedClass) {
-    return normalizedClass
+    return normalizeFallowCropClassLabel(normalizedClass)
   }
 
   const normalizedType = (cropType ?? '').trim()
@@ -1161,12 +1165,16 @@ function resolveDatabaseCropClassLabel(cropClass?: string | null, cropType?: str
     return 'Blank / Null'
   }
 
+  if (getAreaCropGroup(normalizedType, { treatNoneAsFallow: true }) === 'Fallow Period') {
+    return FALLOW_PERIOD_CROP_CLASS_LABEL
+  }
+
   if (getAreaCropGroup(normalizedType, { treatNoneAsFallow: true }) === 'Sugarcane') {
     return 'Unspecified cane'
   }
 
   if (/^break\s*crop$/i.test(normalizedType)) {
-    return 'Unspecified break crop'
+    return 'Break Crop'
   }
 
   return normalizedType
@@ -1439,7 +1447,7 @@ function getBreakCropLabel(cropClass?: string | null, variety?: string | null): 
     return normalizedVariety
   }
 
-  return 'Unspecified break crop'
+  return 'Break Crop'
 }
 
 function getMeasuredFieldCropClassLabel(field: FieldSnapshot): string {
@@ -1448,11 +1456,11 @@ function getMeasuredFieldCropClassLabel(field: FieldSnapshot): string {
   }
 
   if (field.cropGroup === 'Break Crop') {
-    return field.breakCropType || 'Unspecified break crop'
+    return field.breakCropType || 'Break Crop'
   }
 
   if (field.cropGroup === 'Fallow Period') {
-    return 'None'
+    return FALLOW_PERIOD_CROP_CLASS_LABEL
   }
 
   return resolveDatabaseCropClassLabel(field.databaseCropClass, field.cropTypeRaw)
@@ -1462,7 +1470,7 @@ function canFilterByCropClassLabel(label: string): boolean {
   const normalized = label.trim().toLowerCase()
   return normalized !== 'blank / null'
     && normalized !== 'unspecified cane'
-    && normalized !== 'unspecified break crop'
+    && normalized !== 'break crop'
 }
 
 function getPhBand(value: number): { label: string; range: string; color: string } {
@@ -2080,7 +2088,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
   const breakCropCoverageData = useMemo(
     () => createCoverageData(
       breakCropFields,
-      (field) => field.breakCropType || 'Unspecified break crop'
+      (field) => field.breakCropType || 'Break Crop'
     ).map((item) => ({
       ...item,
       navigation: {
