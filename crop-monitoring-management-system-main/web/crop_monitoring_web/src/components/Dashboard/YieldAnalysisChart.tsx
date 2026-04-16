@@ -81,6 +81,7 @@ type AnalyticsRecord = {
   soilPh: number | null
   tamMm: number | null
   fieldAreaHa: number | null
+  expectedHarvestDate: string
 }
 
 type FieldSnapshot = {
@@ -103,6 +104,7 @@ type FieldSnapshot = {
   soilPh: number | null
   tamMm: number | null
   areaHa: number | null
+  expectedHarvestDate: string
 }
 
 type DashboardMapSearchParams = Partial<Record<'cropType' | 'cropClass' | 'soilType' | 'phBand', string>>
@@ -136,6 +138,29 @@ type CoverageDatum = RankedDatum & {
 
 type FieldBarDatum = RankedDatum & {
   detail: string
+}
+
+type ExpectedHarvestField = {
+  fieldKey: string
+  field: string
+  fieldLabel: string
+  section: string
+  block: string
+  sectionBlock: string
+  cropGroup: AreaCropGroup
+  expectedHarvestDate: string
+  areaHa: number | null
+}
+
+type ExpectedHarvestMonthDatum = {
+  monthKey: string
+  label: string
+  fieldCount: number
+  value: number
+  areaHa: number
+  helper: string
+  color: string
+  sortTime: number
 }
 
 type PhBandDatum = RankedDatum & {
@@ -887,6 +912,10 @@ function CropClassTreemapNode(props: any) {
   const isInteractive = Boolean(onSelectItem && navigation)
   const canShowLabel = width >= 86 && height >= 34
   const canShowMeta = width >= 128 && height >= 74
+  const labelColor = getReadableTextColor(areaColor)
+  const labelStroke = labelColor === '#ffffff'
+    ? 'rgba(16,39,21,0.55)'
+    : 'rgba(255,255,255,0.72)'
 
   return (
     <g
@@ -927,7 +956,10 @@ function CropClassTreemapNode(props: any) {
         <text
           x={x + 12}
           y={y + 22}
-          fill="#fff"
+          fill={labelColor}
+          stroke={labelStroke}
+          strokeWidth={2.8}
+          paintOrder="stroke"
           fontSize={12}
           fontWeight={800}
           fontFamily={DISPLAY}
@@ -940,7 +972,10 @@ function CropClassTreemapNode(props: any) {
           <text
             x={x + 12}
             y={y + 44}
-            fill="rgba(255,255,255,0.94)"
+            fill={labelColor}
+            stroke={labelStroke}
+            strokeWidth={2.4}
+            paintOrder="stroke"
             fontSize={12}
             fontWeight={700}
             fontFamily={MONO}
@@ -950,7 +985,10 @@ function CropClassTreemapNode(props: any) {
           <text
             x={x + 12}
             y={y + 62}
-            fill="rgba(255,255,255,0.88)"
+            fill={labelColor}
+            stroke={labelStroke}
+            strokeWidth={2.2}
+            paintOrder="stroke"
             fontSize={11}
             fontWeight={600}
             fontFamily={MONO}
@@ -1116,6 +1154,13 @@ function parseOptionalDate(value?: string | null): Date | null {
   return isValid(parsed) ? parsed : null
 }
 
+function formatMonthYear(date: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
+}
+
 function getEntryForm(observation: AnalyticsObservation): MobileObservationEntryFormFields | undefined {
   return observation.entry_form
 }
@@ -1271,6 +1316,20 @@ function toOrdinal(value: number): string {
 
 function truncateLabel(value: string, max = 18): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value
+}
+
+function getReadableTextColor(backgroundColor: string): string {
+  const normalized = backgroundColor.trim().replace('#', '')
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) {
+    return '#102715'
+  }
+
+  const red = parseInt(normalized.slice(0, 2), 16) / 255
+  const green = parseInt(normalized.slice(2, 4), 16) / 255
+  const blue = parseInt(normalized.slice(4, 6), 16) / 255
+  const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+  return luminance > 0.48 ? '#102715' : '#ffffff'
 }
 
 function normalizeGeometry(value: any): any | null {
@@ -1437,12 +1496,12 @@ function getSugarcaneSortOrder(label: string): number {
 }
 
 function getBreakCropLabel(cropClass?: string | null, variety?: string | null): string {
-  const normalizedClass = (cropClass ?? '').trim()
-  if (normalizedClass && getAreaCropGroup(normalizedClass) === 'Unspecified') {
+  const normalizedClass = (cropClass ?? '').trim().replace(/\s+/g, ' ')
+  if (normalizedClass && !/^break\s*crop$/i.test(normalizedClass)) {
     return normalizedClass
   }
 
-  const normalizedVariety = (variety ?? '').trim()
+  const normalizedVariety = (variety ?? '').trim().replace(/\s+/g, ' ')
   if (normalizedVariety) {
     return normalizedVariety
   }
@@ -1631,6 +1690,11 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         entryForm?.variety,
         monitoring?.variety
       )
+      const expectedHarvestDate = pickText(
+        entryForm?.expected_harvest_date,
+        monitoring?.expected_harvest_date,
+        observation.crop_information?.expected_harvest_date
+      )
       const ratoonNumber = pickFinite(monitoring?.ratoon_number)
       const sectionBlock = [section, block].filter(Boolean).join(' / ') || 'Section / block not set'
 
@@ -1667,6 +1731,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
         ),
         tamMm: pickFinite(entryForm?.tamm_area, entryForm?.tam_mm, monitoring?.tam_mm),
         fieldAreaHa: resolveRecordAreaHa(observation, entryForm),
+        expectedHarvestDate,
       }
     })
   }, [observations])
@@ -1698,6 +1763,7 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
           soilPh: record.soilPh,
           tamMm: record.tamMm,
           areaHa: record.fieldAreaHa,
+          expectedHarvestDate: record.expectedHarvestDate,
         })
         return
       }
@@ -1757,6 +1823,10 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
       if (existing.tamMm === null && record.tamMm !== null) {
         existing.tamMm = record.tamMm
       }
+
+      if (record.expectedHarvestDate && (!existing.expectedHarvestDate || record.timestamp >= existing.timestamp)) {
+        existing.expectedHarvestDate = record.expectedHarvestDate
+      }
     })
 
     return Array.from(byField.values()).sort((left, right) => right.timestamp - left.timestamp)
@@ -1781,6 +1851,72 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     () => measuredFields.filter((field) => getAreaCropGroup(field.databaseCropClass) === 'Fallow Period'),
     [measuredFields]
   )
+
+  const expectedHarvestSugarcaneFields = useMemo<ExpectedHarvestField[]>(() => {
+    const byField = new Map<string, ExpectedHarvestField>()
+
+    fieldSnapshots.forEach((field) => {
+      const expectedHarvestDate = pickText(field.expectedHarvestDate)
+      if (!expectedHarvestDate || !parseOptionalDate(expectedHarvestDate)) {
+        return
+      }
+
+      const cropGroup = field.cropGroup === 'Sugarcane' || getAreaCropGroup(field.databaseCropClass) === 'Sugarcane'
+        ? 'Sugarcane'
+        : field.cropGroup
+
+      if (cropGroup !== 'Sugarcane') {
+        return
+      }
+
+      byField.set(field.fieldKey, {
+        fieldKey: field.fieldKey,
+        field: field.field,
+        fieldLabel: field.fieldLabel,
+        section: field.section,
+        block: field.block,
+        sectionBlock: field.sectionBlock,
+        cropGroup,
+        expectedHarvestDate,
+        areaHa: field.areaHa,
+      })
+    })
+
+    liveFields.forEach((field) => {
+      const expectedHarvestDate = pickText(field.expected_harvest_date)
+      if (!expectedHarvestDate || !parseOptionalDate(expectedHarvestDate)) {
+        return
+      }
+
+      const cropGroup = getAreaCropGroup(`${field.crop_class ?? ''} ${field.crop_type ?? ''}`.trim() || field.crop_type || field.crop_class)
+      if (cropGroup !== 'Sugarcane') {
+        return
+      }
+
+      const fieldKey = buildPredefinedFieldIdentity(field)
+      if (!fieldKey.replace(/\|/g, '') || byField.has(fieldKey)) {
+        return
+      }
+
+      const section = String(field.section_name ?? '').trim()
+      const block = String(field.block_id ?? '').trim()
+      const fieldName = String(field.field_name ?? '').trim() || 'Unknown field'
+
+      byField.set(fieldKey, {
+        fieldKey,
+        field: fieldName,
+        fieldLabel: fieldName,
+        section,
+        block,
+        sectionBlock: [section, block].filter(Boolean).join(' / ') || 'Section / block not set',
+        cropGroup,
+        expectedHarvestDate,
+        areaHa: resolvePredefinedFieldAreaHa(field),
+      })
+    })
+
+    return Array.from(byField.values())
+  }, [fieldSnapshots, liveFields])
 
   const phFields = useMemo(
     () => fieldSnapshots.filter((field) => field.soilPh !== null),
@@ -1873,6 +2009,59 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
       totalFallowArea,
       totalSugarcaneArea,
     ]
+  )
+
+  const expectedHarvestMonthData = useMemo<ExpectedHarvestMonthDatum[]>(() => {
+    const grouped = new Map<string, {
+      monthDate: Date
+      fieldCount: number
+      areaHa: number
+      fields: string[]
+    }>()
+
+    expectedHarvestSugarcaneFields.forEach((field) => {
+      const harvestDate = parseOptionalDate(field.expectedHarvestDate)
+      if (!harvestDate) {
+        return
+      }
+
+      const monthDate = new Date(harvestDate.getFullYear(), harvestDate.getMonth(), 1)
+      const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`
+      const existing = grouped.get(monthKey) ?? {
+        monthDate,
+        fieldCount: 0,
+        areaHa: 0,
+        fields: [],
+      }
+
+      existing.fieldCount += 1
+      existing.areaHa += field.areaHa ?? 0
+      existing.fields.push(field.fieldLabel)
+      grouped.set(monthKey, existing)
+    })
+
+    return Array.from(grouped.entries())
+      .sort(([, left], [, right]) => left.monthDate.getTime() - right.monthDate.getTime())
+      .map(([monthKey, summary], index) => ({
+        monthKey,
+        label: formatMonthYear(summary.monthDate),
+        fieldCount: summary.fieldCount,
+        value: summary.fieldCount,
+        areaHa: Number(summary.areaHa.toFixed(2)),
+        helper: summary.fields.slice(0, 3).join(', '),
+        color: PALETTE[index % PALETTE.length],
+        sortTime: summary.monthDate.getTime(),
+      }))
+  }, [expectedHarvestSugarcaneFields])
+
+  const expectedHarvestTotalArea = useMemo(
+    () => sumBy(expectedHarvestMonthData, (item) => item.areaHa),
+    [expectedHarvestMonthData]
+  )
+
+  const expectedHarvestPeakMonth = useMemo(
+    () => [...expectedHarvestMonthData].sort((left, right) => right.fieldCount - left.fieldCount || left.sortTime - right.sortTime)[0] ?? null,
+    [expectedHarvestMonthData]
   )
 
   const phBandData = useMemo<PhBandDatum[]>(() => {
@@ -2275,6 +2464,116 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
           '& > *': { minWidth: 0 },
         }}
       >
+        <Box sx={{ gridColumn: { xl: 'span 12' } }}>
+          <ChartShell
+            title="Sugarcane Expected Harvest by Month"
+            subtitle="Sugarcane fields grouped by expected harvest date. Bars show field count per month, with mapped hectares available in the tooltip."
+            eyebrow="Harvest Forecast"
+            height={470}
+            accentColor={AREA_COLORS.sugarcane}
+          >
+            {expectedHarvestMonthData.length > 0 ? (
+              <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.4 }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+                    gap: 1,
+                  }}
+                >
+                  {[
+                    {
+                      label: 'Fields Scheduled',
+                      value: String(expectedHarvestSugarcaneFields.length),
+                    },
+                    {
+                      label: 'Mapped Area',
+                      value: formatAreaValue(expectedHarvestTotalArea),
+                    },
+                    {
+                      label: 'Peak Month',
+                      value: expectedHarvestPeakMonth
+                        ? `${expectedHarvestPeakMonth.label} (${expectedHarvestPeakMonth.fieldCount})`
+                        : 'N/A',
+                    },
+                  ].map((item) => (
+                    <Paper
+                      key={item.label}
+                      sx={{
+                        p: 1.25,
+                        borderRadius: '16px',
+                        border: `1px solid ${alpha(AREA_COLORS.sugarcane, 0.16)}`,
+                        bgcolor: alpha(AREA_COLORS.sugarcane, 0.07),
+                        boxShadow: 'none',
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          color: 'primary.dark',
+                          mb: 0.45,
+                        }}
+                      >
+                        {item.label}
+                      </Typography>
+                      <Typography sx={{ fontSize: 18, fontWeight: 900, color: 'text.primary', lineHeight: 1.1 }}>
+                        {item.value}
+                      </Typography>
+                    </Paper>
+                  ))}
+                </Box>
+
+                <Box sx={{ flex: 1, minHeight: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={expectedHarvestMonthData} margin={{ top: 8, right: 18, left: 8, bottom: 48 }}>
+                      <CartesianGrid strokeDasharray="4 4" stroke={alpha(theme.palette.primary.main, 0.12)} vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        tickLine={false}
+                        axisLine={false}
+                        interval={0}
+                        angle={-22}
+                        textAnchor="end"
+                        height={62}
+                        tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                        label={{ value: 'Expected Harvest Month', position: 'insideBottom', offset: -10, fill: theme.palette.text.secondary, fontSize: 12 }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                        allowDecimals={false}
+                        label={{ value: 'Field Count', angle: -90, position: 'insideLeft', fill: theme.palette.text.secondary, fontSize: 12 }}
+                      />
+                      <Tooltip
+                        contentStyle={TOOLTIP_STYLE}
+                        formatter={(value: number | string | undefined, _name, entry: any) => [
+                          `${Number(value || 0)} field(s)`,
+                          `${formatAreaValue(Number(entry?.payload?.areaHa || 0))} mapped`,
+                        ]}
+                        labelFormatter={(label) => {
+                          const match = expectedHarvestMonthData.find((item) => item.label === label)
+                          return match?.helper ? `${label} • ${match.helper}` : String(label)
+                        }}
+                      />
+                      <Bar dataKey="fieldCount" radius={[12, 12, 0, 0]} barSize={42}>
+                        {expectedHarvestMonthData.map((entry) => (
+                          <Cell key={entry.monthKey} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Box>
+            ) : (
+              <EmptyState message="Expected harvest month statistics will appear here once sugarcane fields include expected harvest dates." />
+            )}
+          </ChartShell>
+        </Box>
+
         <Box sx={{ gridColumn: { xl: 'span 7' } }}>
           <ChartShell
             title="Crop Type Land Use Coverage"
@@ -2571,44 +2870,6 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
           </ChartShell>
         </Box>
 
-        <Box sx={{ gridColumn: { xl: 'span 12' } }}>
-          <ChartShell
-            title="Fallow Period Coverage"
-            subtitle="A quick view of how much mapped land is marked as fallow period and which fields carry the largest fallow footprint right now."
-            eyebrow="Fallow Land"
-            height={380}
-            accentColor={AREA_COLORS.fallow}
-          >
-            {fallowFields.length > 0 ? (
-              <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.6 }}>
-                <MetricGroupCard
-                  label="Fallow Summary"
-                  items={[
-                    { label: 'Area', value: formatMetricValue(totalFallowArea, 'ha') },
-                    { label: 'Fields', value: String(fallowFields.length) },
-                    { label: 'Share', value: `${fallowShare.toFixed(1)}%` },
-                  ]}
-                  helper="Grouped fallow totals for the current live mapped area."
-                  tone={AREA_COLORS.fallow}
-                  columns={3}
-                />
-
-                <Box sx={{ flex: 1, minHeight: 0 }}>
-                  <Stack spacing={1}>
-                    <CoverageRows
-                      items={fallowFieldData}
-                      emptyMessage="No individual fallow trial areas are available yet."
-                      formatValue={(item) => formatAreaValue(item.value)}
-                      onSelectItem={(item) => handleMapNavigation(item.navigation)}
-                    />
-                  </Stack>
-                </Box>
-              </Box>
-            ) : (
-              <EmptyState message="Fallow period coverage will appear here once mapped fields are marked as fallow period." />
-            )}
-          </ChartShell>
-        </Box>
       </Box>
     </Box>
   )

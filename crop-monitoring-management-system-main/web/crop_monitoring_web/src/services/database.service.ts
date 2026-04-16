@@ -21,6 +21,7 @@ export interface PredefinedField extends Field {
     geom?: any
     crop_class?: string
     soil_ph?: number
+    expected_harvest_date?: string
 }
 
 export interface CreatePredefinedFieldInput {

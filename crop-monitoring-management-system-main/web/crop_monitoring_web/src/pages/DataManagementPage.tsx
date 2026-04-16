@@ -23,7 +23,7 @@ import type { FullObservation } from '@/types/database.types'
 import { ObservationDetailDialog } from '@/components/Data/ObservationDetailDialog'
 import { ObservationTable } from '@/components/Data/ObservationTable'
 import { ObservationEditDialog } from '@/components/Data/ObservationEditDialog'
-import { exportToCSV, generatePDFReport } from '@/utils/exportUtils'
+import { exportEntryFormRecordsToCSV, generatePDFReport } from '@/utils/exportUtils'
 import type { MobileObservationRecord } from '@/services/database.service'
 import { updateMobileObservationRecord, deleteMobileObservationRecord } from '@/services/database.service'
 import { hasAdminLevelAccess } from '@/utils/roleAccess'
@@ -327,7 +327,7 @@ function DataManagementPageContent() {
                     <Button
                         variant="outlined"
                         startIcon={<DownloadOutlined />}
-                        onClick={() => exportToCSV(filteredObservations)}
+                        onClick={() => exportEntryFormRecordsToCSV(filteredObservations)}
                         disabled={filteredObservations.length === 0}
                     >
                         Export CSV
@@ -432,7 +432,7 @@ function DataManagementPageContent() {
                         variant="outlined"
                         onClick={() => {
                             const selectedObservations = filteredObservations.filter((obs) => selectedIds.includes(obs.id))
-                            exportToCSV(selectedObservations)
+                            exportEntryFormRecordsToCSV(selectedObservations)
                         }}
                     >
                         Export Selected

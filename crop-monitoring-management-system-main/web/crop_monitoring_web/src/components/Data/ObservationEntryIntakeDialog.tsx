@@ -60,7 +60,53 @@ const IRRIGATION_TYPE_OPTIONS = [
 ];
 
 const WATER_SOURCE_OPTIONS = ['Dam 1', 'Dam 2', 'Dam 3'];
-const SOIL_TYPE_OPTIONS = ['SaL', 'SaC', 'SaCL'];
+const CONTACT_PERSON_OPTIONS = [
+    'DR L.T. MPOFU',
+    'DR T.P. CHIBARABADA',
+    'DR G. MABAYA',
+    'MR S. CHINORUMBA',
+    'MR P. ZVOUTETE',
+    'C MUKANGA',
+    'MR SHAYANOWAKO',
+];
+const CONTACT_PERSON_ALIAS_LOOKUP = new Map<string, string>([
+    ['drltmpofu', 'DR L.T. MPOFU'],
+    ['drmpofu', 'DR L.T. MPOFU'],
+    ['drtpchibarabada', 'DR T.P. CHIBARABADA'],
+    ['drchibarabada', 'DR T.P. CHIBARABADA'],
+    ['drgmabaya', 'DR G. MABAYA'],
+    ['drmabaya', 'DR G. MABAYA'],
+    ['mrschinorumba', 'MR S. CHINORUMBA'],
+    ['mrchinorumba', 'MR S. CHINORUMBA'],
+    ['mrpzvoutete', 'MR P. ZVOUTETE'],
+    ['mrzvoutete', 'MR P. ZVOUTETE'],
+    ['cmukanga', 'C MUKANGA'],
+    ['mrmukanga', 'C MUKANGA'],
+    ['mrshayanowako', 'MR SHAYANOWAKO'],
+    ['shayanowako', 'MR SHAYANOWAKO'],
+]);
+const SOIL_TYPE_OPTIONS = [
+    'SAND',
+    'LOAMY SAND',
+    'SANDY LOAM (SAL)',
+    'LOAM',
+    'SILT LOAM',
+    'SILT',
+    'SACL',
+    'CLAY LOAM',
+    'SILTY CLAY LOAM',
+    'SANDY CLAY (SAC)',
+    'SILTY CLAY',
+    'CLAY',
+];
+const SOIL_TYPE_ALIAS_LOOKUP = new Map<string, string>([
+    ['SANDY LOAM', 'SANDY LOAM (SAL)'],
+    ['SAL', 'SANDY LOAM (SAL)'],
+    ['SANDY CLAY', 'SANDY CLAY (SAC)'],
+    ['SAC', 'SANDY CLAY (SAC)'],
+    ['SANDY CLAY LOAM', 'SACL'],
+    ['SACL', 'SACL'],
+]);
 const CROP_TYPE_OPTIONS = ['Sugarcane', 'Break Crop', 'Fallow Period'];
 const BREAK_CROP_CLASS_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Maize'];
 const FALLOW_CROP_CLASS_OPTIONS = [FALLOW_PERIOD_CROP_CLASS_LABEL];
@@ -104,6 +150,25 @@ const WHITE_SELECT_MENU_PROPS = {
         },
     },
 };
+
+function normalizeSoilTypeLabel(value?: string | null) {
+    const normalized = String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
+    if (!normalized) return '';
+    return SOIL_TYPE_ALIAS_LOOKUP.get(normalized) ?? normalized;
+}
+
+function getContactPersonLookupKey(value?: string | null) {
+    return String(value ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+}
+
+function normalizeContactPersonLabel(value?: string | null) {
+    const key = getContactPersonLookupKey(value);
+    if (!key) return '';
+    return CONTACT_PERSON_ALIAS_LOOKUP.get(key) ?? String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
+}
 
 type DrawPoint = [number, number];
 
@@ -433,7 +498,7 @@ function buildFreshFormData(
         water_source: matchedField.water_source || preserved.water_source || '',
         tam_mm: matchedField.tam_mm || preserved.tam_mm || '',
         tamm_area: matchedField.tamm_area ?? preserved.tamm_area,
-        soil_type: matchedField.soil_type || preserved.soil_type || '',
+        soil_type: normalizeSoilTypeLabel(matchedField.soil_type || preserved.soil_type),
         soil_ph: matchedField.soil_ph ?? preserved.soil_ph,
     };
 }
@@ -759,7 +824,7 @@ function buildLoadedSavedRecordData(
         date_recorded: savedEntry.date_recorded || '',
         trial_number: savedEntry.trial_number ?? '',
         trial_name: savedEntry.trial_name || '',
-        contact_person: savedEntry.contact_person || '',
+        contact_person: normalizeContactPersonLabel(savedEntry.contact_person),
         phone_country_code: isEntryForm ? savedEntry.phone_country_code || '' : '',
         phone_number: isEntryForm ? savedEntry.phone_number || '' : '',
         crop_type: savedEntry.crop_type || loaded.crop_type,
@@ -776,7 +841,7 @@ function buildLoadedSavedRecordData(
         water_source: savedEntry.water_source || loaded.water_source || '',
         tam_mm: savedEntry.tam_mm || loaded.tam_mm || '',
         tamm_area: tamArea ?? loaded.tamm_area,
-        soil_type: savedEntry.soil_type || loaded.soil_type || '',
+        soil_type: normalizeSoilTypeLabel(savedEntry.soil_type || loaded.soil_type),
         soil_ph: savedEntry.soil_ph ?? loaded.soil_ph,
         field_remarks: savedEntry.field_remarks || savedEntry.remarks || '',
         residue_type: savedEntry.residue_type || '',
@@ -1427,6 +1492,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 geom_polygon: formData.geom_polygon ?? resolvedField.geom ?? undefined,
                 latitude: formData.latitude ?? resolvedField.latitude ?? 0,
                 longitude: formData.longitude ?? resolvedField.longitude ?? 0,
+                contact_person: normalizeContactPersonLabel(formData.contact_person),
+                soil_type: normalizeSoilTypeLabel(formData.soil_type),
             };
 
             const submissionFields = registryFields.some((field) =>
@@ -1689,7 +1756,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 select
                                 fullWidth
                                 label="Soil Type"
-                                value={formData.soil_type || ''}
+                                value={normalizeSoilTypeLabel(formData.soil_type)}
                                 onChange={(e) => updateField('soil_type', e.target.value)}
                             >
                                 {SOIL_TYPE_OPTIONS.map((option) => (
@@ -1746,11 +1813,21 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
+                                select
                                 fullWidth
                                 label="Contact Person"
-                                value={formData.contact_person || ''}
+                                value={normalizeContactPersonLabel(formData.contact_person)}
                                 onChange={(e) => updateField('contact_person', e.target.value)}
-                            />
+                                SelectProps={{
+                                    MenuProps: WHITE_SELECT_MENU_PROPS,
+                                }}
+                            >
+                                {CONTACT_PERSON_OPTIONS.map((option) => (
+                                    <MenuItem key={option} value={option}>
+                                        {option}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
@@ -2307,11 +2384,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 }}
                             >
                                 <Stack spacing={2}>
-                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary' }}>
-                                            Herbicide Application {index + 1}
-                                        </Typography>
-                                        {index > 0 && (
+                                    {index > 0 && (
+                                        <Stack direction="row" justifyContent="flex-end">
                                             <Button
                                                 size="small"
                                                 variant="text"
@@ -2320,8 +2394,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                             >
                                                 Remove
                                             </Button>
-                                        )}
-                                    </Stack>
+                                        </Stack>
+                                    )}
                                     <Grid container spacing={2}>
                                         <Grid size={{ xs: 12, md: 4 }}>
                                             <TextField

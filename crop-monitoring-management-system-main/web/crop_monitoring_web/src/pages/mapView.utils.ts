@@ -33,27 +33,33 @@ interface MobileBoundaryLookups {
 
 export const SATELLITE_TILE_SOURCES: readonly TileSource[] = [
     {
-        id: 'esri-primary',
-        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        attribution: '&copy; Esri, DigitalGlobe, Earthstar Geographics',
+        id: 'sentinel-2-cloudless-2024',
+        url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg',
+        attribution: '<a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">Sentinel-2 cloudless</a> by <a href="https://eox.at" target="_blank" rel="noopener noreferrer">EOX IT Services GmbH</a> (Contains modified Copernicus Sentinel data 2024)',
     },
     {
-        id: 'esri-backup',
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        attribution: '&copy; Esri, DigitalGlobe, Earthstar Geographics',
+        id: 'sentinel-2-cloudless-2023',
+        url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2023_3857/default/g/{z}/{y}/{x}.jpg',
+        attribution: '<a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">Sentinel-2 cloudless</a> by <a href="https://eox.at" target="_blank" rel="noopener noreferrer">EOX IT Services GmbH</a> (Contains modified Copernicus Sentinel data 2023)',
     },
 ]
 
 export const SATELLITE_HYBRID_LABELS_SOURCE: TileSource = {
-    id: 'esri-hybrid-labels',
-    url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri',
+    id: 'carto-reference-labels',
+    url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
 }
 
 export const TERRAIN_TILE_SOURCE: TileSource = {
     id: 'osm-terrain',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; OpenStreetMap contributors',
+}
+
+export const WORLD_IMAGERY_TILE_SOURCE: TileSource = {
+    id: 'esri-world-imagery',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
 }
 
 export function centroidFromGeometry(geometry: any): [number, number] | null {
@@ -897,35 +903,38 @@ export function findFieldForFeature(
         })()
         : null
 
-    return fieldLookup.get(buildFieldIdentity(props.field_name, props.section_name, props.block_id))
-        ?? fieldLookup.get(buildFieldNameKey(props.field_name))
-        ?? (props.block_id
-            ? linkedFields.find((field) => normalizeFieldToken(field.block_id) === normalizeFieldToken(props.block_id)) ?? null
-            : null)
-        ?? codeMatch
-        ?? (() => {
-            const matchedRecord = getMobileRecordForBoundary(
-                {
-                    field_name: props.field_name,
-                    section_name: props.section_name,
-                    block_id: props.block_id,
-                },
-                mobileRecords
-            )
+    const byIdentity = fieldLookup.get(buildFieldIdentity(props.field_name, props.section_name, props.block_id)) ?? null
+    const byName = fieldLookup.get(buildFieldNameKey(props.field_name)) ?? null
+    const byBlock = props.block_id
+        ? (linkedFields.find((field) => normalizeFieldToken(field.block_id) === normalizeFieldToken(props.block_id)) ?? null)
+        : null
 
-            return matchedRecord
-                ? createSyntheticFieldFromMobileRecord(matchedRecord, {
-                    field_name: props.field_name,
-                    section_name: props.section_name,
-                    block_id: props.block_id,
-                })
-                : null
-        })()
-        ?? getMobileFieldByGeometry(feature?.geometry, mobileRecords, {
+    if (byIdentity !== null) return byIdentity
+    if (byName !== null) return byName
+    if (byBlock !== null) return byBlock
+    if (codeMatch !== null) return codeMatch
+
+    const matchedRecord = getMobileRecordForBoundary(
+        {
+            field_name: props.field_name,
+            section_name: props.section_name,
+            block_id: props.block_id,
+        },
+        mobileRecords
+    )
+    if (matchedRecord) {
+        return createSyntheticFieldFromMobileRecord(matchedRecord, {
             field_name: props.field_name,
             section_name: props.section_name,
             block_id: props.block_id,
         })
+    }
+
+    return getMobileFieldByGeometry(feature?.geometry, mobileRecords, {
+        field_name: props.field_name,
+        section_name: props.section_name,
+        block_id: props.block_id,
+    })
         ?? null
 }
 

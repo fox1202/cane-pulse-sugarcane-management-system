@@ -15,10 +15,9 @@ import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
 import { ObservationEntryIntakeDialog } from '@/components/Data/ObservationEntryIntakeDialog'
 import {
     ObservationEntryDataTable,
-    SUGARCANE_MONITORING_SHEET_COLUMNS,
-    buildSugarcaneMonitoringSheetRow,
 } from '@/components/Data/ObservationEntryDataTable'
 import type { SugarcaneMonitoringRecord } from '@/types/database.types'
+import { exportSugarcaneMonitoringRowsToEntryFormCSV } from '@/utils/exportUtils'
 
 const trialSortCollator = new Intl.Collator(undefined, {
     numeric: true,
@@ -78,23 +77,7 @@ export function ObservationEntryFormPage() {
             return
         }
 
-        const headers = SUGARCANE_MONITORING_SHEET_COLUMNS.map((column) => column.label)
-        const rows = tableRows.map((record) => {
-            const row = buildSugarcaneMonitoringSheetRow(record)
-            return SUGARCANE_MONITORING_SHEET_COLUMNS.map((column) => row[column.key])
-        })
-
-        const csv = [headers, ...rows]
-            .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-            .join('\n')
-
-        const blob = new Blob([csv], { type: 'text/csv' })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `sugarcane-field-management-${new Date().toISOString().split('T')[0]}.csv`
-        a.click()
-        window.URL.revokeObjectURL(url)
+        exportSugarcaneMonitoringRowsToEntryFormCSV(tableRows)
     }
 
     if (loading) {

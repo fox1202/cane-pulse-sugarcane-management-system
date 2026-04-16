@@ -8,6 +8,8 @@ declare module '*.png' {
 interface ImportMetaEnv {
     readonly VITE_SUPABASE_URL: string
     readonly VITE_SUPABASE_ANON_KEY: string
+    readonly VITE_S2DR3_TILE_URL_TEMPLATE?: string
+    readonly VITE_S2DR3_ATTRIBUTION?: string
 }
 
 interface ImportMeta {

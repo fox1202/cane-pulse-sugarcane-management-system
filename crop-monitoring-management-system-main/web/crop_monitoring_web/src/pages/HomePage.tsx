@@ -23,7 +23,7 @@ import {
     PieChart as RechartsPieChart,
     ResponsiveContainer,
 } from 'recharts'
-import { getFarmingCalendarTemplate, HARVEST_PROXIMITY_TASKS, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
+import { HARVEST_PROXIMITY_TASKS } from '@/data/farmingCalendar'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
 import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
 import { getAreaCropGroup } from '@/utils/cropGrouping'
@@ -159,9 +159,6 @@ interface CalendarFieldSeed {
     fieldLabel: string
     cropType: string
     cropClass: string
-    plantingDate: string
-    cutDate: string
-    recordedDate: string
     expectedHarvestDate: string
 }
 
@@ -186,10 +183,7 @@ interface CalendarScheduleWarning {
     title: string
     detail: string
     dateIso: string | null
-    source: CalendarAnchorSource | null
 }
-
-type CalendarAnchorSource = 'planting_date' | 'cut_date' | 'recorded_date'
 
 function normalizeFieldToken(value?: string | null): string {
     return (value ?? '').trim().toLowerCase()
@@ -391,129 +385,9 @@ function addDaysToDateOnly(dateIso: string, daysToAdd: number): string | null {
     return `${nextYear}-${nextMonth}-${nextDay}`
 }
 
-function isRatoonLikeCrop(value?: string | null): boolean {
-    return /\bratoon\b/i.test((value ?? '').trim())
-}
-
-function getCalendarTemplateForField(seed: CalendarFieldSeed): FarmingCalendarTemplate {
-    return getFarmingCalendarTemplate(isRatoonLikeCrop(seed.cropClass) || Boolean(seed.cutDate) ? 'ratoon' : 'plant')
-}
-
-function getCalendarAnchorMeta(
-    seed: CalendarFieldSeed,
-    template: FarmingCalendarTemplate
-): { dateIso: string | null; source: CalendarAnchorSource | null } {
-    if (template.fieldAnchor === 'cut_date') {
-        const cutDate = normalizeDateOnlyValue(seed.cutDate)
-        if (cutDate) return { dateIso: cutDate, source: 'cut_date' }
-
-        const plantingDate = normalizeDateOnlyValue(seed.plantingDate)
-        if (plantingDate) return { dateIso: plantingDate, source: 'planting_date' }
-
-        const recordedDate = normalizeDateOnlyValue(seed.recordedDate)
-        if (recordedDate) return { dateIso: recordedDate, source: 'recorded_date' }
-
-        return { dateIso: null, source: null }
-    }
-
-    const plantingDate = normalizeDateOnlyValue(seed.plantingDate)
-    if (plantingDate) return { dateIso: plantingDate, source: 'planting_date' }
-
-    const cutDate = normalizeDateOnlyValue(seed.cutDate)
-    if (cutDate) return { dateIso: cutDate, source: 'cut_date' }
-
-    const recordedDate = normalizeDateOnlyValue(seed.recordedDate)
-    if (recordedDate) return { dateIso: recordedDate, source: 'recorded_date' }
-
-    return { dateIso: null, source: null }
-}
-
-function getCalendarAnchorSourceLabel(source: CalendarAnchorSource | null): string {
-    switch (source) {
-        case 'planting_date':
-            return 'Planting date'
-        case 'cut_date':
-            return 'Cut date'
-        case 'recorded_date':
-            return 'Recorded date'
-        default:
-            return 'Dates missing'
-    }
-}
-
-function buildCalendarScheduleWarning(
-    seed: CalendarFieldSeed,
-    template: FarmingCalendarTemplate,
-    anchorMeta: { dateIso: string | null; source: CalendarAnchorSource | null }
-): CalendarScheduleWarning | null {
-    const expectedSource: CalendarAnchorSource = template.fieldAnchor === 'cut_date' ? 'cut_date' : 'planting_date'
-
-    if (!anchorMeta.source) {
-        return {
-            key: `${seed.fieldKey}|missing-schedule-date`,
-            fieldLabel: seed.fieldLabel,
-            title: 'Missing schedule dates',
-            detail: 'No planting date, cut date, or recorded date is saved yet, so the Farming Calendar cannot calculate alerts for this field.',
-            dateIso: null,
-            source: null,
-        }
-    }
-
-    if (anchorMeta.source === expectedSource) {
-        return null
-    }
-
-    if (anchorMeta.source === 'recorded_date') {
-        return {
-            key: `${seed.fieldKey}|recorded-date-fallback`,
-            fieldLabel: seed.fieldLabel,
-            title: 'Using recorded date',
-            detail: `The ${expectedSource === 'cut_date' ? 'cut date' : 'planting date'} is missing, so the schedule is using the saved database record date instead.`,
-            dateIso: anchorMeta.dateIso,
-            source: anchorMeta.source,
-        }
-    }
-
-    if (expectedSource === 'cut_date') {
-        return {
-            key: `${seed.fieldKey}|cut-date-fallback`,
-            fieldLabel: seed.fieldLabel,
-            title: 'Cut date missing',
-            detail: 'This ratoon schedule is temporarily anchored to the planting date until a cut date is recorded.',
-            dateIso: anchorMeta.dateIso,
-            source: anchorMeta.source,
-        }
-    }
-
-    return {
-        key: `${seed.fieldKey}|planting-date-fallback`,
-        fieldLabel: seed.fieldLabel,
-        title: 'Planting date missing',
-        detail: 'This plant cane schedule is temporarily anchored to the cut date until a planting date is recorded.',
-        dateIso: anchorMeta.dateIso,
-        source: anchorMeta.source,
-    }
-}
-
 function isCalendarRelevantCrop(cropType?: string | null, cropClass?: string | null): boolean {
     const combined = `${cropType ?? ''} ${cropClass ?? ''}`.trim()
     return getAreaCropGroup(combined) === 'Sugarcane'
-}
-
-function getCalendarTaskKind(activity: string): string {
-    const normalized = activity.trim().toLowerCase()
-
-    if (/harvest|haulage|burning|cutting|maturity/.test(normalized)) return 'Harvest'
-    if (/fertili|ssp|map|npk|foliar|soil analysis|soil sampling|potassium|nitrogen/.test(normalized)) return 'Nutrient'
-    if (/irrigation|dry-off|dry off|tam/.test(normalized)) return 'Irrigation'
-    if (/herbicide|hoeing|weed/.test(normalized)) return 'Weed Control'
-    if (/survey|scouting|smut|eldana|grubs|bmb|ysa|rogue/.test(normalized)) return 'Pest / Disease'
-    if (/plant|seedcane|ridging|land preparation/.test(normalized)) return 'Establishment'
-    return 'Field Activity'
-}
-
-function isNutrientCalendarTask(activity: string): boolean {
-    return getCalendarTaskKind(activity) === 'Nutrient'
 }
 
 function getTaskSeverity(daysUntil: number): TaskSeverity {
@@ -542,27 +416,7 @@ function sortUpcomingTasks(left: UpcomingTask, right: UpcomingTask): number {
     return left.fieldLabel.localeCompare(right.fieldLabel)
 }
 
-function getCalendarWarningPriority(warning: CalendarScheduleWarning): number {
-    if (warning.source === null) return 0
-    if (warning.source === 'recorded_date') return 1
-    return 2
-}
-
 function sortCalendarWarnings(left: CalendarScheduleWarning, right: CalendarScheduleWarning): number {
-    const leftPriority = getCalendarWarningPriority(left)
-    const rightPriority = getCalendarWarningPriority(right)
-
-    if (leftPriority !== rightPriority) {
-        return leftPriority - rightPriority
-    }
-
-    const leftTimestamp = left.dateIso ? getDateOnlyTimestamp(left.dateIso) : Number.POSITIVE_INFINITY
-    const rightTimestamp = right.dateIso ? getDateOnlyTimestamp(right.dateIso) : Number.POSITIVE_INFINITY
-
-    if (leftTimestamp !== rightTimestamp) {
-        return leftTimestamp - rightTimestamp
-    }
-
     return left.fieldLabel.localeCompare(right.fieldLabel)
 }
 
@@ -644,7 +498,7 @@ function TaskRow({ task }: { task: UpcomingTask }) {
         >
             <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mb: 0.8 }}>
-                    <StatusBadge text={task.kind} tone={task.kind === 'Nutrient' ? 'peach' : 'mint'} />
+                    <StatusBadge text={task.kind} tone="mint" />
                     <StatusBadge text={task.weekLabel} tone="mint" />
                 </Box>
                 <Typography sx={{ fontSize: '0.86rem', color: TEXT_MID, lineHeight: 1.6, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
@@ -654,7 +508,7 @@ function TaskRow({ task }: { task: UpcomingTask }) {
                     {task.activity}
                 </Typography>
                 <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 0.25, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                    {task.scheduleType} calendar · {task.cropType || 'Crop type not set'}
+                    Linked to {task.scheduleType} · {task.cropType || 'Sugarcane'}
                 </Typography>
             </Box>
             <Box sx={{ textAlign: { xs: 'left', sm: 'right' }, flexShrink: 0 }}>
@@ -684,8 +538,8 @@ function CalendarWarningRow({ warning }: { warning: CalendarScheduleWarning }) {
         >
             <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mb: 0.8 }}>
-                    <StatusBadge text="Schedule warning" tone="peach" />
-                    <StatusBadge text={getCalendarAnchorSourceLabel(warning.source)} tone="peach" />
+                    <StatusBadge text="Expected harvest" tone="peach" />
+                    <StatusBadge text="Action needed" tone="peach" />
                 </Box>
                 <Typography sx={{ fontSize: '0.86rem', color: TEXT_MID, lineHeight: 1.6, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                     {warning.fieldLabel}
@@ -701,9 +555,9 @@ function CalendarWarningRow({ warning }: { warning: CalendarScheduleWarning }) {
                 <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: PEACH_DARK, mb: 0.2 }}>
                     {warning.dateIso
                         ? formatDateOnlyLabel(warning.dateIso, { day: '2-digit', month: 'short', year: 'numeric' }) || warning.dateIso
-                        : 'No date saved'}
+                        : 'Missing date'}
                 </Typography>
-                <StatusBadge text={warning.dateIso ? 'Database date' : 'Action needed'} tone="peach" />
+                <StatusBadge text={warning.dateIso ? 'Linked date' : 'No harvest date'} tone="peach" />
             </Box>
         </Box>
     )
@@ -1197,9 +1051,6 @@ export function HomePage() {
             const existing = byField.get(fieldKey)
             const cropType = (record.crop_type ?? '').trim()
             const cropClass = (record.crop_class ?? record.crop_type ?? '').trim()
-            const plantingDate = normalizeDateOnlyValue(record.planting_date) || ''
-            const cutDate = normalizeDateOnlyValue(record.previous_cutting_date ?? record.previous_cutting) || ''
-            const recordedDate = normalizeDateOnlyValue(record.date_recorded) || ''
             const expectedHarvestDate = normalizeDateOnlyValue(record.expected_harvest_date) || ''
 
             if (!existing) {
@@ -1208,9 +1059,6 @@ export function HomePage() {
                     fieldLabel: buildFieldLabel(record.field_name, record.section_name, record.block_id),
                     cropType,
                     cropClass,
-                    plantingDate,
-                    cutDate,
-                    recordedDate,
                     expectedHarvestDate,
                 })
                 return
@@ -1218,16 +1066,13 @@ export function HomePage() {
 
             if (!existing.cropType && cropType) existing.cropType = cropType
             if (!existing.cropClass && cropClass) existing.cropClass = cropClass
-            if (!existing.plantingDate && plantingDate) existing.plantingDate = plantingDate
-            if (!existing.cutDate && cutDate) existing.cutDate = cutDate
-            if (!existing.recordedDate && recordedDate) existing.recordedDate = recordedDate
             if (!existing.expectedHarvestDate && expectedHarvestDate) existing.expectedHarvestDate = expectedHarvestDate
         })
 
         return Array.from(byField.values())
             .filter((seed) =>
                 isCalendarRelevantCrop(seed.cropType, seed.cropClass) &&
-                (Boolean(seed.plantingDate) || Boolean(seed.cutDate) || Boolean(seed.expectedHarvestDate))
+                Boolean(normalizeDateOnlyValue(seed.expectedHarvestDate))
             )
             .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
     }, [monitoring])
@@ -1238,44 +1083,6 @@ export function HomePage() {
         const uniqueTasks = new Map<string, UpcomingTask>()
 
         calendarFieldSeeds.forEach((seed) => {
-            const template = getCalendarTemplateForField(seed)
-            const anchorMeta = getCalendarAnchorMeta(seed, template)
-            const anchorDate = anchorMeta.dateIso
-
-            if (anchorDate) {
-                template.tasks.forEach((task) => {
-                    const dateIso = addDaysToDateOnly(
-                        anchorDate,
-                        (task.weekNumber - template.anchorWeekNumber) * 7
-                    )
-
-                    if (!dateIso) {
-                        return
-                    }
-
-                    const taskTimestamp = getDateOnlyTimestamp(dateIso)
-                    const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
-
-                    const kind = getCalendarTaskKind(task.activity)
-                    const taskKey = `${seed.fieldKey}|${template.id}|${task.weekNumber}|${kind}|${task.activity.toLowerCase()}`
-
-                    if (!uniqueTasks.has(taskKey)) {
-                        uniqueTasks.set(taskKey, {
-                            key: taskKey,
-                            kind,
-                            activity: task.activity,
-                            dateIso,
-                            fieldLabel: seed.fieldLabel,
-                            cropType: seed.cropType || seed.cropClass || 'Sugarcane',
-                            weekLabel: task.weekLabel,
-                            scheduleType: template.title,
-                            severity: getTaskSeverity(daysUntil),
-                            daysUntil,
-                        })
-                    }
-                })
-            }
-
             const harvestDate = normalizeDateOnlyValue(seed.expectedHarvestDate)
             if (harvestDate) {
                 HARVEST_PROXIMITY_TASKS.forEach((task) => {
@@ -1288,19 +1095,18 @@ export function HomePage() {
                     const taskTimestamp = getDateOnlyTimestamp(dateIso)
                     const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
 
-                    const kind = getCalendarTaskKind(task.activity)
-                    const taskKey = `${seed.fieldKey}|harvest-proximity|${task.offsetDays}|${kind}`
+                    const taskKey = `${seed.fieldKey}|expected-harvest|${harvestDate}|${task.offsetDays}`
 
                     if (!uniqueTasks.has(taskKey)) {
                         uniqueTasks.set(taskKey, {
                             key: taskKey,
-                            kind,
+                            kind: 'Harvest',
                             activity: task.activity,
                             dateIso,
                             fieldLabel: seed.fieldLabel,
                             cropType: seed.cropType || seed.cropClass || 'Sugarcane',
                             weekLabel: task.weekLabel,
-                            scheduleType: 'Harvest Schedule',
+                            scheduleType: 'expected harvest date',
                             severity: getTaskSeverity(daysUntil),
                             daysUntil,
                         })
@@ -1315,11 +1121,19 @@ export function HomePage() {
         const warnings = new Map<string, CalendarScheduleWarning>()
 
         calendarFieldSeeds.forEach((seed) => {
-            const template = getCalendarTemplateForField(seed)
-            const anchorMeta = getCalendarAnchorMeta(seed, template)
-            const warning = buildCalendarScheduleWarning(seed, template, anchorMeta)
+            if (normalizeDateOnlyValue(seed.expectedHarvestDate)) {
+                return
+            }
 
-            if (warning && warning.source === null && !warnings.has(warning.key)) {
+            const warning: CalendarScheduleWarning = {
+                key: `${seed.fieldKey}|missing-expected-harvest-date`,
+                fieldLabel: seed.fieldLabel,
+                title: 'Expected harvest date missing',
+                detail: 'Add an expected harvest date to this sugarcane field so the Overview can calculate harvest checkpoints.',
+                dateIso: null,
+            }
+
+            if (!warnings.has(warning.key)) {
                 warnings.set(warning.key, warning)
             }
         })
@@ -1438,13 +1252,12 @@ export function HomePage() {
             areaSummary.unspecifiedFieldCount,
         ]
     )
-    const nextScheduledTask = upcomingTaskItems[0] ?? null
-    const nextNutrientTask = upcomingTaskItems.find((task) =>
-        isNutrientCalendarTask(task.activity) && task.key !== nextScheduledTask?.key
-    ) ?? null
+    const nextHarvestTask = upcomingTaskItems[0] ?? null
+    const secondaryHarvestTask = upcomingTaskItems.find((task) => task.key !== nextHarvestTask?.key) ?? null
     const upcomingTasksPreview = upcomingTaskItems.slice(0, 5)
-    const nextCalendarWarning = calendarWarnings[0] ?? null
-    const secondaryCalendarWarning = calendarWarnings.find((warning) => warning.key !== nextCalendarWarning?.key) ?? nextCalendarWarning
+    const nextHarvestWarning = calendarWarnings[0] ?? null
+    const secondaryHarvestWarning = calendarWarnings.find((warning) => warning.key !== nextHarvestWarning?.key) ?? null
+    const harvestLinkageWarning = nextHarvestTask ? nextHarvestWarning : secondaryHarvestWarning
     const calendarWarningsPreview = calendarWarnings.slice(0, 3)
     const overviewError = monitoringError ?? fieldsError
     const isOverviewLoading = monitoringLoading || fieldsLoading
@@ -1515,43 +1328,41 @@ export function HomePage() {
                                         <Grid size={{ xs: 12, sm: 6 }}>
                                             <Box sx={{ p: 1.6, borderRadius: '18px', border: '1px solid rgba(86,184,112,0.16)', bgcolor: 'rgba(255,255,255,0.74)', height: '100%' }}>
                                                 <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.6 }}>
-                                                    Closest calendar task
+                                                    Closest harvest task
                                                 </Typography>
-                                                {nextScheduledTask ? (
+                                                {nextHarvestTask ? (
                                                     <>
                                                         <Typography sx={{ fontSize: '1.02rem', fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
-                                                            {formatDateOnlyLabel(nextScheduledTask.dateIso) || nextScheduledTask.dateIso}
+                                                            {formatDateOnlyLabel(nextHarvestTask.dateIso) || nextHarvestTask.dateIso}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                            {nextScheduledTask.fieldLabel}
+                                                            {nextHarvestTask.fieldLabel}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.35 }}>
-                                                            {nextScheduledTask.activity}
+                                                            {nextHarvestTask.activity}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: '0.76rem', color: PEACH_DARK, mt: 0.6 }}>
-                                                            {getDueLabel(nextScheduledTask.daysUntil)}
+                                                            {getDueLabel(nextHarvestTask.daysUntil)}
                                                         </Typography>
                                                     </>
-                                                ) : nextCalendarWarning ? (
+                                                ) : nextHarvestWarning ? (
                                                     <>
                                                         <Typography sx={{ fontSize: '0.96rem', fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
-                                                            {nextCalendarWarning.title}
+                                                            {nextHarvestWarning.title}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                            {nextCalendarWarning.fieldLabel}
+                                                            {nextHarvestWarning.fieldLabel}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.35 }}>
-                                                            {nextCalendarWarning.detail}
+                                                            {nextHarvestWarning.detail}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: '0.76rem', color: PEACH_DARK, mt: 0.6 }}>
-                                                            {nextCalendarWarning.dateIso
-                                                                ? `Using ${formatDateOnlyLabel(nextCalendarWarning.dateIso) || nextCalendarWarning.dateIso} from the database.`
-                                                                : 'Save a planting date, cut date, or recorded date to generate alerts.'}
+                                                            Save the expected harvest date to generate harvest checkpoints.
                                                         </Typography>
                                                     </>
                                                 ) : (
                                                     <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                        No calendar task or date warnings are available from the current database dates.
+                                                        No harvest tasks are available yet. Add expected harvest dates to sugarcane fields to generate them.
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -1559,43 +1370,41 @@ export function HomePage() {
                                         <Grid size={{ xs: 12, sm: 6 }}>
                                             <Box sx={{ p: 1.6, borderRadius: '18px', border: '1px solid rgba(86,184,112,0.16)', bgcolor: 'rgba(255,255,255,0.74)', height: '100%' }}>
                                                 <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.6 }}>
-                                                    Next nutrient warning
+                                                    Expected harvest linkage
                                                 </Typography>
-                                                {nextNutrientTask ? (
-                                                    <>
-                                                        <Typography sx={{ fontSize: '1.02rem', fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
-                                                            {formatDateOnlyLabel(nextNutrientTask.dateIso) || nextNutrientTask.dateIso}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                            {nextNutrientTask.fieldLabel}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.35 }}>
-                                                            {nextNutrientTask.activity}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.76rem', color: PEACH_DARK, mt: 0.6 }}>
-                                                            {getDueLabel(nextNutrientTask.daysUntil)}
-                                                        </Typography>
-                                                    </>
-                                                ) : secondaryCalendarWarning ? (
+                                                {harvestLinkageWarning ? (
                                                     <>
                                                         <Typography sx={{ fontSize: '0.96rem', fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
-                                                            {secondaryCalendarWarning.title}
+                                                            {harvestLinkageWarning.title}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                            {secondaryCalendarWarning.fieldLabel}
+                                                            {harvestLinkageWarning.fieldLabel}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.35 }}>
-                                                            {secondaryCalendarWarning.detail}
+                                                            {harvestLinkageWarning.detail}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: '0.76rem', color: PEACH_DARK, mt: 0.6 }}>
-                                                            {secondaryCalendarWarning.dateIso
-                                                                ? 'That fallback date is also being used to time nutrient alerts.'
-                                                                : 'Nutrient alerts will appear once a planting, cut, or recorded date is saved.'}
+                                                            This field is not linked to a harvest plan until the expected harvest date is saved.
+                                                        </Typography>
+                                                    </>
+                                                ) : secondaryHarvestTask ? (
+                                                    <>
+                                                        <Typography sx={{ fontSize: '1.02rem', fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
+                                                            {formatDateOnlyLabel(secondaryHarvestTask.dateIso) || secondaryHarvestTask.dateIso}
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
+                                                            {secondaryHarvestTask.fieldLabel}
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.35 }}>
+                                                            {secondaryHarvestTask.activity}
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: '0.76rem', color: PEACH_DARK, mt: 0.6 }}>
+                                                            {getDueLabel(secondaryHarvestTask.daysUntil)}
                                                         </Typography>
                                                     </>
                                                 ) : (
                                                     <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                        No nutrient task or schedule warning is available right now from the current database dates.
+                                                        Expected harvest dates are linked for the current sugarcane harvest tasks.
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -1603,7 +1412,7 @@ export function HomePage() {
                                     </Grid>
 
                                     <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 1 }}>
-                                        Upcoming tasks
+                                        Upcoming harvest tasks
                                     </Typography>
                                     {upcomingTasksPreview.length > 0 ? (
                                         <Box sx={{ display: 'grid', gap: 1 }}>
@@ -1619,13 +1428,13 @@ export function HomePage() {
                                         </Box>
                                     ) : (
                                         <Typography sx={{ fontSize: '0.9rem', color: TEXT_MID, lineHeight: 1.75 }}>
-                                            No calendar task or date warnings are available from the current database dates.
+                                            No harvest tasks are available yet. Save expected harvest dates for sugarcane fields to build this list.
                                         </Typography>
                                     )}
                                     {upcomingTasksPreview.length > 0 && calendarWarningsPreview.length > 0 ? (
                                         <>
                                             <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mt: 1.8, mb: 1 }}>
-                                                Schedule warnings
+                                                Missing expected harvest dates
                                             </Typography>
                                             <Box sx={{ display: 'grid', gap: 1 }}>
                                                 {calendarWarningsPreview.map((warning) => (

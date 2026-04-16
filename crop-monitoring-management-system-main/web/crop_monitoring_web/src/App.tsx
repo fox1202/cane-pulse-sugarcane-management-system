@@ -104,16 +104,6 @@ function App() {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignUpPage />} />
-              <Route
-                path="/map"
-                element={
-                  <ProtectedRoute>
-                    <Suspense fallback={<LoadingFallback />}>
-                      <MapViewPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                }
-              />
               <Route path="/forgot-password" element={<Suspense fallback={<LoadingFallback />}><ForgotPasswordPage /></Suspense>} />
               <Route path="/update-password" element={<Suspense fallback={<LoadingFallback />}><UpdatePasswordPage /></Suspense>} />
 
@@ -126,6 +116,14 @@ function App() {
                 }
               >
                 <Route index element={<HomePage />} />
+                <Route
+                  path="map"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <MapViewPage />
+                    </Suspense>
+                  }
+                />
                 <Route
                   path="data"
                   element={

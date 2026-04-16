@@ -18,7 +18,7 @@
  */
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import L from 'leaflet'
 import {
     Box,
@@ -32,13 +32,13 @@ import {
     IconButton,
 } from '@mui/material'
 import {
-    HomeRounded,
     MyLocation,
     SatelliteAlt,
     GridOn,
     Layers,
+    Close,
 } from '@mui/icons-material'
-import { MapContainer, TileLayer, Popup, useMap, GeoJSON, CircleMarker } from 'react-leaflet'
+import { MapContainer, TileLayer, useMap, GeoJSON, CircleMarker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { motion } from 'framer-motion'
 import { fetchBlocks, fetchLivePredefinedFields } from '@/services/database.service'
@@ -46,7 +46,7 @@ import type { MobileObservationRecord } from '@/services/database.service'
 import { useMobileObservationRecords } from '@/hooks/useMobileObservationRecords'
 import { LIVE_DATA_UPDATED_EVENT } from '@/lib/liveData'
 import type { Field } from '@/types/database.types'
-import { MapCenterObject } from '@/components/Map/MapCenterObject'
+
 import { SUGARCANE_CROP_CLASS_OPTIONS as SUGARCANE_CROP_CLASS_FALLBACKS } from '@/utils/cropClassOptions'
 import {
     FALLOW_PERIOD_CROP_CLASS_LABEL,
@@ -54,7 +54,6 @@ import {
     normalizeFallowCropClassLabel,
 } from '@/utils/cropGrouping'
 import {
-    SATELLITE_TILE_SOURCES,
     SATELLITE_HYBRID_LABELS_SOURCE,
     TERRAIN_TILE_SOURCE,
     buildDatabaseFieldBoundaries,
@@ -90,6 +89,7 @@ import {
     hasCoordinates,
     linkFieldsWithMobileRecords,
     normalizeFieldToken,
+    WORLD_IMAGERY_TILE_SOURCE,
 } from './mapView.utils'
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────────
@@ -104,14 +104,52 @@ const GREEN_OK   = '#9be15d'
 const AMBER_WARN = '#ffd166'
 const RED_CRIT   = '#ff5c5c'
 const SELECTED_BLUE = '#1d4ed8'
-const POPUP_BG   = '#061110'
-const POPUP_TEXT = '#f2fff4'
-const POPUP_SUB  = 'rgba(214, 247, 221, 0.82)'
-const POPUP_META = 'rgba(182, 224, 191, 0.68)'
+const POPUP_TEXT = '#102715'
+const POPUP_SUB  = 'rgba(16,39,21,0.72)'
+const POPUP_META = 'rgba(16,39,21,0.45)'
 const DEFAULT_CROP_TYPE = 'Sugarcane'
 const DEFAULT_SELECTED_CROP_TYPE = 'all'
+const MAP_MAX_ZOOM = 22
+const TERRAIN_NATIVE_TILE_ZOOM = 19
+const REFERENCE_LABEL_NATIVE_TILE_ZOOM = 20
+const METER_LEVEL_FOCUS_ZOOM = 21
+const CURRENT_SENTINEL2_IMAGE_EXPORT_URL = 'https://sentinel.arcgis.com/arcgis/rest/services/Sentinel2/ImageServer/exportImage'
+const CURRENT_SENTINEL2_ATTRIBUTION = 'Source: Esri, European Commission, European Space Agency, Amazon Web Services'
+const CURRENT_SENTINEL2_RENDERING_RULE = { rasterFunction: 'Natural Color with DRA' }
+const CURRENT_SENTINEL2_MOSAIC_RULE = {
+    mosaicMethod: 'esriMosaicAttribute',
+    sortField: 'acquisitiondate',
+    sortValue: '2050-01-01',
+    ascending: false,
+    mosaicOperation: 'MT_FIRST',
+    where: 'cloudcover <= 30',
+}
+const S2DR3_TILE_URL_TEMPLATE = (import.meta.env.VITE_S2DR3_TILE_URL_TEMPLATE ?? '').trim()
+const S2DR3_ATTRIBUTION = (import.meta.env.VITE_S2DR3_ATTRIBUTION ?? 'S2DR3 Deep Resolution by DigiFarm').trim()
 const BREAK_CROP_CLASS_FALLBACKS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Maize']
 const FALLOW_CROP_CLASS_FALLBACKS = [FALLOW_PERIOD_CROP_CLASS_LABEL]
+const SOIL_TYPE_OPTIONS = [
+    'SAND',
+    'LOAMY SAND',
+    'SANDY LOAM (SAL)',
+    'LOAM',
+    'SILT LOAM',
+    'SILT',
+    'SACL',
+    'CLAY LOAM',
+    'SILTY CLAY LOAM',
+    'SANDY CLAY (SAC)',
+    'SILTY CLAY',
+    'CLAY',
+]
+const SOIL_TYPE_ALIAS_LOOKUP = new Map<string, string>([
+    ['SANDY LOAM', 'SANDY LOAM (SAL)'],
+    ['SAL', 'SANDY LOAM (SAL)'],
+    ['SANDY CLAY', 'SANDY CLAY (SAC)'],
+    ['SAC', 'SANDY CLAY (SAC)'],
+    ['SANDY CLAY LOAM', 'SACL'],
+    ['SACL', 'SACL'],
+])
 
 /** Shared font shorthand — avoids repeating the string 60+ times */
 const MONO: React.CSSProperties['fontFamily'] = '"Times New Roman", Times, serif'
@@ -171,6 +209,12 @@ function normalizeRequestedCropClassValue(value?: string | null): string | null 
     const normalized = normalizeRequestedFilterValue(value)
     if (!normalized) return null
     return normalizeFallowCropClassLabel(normalized) || normalized
+}
+
+function normalizeSoilTypeLabel(value?: string | null): string {
+    const normalized = String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase()
+    if (!normalized) return ''
+    return SOIL_TYPE_ALIAS_LOOKUP.get(normalized) ?? normalized
 }
 
 function resolveRequestedMapFilters(search: string): RequestedMapFilters {
@@ -233,6 +277,144 @@ function normalizeCollectorToken(value?: string | null): string {
     return getCollectorLookupKey(getCanonicalCollectorLabel(value))
 }
 
+function buildCurrentSentinel2ExportUrl(bounds: L.LatLngBounds, size: L.Point): string {
+    const width = Math.max(256, Math.min(2048, Math.round(size.x)))
+    const height = Math.max(256, Math.min(2048, Math.round(size.y)))
+    const params = new URLSearchParams({
+        bbox: [
+            bounds.getWest(),
+            bounds.getSouth(),
+            bounds.getEast(),
+            bounds.getNorth(),
+        ].join(','),
+        bboxSR: '4326',
+        imageSR: '3857',
+        size: `${width},${height}`,
+        format: 'jpgpng',
+        transparent: 'false',
+        f: 'image',
+        renderingRule: JSON.stringify(CURRENT_SENTINEL2_RENDERING_RULE),
+        mosaicRule: JSON.stringify(CURRENT_SENTINEL2_MOSAIC_RULE),
+    })
+
+    return `${CURRENT_SENTINEL2_IMAGE_EXPORT_URL}?${params.toString()}`
+}
+
+function MapAttribution({
+    attribution,
+    enabled,
+}: {
+    attribution: string
+    enabled: boolean
+}) {
+    const map = useMap()
+
+    useEffect(() => {
+        if (!enabled || !attribution) {
+            return undefined
+        }
+
+        map.attributionControl.addAttribution(attribution)
+        return () => {
+            map.attributionControl.removeAttribution(attribution)
+        }
+    }, [attribution, enabled, map])
+
+    return null
+}
+
+function CurrentSentinel2ImageLayer({
+    visible,
+    onLoad,
+    onError,
+}: {
+    visible: boolean
+    onLoad: () => void
+    onError: () => void
+}) {
+    const map = useMap()
+    const overlayRef = useRef<L.ImageOverlay | null>(null)
+    const pendingOverlayRef = useRef<L.ImageOverlay | null>(null)
+
+    const removeOverlay = useCallback((overlay: L.ImageOverlay | null) => {
+        if (overlay && map.hasLayer(overlay)) {
+            map.removeLayer(overlay)
+        }
+    }, [map])
+
+    const refreshImage = useCallback(() => {
+        if (!visible) return
+
+        const bounds = map.getBounds()
+        const size = map.getSize()
+        if (!bounds.isValid() || size.x <= 0 || size.y <= 0) return
+
+        removeOverlay(pendingOverlayRef.current)
+        pendingOverlayRef.current = null
+
+        const previousOverlay = overlayRef.current
+        const nextOverlay = L.imageOverlay(
+            buildCurrentSentinel2ExportUrl(bounds, size),
+            bounds,
+            {
+                pane: 'tilePane',
+                zIndex: 1,
+                opacity: 1,
+                interactive: false,
+                crossOrigin: true,
+            }
+        )
+
+        pendingOverlayRef.current = nextOverlay
+
+        nextOverlay.once('load', () => {
+            if (pendingOverlayRef.current === nextOverlay) {
+                pendingOverlayRef.current = null
+            }
+
+            if (previousOverlay && previousOverlay !== nextOverlay) {
+                removeOverlay(previousOverlay)
+            }
+
+            overlayRef.current = nextOverlay
+            onLoad()
+        })
+
+        nextOverlay.once('error', () => {
+            if (pendingOverlayRef.current === nextOverlay) {
+                pendingOverlayRef.current = null
+            }
+            removeOverlay(nextOverlay)
+            onError()
+        })
+
+        nextOverlay.addTo(map)
+    }, [map, onError, onLoad, removeOverlay, visible])
+
+    useEffect(() => {
+        if (!visible) {
+            removeOverlay(pendingOverlayRef.current)
+            removeOverlay(overlayRef.current)
+            pendingOverlayRef.current = null
+            overlayRef.current = null
+            return undefined
+        }
+
+        refreshImage()
+        map.on('moveend zoomend resize', refreshImage)
+
+        return () => {
+            map.off('moveend zoomend resize', refreshImage)
+            removeOverlay(pendingOverlayRef.current)
+            removeOverlay(overlayRef.current)
+            pendingOverlayRef.current = null
+            overlayRef.current = null
+        }
+    }, [map, refreshImage, removeOverlay, visible])
+
+    return null
+}
+
 // ─── Map Bounds Fitter ─────────────────────────────────────────────────────────
 function MapBoundsFitter({
     fieldShapes,
@@ -269,7 +451,12 @@ function MapBoundsFitter({
             try {
                 const bounds = L.geoJSON(focusGeometry).getBounds()
                 if (bounds.isValid()) {
-                    map.fitBounds(bounds, { padding: [32, 32], animate: true, duration: 1 })
+                    map.fitBounds(bounds, {
+                        padding: [32, 32],
+                        animate: true,
+                        duration: 1,
+                        maxZoom: METER_LEVEL_FOCUS_ZOOM,
+                    })
                     return
                 }
             } catch (error) {
@@ -278,7 +465,7 @@ function MapBoundsFitter({
         }
 
         if (focusCenter) {
-            map.setView(focusCenter, 16, { animate: true, duration: 1 })
+            map.setView(focusCenter, METER_LEVEL_FOCUS_ZOOM, { animate: true, duration: 1 })
             return
         }
 
@@ -338,7 +525,7 @@ function MapBoundsFitter({
                 animate: true,
                 duration: 1.2,
                 padding: boundaryCoords.length > 0 ? [36, 36] : [50, 50],
-                maxZoom: boundaryCoords.length > 0 ? 16 : undefined,
+                maxZoom: boundaryCoords.length > 0 ? METER_LEVEL_FOCUS_ZOOM : MAP_MAX_ZOOM,
             })
         } catch (err) {
             console.error('Error fitting bounds:', err)
@@ -426,12 +613,46 @@ function LegendRow({
 }
 
 // ─── Info Rows ────────────────────────────────────────────────────────────────
+interface SelectedPanel {
+    fieldName: string
+    blockId: string
+    collectionColor: string
+    collectionLabel: string
+    sourceLabel: string
+    field: Partial<Field> | null
+    mobileRecord: MobileObservationRecord | null
+}
+
 function PopupInfoRow({ label, value }: { label: string; value?: string | number | null }) {
     if (value == null || value === '') return null
     return (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'flex-start' }}>
-            <Typography sx={{ fontSize: '0.54rem', color: POPUP_META, fontFamily: MONO, letterSpacing: '0.08em' }}>{label}</Typography>
-            <Typography sx={{ fontSize: '0.55rem', color: POPUP_TEXT, fontFamily: MONO, textAlign: 'right' }}>{String(value)}</Typography>
+        <Box sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 1.5,
+            py: 0.85,
+            borderBottom: `1px solid ${alpha(CYAN, 0.07)}`,
+        }}>
+            <Typography sx={{
+                fontSize: '0.72rem',
+                color: POPUP_META,
+                fontFamily: MONO,
+                letterSpacing: '0.04em',
+                flexShrink: 0,
+            }}>
+                {label}
+            </Typography>
+            <Typography sx={{
+                fontSize: '0.76rem',
+                color: POPUP_TEXT,
+                fontFamily: MONO,
+                fontWeight: 700,
+                textAlign: 'right',
+                wordBreak: 'break-word',
+            }}>
+                {String(value)}
+            </Typography>
         </Box>
     )
 }
@@ -521,11 +742,8 @@ function MobileRecordInfoPanel({ record }: { record: MobileObservationRecord }) 
     )
 
     return (
-        <Box sx={{ mt: 0.8 }}>
-            <Typography sx={{ fontSize: '0.56rem', color: POPUP_META, fontFamily: MONO, mb: 0.8 }}>
-                Feed: {getMobileSourceLabel(record)}
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.55 }}>
+        <Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 <PopupInfoRow label="Contact Person"   value={collectorLabel} />
                 <PopupInfoRow label="Recorded"         value={formatDisplayDate(recordedAt, true)} />
                 <PopupInfoRow label="Block"            value={currentSheet?.block_id || record.block_id} />
@@ -541,9 +759,9 @@ function MobileRecordInfoPanel({ record }: { record: MobileObservationRecord }) 
                 <PopupInfoRow label="TAM (mm)"         value={currentSheet?.tam_mm || (record.entry_form?.tamm_area != null ? String(record.entry_form.tamm_area) : null)} />
             </Box>
             {remarks && (
-                <Box sx={{ mt: 0.9, pt: 0.9, borderTop: '1px solid rgba(255,209,102,0.18)' }}>
-                    <Typography sx={{ fontSize: '0.52rem', color: POPUP_META, fontFamily: MONO, letterSpacing: '0.08em', mb: 0.35 }}>REMARKS</Typography>
-                    <Typography sx={{ fontSize: '0.56rem', color: POPUP_SUB, fontFamily: MONO, lineHeight: 1.5 }}>{remarks}</Typography>
+                <Box sx={{ mt: 1.5, p: 1.2, borderRadius: '10px', bgcolor: alpha(CYAN, 0.05), border: `1px solid ${alpha(CYAN, 0.1)}` }}>
+                    <Typography sx={{ fontSize: '0.62rem', color: POPUP_META, fontFamily: MONO, fontWeight: 700, letterSpacing: '0.1em', mb: 0.6 }}>REMARKS</Typography>
+                    <Typography sx={{ fontSize: '0.76rem', color: POPUP_TEXT, fontFamily: MONO, lineHeight: 1.6 }}>{remarks}</Typography>
                 </Box>
             )}
         </Box>
@@ -557,43 +775,34 @@ function FieldInfoPanel({ field, collectionLabel, sourceLabel }: {
 }) {
     if (!field) {
         return (
-            <Typography sx={{ fontSize: '0.56rem', color: POPUP_META, fontFamily: MONO, mt: 0.6 }}>
-                No collected information linked to this map feature yet.
-            </Typography>
+            <Box sx={{ py: 2, textAlign: 'center' }}>
+                <Typography sx={{ fontSize: '0.78rem', color: POPUP_META, fontFamily: MONO, lineHeight: 1.6 }}>
+                    No field information linked to this boundary yet.
+                </Typography>
+            </Box>
         )
     }
 
     return (
-        <Box sx={{ mt: 0.8 }}>
-            <Typography sx={{ fontSize: '0.56rem', color: POPUP_META, fontFamily: MONO, mb: 0.8 }}>
-                Collection: {collectionLabel}
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.55 }}>
-                <PopupInfoRow label="Observations" value={field.observation_count} />
-                <PopupInfoRow label="Crop"         value={field.crop_type} />
-                <PopupInfoRow label="Stage"        value={field.latest_stage} />
-                <PopupInfoRow label="Stress"       value={field.latest_stress} />
-                <PopupInfoRow label="Moisture"     value={field.latest_moisture != null ? `${field.latest_moisture}%` : null} />
-                <PopupInfoRow label="Irrigation"   value={field.latest_irrigation_type} />
-                <PopupInfoRow label="Spray"        value={field.is_sprayed == null ? null : field.is_sprayed ? 'SPRAYED' : 'NOT SPRAYED'} />
-                <PopupInfoRow label="Pest Ctrl"    value={field.latest_pest_control} />
-                <PopupInfoRow label="Disease Ctrl" value={field.latest_disease_control} />
-                <PopupInfoRow label="Weed Ctrl"    value={field.latest_weed_control} />
-                <PopupInfoRow
-                    label="Last Collected"
-                    value={field.latest_observation_date ? new Date(field.latest_observation_date).toLocaleString('en-GB') : null}
-                />
+        <Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                <PopupInfoRow label="Observations"  value={field.observation_count} />
+                <PopupInfoRow label="Crop"          value={field.crop_type} />
+                <PopupInfoRow label="Stage"         value={field.latest_stage} />
+                <PopupInfoRow label="Stress"        value={field.latest_stress} />
+                <PopupInfoRow label="Moisture"      value={field.latest_moisture != null ? `${field.latest_moisture}%` : null} />
+                <PopupInfoRow label="Irrigation"    value={field.latest_irrigation_type} />
+                <PopupInfoRow label="Spray Status"  value={field.is_sprayed == null ? null : field.is_sprayed ? 'SPRAYED' : 'NOT SPRAYED'} />
+                <PopupInfoRow label="Pest Control"  value={field.latest_pest_control} />
+                <PopupInfoRow label="Disease Ctrl"  value={field.latest_disease_control} />
+                <PopupInfoRow label="Weed Control"  value={field.latest_weed_control} />
+                <PopupInfoRow label="Last Collected" value={field.latest_observation_date ? new Date(field.latest_observation_date).toLocaleString('en-GB') : null} />
             </Box>
             {field.latest_remarks && (
-                <Box sx={{ mt: 0.9, pt: 0.9, borderTop: '1px solid rgba(129,199,132,0.14)' }}>
-                    <Typography sx={{ fontSize: '0.52rem', color: POPUP_META, fontFamily: MONO, letterSpacing: '0.08em', mb: 0.35 }}>REMARKS</Typography>
-                    <Typography sx={{ fontSize: '0.56rem', color: POPUP_SUB, fontFamily: MONO, lineHeight: 1.5 }}>{field.latest_remarks}</Typography>
+                <Box sx={{ mt: 1.5, p: 1.2, borderRadius: '10px', bgcolor: alpha(CYAN, 0.05), border: `1px solid ${alpha(CYAN, 0.1)}` }}>
+                    <Typography sx={{ fontSize: '0.62rem', color: POPUP_META, fontFamily: MONO, fontWeight: 700, letterSpacing: '0.1em', mb: 0.6 }}>REMARKS</Typography>
+                    <Typography sx={{ fontSize: '0.76rem', color: POPUP_TEXT, fontFamily: MONO, lineHeight: 1.6 }}>{field.latest_remarks}</Typography>
                 </Box>
-            )}
-            {sourceLabel && (
-                <Typography sx={{ fontSize: '0.53rem', color: POPUP_META, fontFamily: MONO, mt: 0.9 }}>
-                    Source: {sourceLabel}
-                </Typography>
             )}
         </Box>
     )
@@ -611,6 +820,7 @@ interface BoundaryLayerProps {
     mobileRecordByFeatureKey: Map<string, MobileObservationRecord>
     selectedBoundaryKey: string | null
     onSelectBoundary: (key: string) => void
+    onFieldClick: (panel: SelectedPanel) => void
     getBoundaryStyle: (field?: Partial<Field> | null, sourceLabel?: string, fallbackColor?: string, isRecorded?: boolean) => object
     getCollectionColor: (field?: Partial<Field> | null, sourceLabel?: string, isRecorded?: boolean) => string
     getCollectionLabel: (field?: Partial<Field> | null, sourceLabel?: string, isRecorded?: boolean) => string
@@ -624,6 +834,7 @@ function FieldBoundaryLayer({
     mobileRecordByFeatureKey,
     selectedBoundaryKey,
     onSelectBoundary,
+    onFieldClick,
     getBoundaryStyle,
     getCollectionColor,
     getCollectionLabel,
@@ -646,7 +857,7 @@ function FieldBoundaryLayer({
                 const collectionColor = getCollectionColor(boundaryField, sourceLabel, isRecorded)
                 const collectionLabel = getCollectionLabel(boundaryField, sourceLabel, isRecorded)
                 const key = String(getFeatureBoundaryUniqueKey(feature) ?? mobileRecordKey ?? feature.properties?.field_name ?? index)
-                const isSelected = isRecorded && selectedBoundaryKey === key
+                const isSelected = selectedBoundaryKey === key
                 const boundaryStyle = {
                     ...getBoundaryStyle(boundaryField, sourceLabel, CYAN, isRecorded),
                     ...(isSelected ? {
@@ -664,23 +875,21 @@ function FieldBoundaryLayer({
                         key={`field-shape-${key}`}
                         data={feature}
                         style={boundaryStyle}
-                        eventHandlers={isRecorded ? { click: () => onSelectBoundary(key) } : undefined}
-                    >
-                        <Popup className="hud-popup">
-                            <Box sx={{ p: 1.5 }}>
-                                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: collectionColor, fontFamily: MONO, letterSpacing: '0.08em' }}>
-                                    {String(feature.properties?.field_name ?? 'RECORDED AREA').toUpperCase()}
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.58rem', color: POPUP_SUB, fontFamily: MONO, mt: 0.4 }}>
-                                    {feature.properties?.block_id || 'RECORDED MOBILE BOUNDARY'}
-                                </Typography>
-                                {mobileRecord
-                                    ? <MobileRecordInfoPanel record={mobileRecord} />
-                                    : <FieldInfoPanel field={boundaryField} collectionLabel={collectionLabel} sourceLabel={String(feature.properties?.source_label ?? 'bundled KML boundary')} />
-                                }
-                            </Box>
-                        </Popup>
-                    </GeoJSON>
+                        eventHandlers={{
+                            click: () => {
+                                onSelectBoundary(key)
+                                onFieldClick({
+                                    fieldName: String(feature.properties?.field_name ?? 'RECORDED AREA'),
+                                    blockId: String(feature.properties?.block_id ?? ''),
+                                    collectionColor,
+                                    collectionLabel,
+                                    sourceLabel: String(feature.properties?.source_label ?? 'field boundary'),
+                                    field: boundaryField,
+                                    mobileRecord,
+                                })
+                            },
+                        }}
+                    />
                 )
             })}
         </>
@@ -694,6 +903,7 @@ interface BlockLayerProps {
     mobileRecordsForBoundaryLinking: MobileObservationRecord[]
     selectedBoundaryKey: string | null
     onSelectBoundary: (key: string) => void
+    onFieldClick: (panel: SelectedPanel) => void
     getBoundaryStyle: (field?: Partial<Field> | null, sourceLabel?: string, fallbackColor?: string, isRecorded?: boolean) => object
     getCollectionColor: (field?: Partial<Field> | null, sourceLabel?: string, isRecorded?: boolean) => string
     getCollectionLabel: (field?: Partial<Field> | null, sourceLabel?: string, isRecorded?: boolean) => string
@@ -706,6 +916,7 @@ function BlockLayer({
     mobileRecordsForBoundaryLinking,
     selectedBoundaryKey,
     onSelectBoundary,
+    onFieldClick,
     getBoundaryStyle,
     getCollectionColor,
     getCollectionLabel,
@@ -718,8 +929,9 @@ function BlockLayer({
                 const mobileRecord    = findMobileRecordForBlock(block, mobileRecordsForBoundaryLinking)
                 const isRecorded = Boolean(mobileRecord)
                 const collectionColor = getCollectionColor(matchedField, 'uploaded boundary', isRecorded)
+                const collectionLabel = getCollectionLabel(matchedField, 'uploaded boundary', isRecorded)
                 const blockKey = String(getBlockBoundaryUniqueKey(block) ?? block.id)
-                const isSelected = isRecorded && selectedBoundaryKey === blockKey
+                const isSelected = selectedBoundaryKey === blockKey
                 const boundaryStyle = {
                     ...getBoundaryStyle(matchedField, 'uploaded boundary', CYAN, isRecorded),
                     ...(isSelected ? {
@@ -737,39 +949,28 @@ function BlockLayer({
                         key={block.id}
                         data={block.geom}
                         style={boundaryStyle}
-                        eventHandlers={isRecorded ? { click: () => onSelectBoundary(blockKey) } : undefined}
-                    >
-                        <Popup className="hud-popup">
-                            <Box sx={{ p: 1.5 }}>
-                                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: collectionColor, fontFamily: MONO, letterSpacing: '0.1em' }}>
-                                    {String(block.name ?? block.block_id).toUpperCase()}
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.58rem', color: POPUP_SUB, fontFamily: MONO, mt: 0.3 }}>
-                                    BOUNDARY ID: {block.block_id}
-                                </Typography>
-                                {block.name && block.name !== block.block_id && (
-                                    <Typography sx={{ fontSize: '0.62rem', color: POPUP_SUB, fontFamily: MONO, mt: 0.3 }}>
-                                        Registry: {block.name}
-                                    </Typography>
-                                )}
-                                {mobileRecord
-                                    ? <MobileRecordInfoPanel record={mobileRecord} />
-                                    : <FieldInfoPanel
-                                        field={matchedField}
-                                        collectionLabel={getCollectionLabel(matchedField, 'uploaded boundary', isRecorded)}
-                                        sourceLabel={`uploaded boundary · ${new Date(block.created_at).toLocaleDateString('en-GB')}`}
-                                    />
-                                }
-                            </Box>
-                        </Popup>
-                    </GeoJSON>
+                        eventHandlers={{
+                            click: () => {
+                                onSelectBoundary(blockKey)
+                                onFieldClick({
+                                    fieldName: String(block.name ?? block.block_id),
+                                    blockId: String(block.block_id ?? ''),
+                                    collectionColor,
+                                    collectionLabel,
+                                    sourceLabel: `Registry boundary · ${new Date(block.created_at).toLocaleDateString('en-GB')}`,
+                                    field: matchedField,
+                                    mobileRecord,
+                                })
+                            },
+                        }}
+                    />
                 )
             })}
         </>
     )
 }
 
-function FieldMarkerLayer({ fields }: { fields: Field[] }) {
+function FieldMarkerLayer({ fields, onFieldClick }: { fields: Field[]; onFieldClick: (panel: SelectedPanel) => void }) {
     return (
         <>
             {fields.map((field, index) => {
@@ -789,23 +990,18 @@ function FieldMarkerLayer({ fields }: { fields: Field[] }) {
                             fillOpacity: 0.88,
                             opacity: 1,
                         }}
-                    >
-                        <Popup className="hud-popup">
-                            <Box sx={{ p: 1.5 }}>
-                                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: GREEN_OK, fontFamily: MONO, letterSpacing: '0.08em' }}>
-                                    {String(field.field_name || 'FIELD POINT').toUpperCase()}
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.58rem', color: POPUP_SUB, fontFamily: MONO, mt: 0.4 }}>
-                                    {field.block_id || 'FIELD MANAGEMENT POINT'}
-                                </Typography>
-                                <FieldInfoPanel
-                                    field={field}
-                                    collectionLabel="FIELD MANAGEMENT POINT"
-                                    sourceLabel="field management coordinates"
-                                />
-                            </Box>
-                        </Popup>
-                    </CircleMarker>
+                        eventHandlers={{
+                            click: () => onFieldClick({
+                                fieldName: field.field_name || 'FIELD POINT',
+                                blockId: field.block_id || '',
+                                collectionColor: GREEN_OK,
+                                collectionLabel: 'Field management point',
+                                sourceLabel: 'field management coordinates',
+                                field,
+                                mobileRecord: null,
+                            }),
+                        }}
+                    />
                 )
             })}
         </>
@@ -829,8 +1025,8 @@ const getCollectionLabel = (
     sourceLabel?: string,
     isRecorded = false
 ) => {
-    if (sourceLabel === 'mobile recorded polygon') return 'RECORDED MOBILE POLYGON'
-    if (isRecorded) return 'MOBILE-RECORDED FIELD'
+    if (sourceLabel === 'mobile recorded polygon') return 'RECORDED FIELD POLYGON'
+    if (isRecorded) return 'RECORDED FIELD'
     if (!field) return 'BOUNDARY ONLY'
     return 'PENDING FIELD'
 }
@@ -1024,7 +1220,6 @@ const getFocusBoundaryKeys = (focus?: MapFocusObservation | null): string[] => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function MapViewPage() {
     const location = useLocation()
-    const navigate = useNavigate()
     const routeState = (location.state as MapNavigationState | null) ?? null
     const focusObservation = routeState?.focusObservation ?? null
     const requestedMapFilters = useMemo(() => resolveRequestedMapFilters(location.search), [location.search])
@@ -1040,12 +1235,12 @@ export function MapViewPage() {
     const [userLocation,        setUserLocation]        = useState<[number, number] | null>(null)
     const [manualLocationRequest, setManualLocationRequest] = useState(false)
     const [mapLayer,            setMapLayer]            = useState<MapLayer>('satellite')
-    const [satelliteSourceIndex, setSatelliteSourceIndex] = useState(0)
     const [tileStatusNotice,    setTileStatusNotice]    = useState<string | null>(null)
     const [sprayFilter] = useState<SprayFilter>('all')
     const [collectionFilter,    setCollectionFilter]    = useState<CollectionFilter>('all')
     const [showMobileRecords,   setShowMobileRecords]   = useState(true)
     const [selectedBoundaryKey, setSelectedBoundaryKey] = useState<string | null>(null)
+    const [selectedPanel,       setSelectedPanel]       = useState<SelectedPanel | null>(null)
 
     // Single boolean ref instead of string lock key — simpler and race-condition-free
     const tileErrorHandledRef = useRef(false)
@@ -1076,7 +1271,7 @@ export function MapViewPage() {
     )
 
     const normalizeSoilType = useCallback(
-        (value?: string | null) => String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase(),
+        (value?: string | null) => normalizeSoilTypeLabel(value),
         []
     )
 
@@ -1253,40 +1448,29 @@ export function MapViewPage() {
     }, [])
 
     // ── Tile error handling ───────────────────────────────────────────────────
-    useEffect(() => { tileErrorHandledRef.current = false }, [mapLayer, satelliteSourceIndex])
+    useEffect(() => { tileErrorHandledRef.current = false }, [mapLayer])
 
     const handleTileError = useCallback(() => {
         if (mapLayer !== 'satellite' || tileErrorHandledRef.current) return
         tileErrorHandledRef.current = true
-
-        if (satelliteSourceIndex < SATELLITE_TILE_SOURCES.length - 1) {
-            setSatelliteSourceIndex((i) => i + 1)
-            setTileStatusNotice('Primary satellite imagery failed. Trying backup tile source.')
-            return
-        }
-
         setMapLayer('terrain')
-        setTileStatusNotice('Satellite imagery unavailable. Map switched to terrain view.')
-    }, [mapLayer, satelliteSourceIndex])
+        setTileStatusNotice('Current Sentinel-2 imagery unavailable. Map switched to terrain view.')
+    }, [mapLayer])
 
     const handleTileLoad = useCallback(() => {
-        setTileStatusNotice(
-            mapLayer === 'satellite' && satelliteSourceIndex > 0 ? 'Backup satellite imagery is active.' : null
-        )
-    }, [mapLayer, satelliteSourceIndex])
+        setTileStatusNotice(null)
+    }, [])
 
     const handleLayerToggle = useCallback(() => {
         if (mapLayer === 'satellite') {
             setMapLayer('terrain')
             setTileStatusNotice(null)
         } else {
-            setSatelliteSourceIndex(0)
             setTileStatusNotice(null)
             setMapLayer('satellite')
         }
     }, [mapLayer])
 
-    // ── Crop types ────────────────────────────────────────────────────────────
     const cropTypes = useMemo(
         () => Array.from(new Set([
             ...fields.map((field) => normalizeCropType(field.crop_type)),
@@ -1345,12 +1529,20 @@ export function MapViewPage() {
     }, [selectedSoilType, normalizeSoilType])
 
     const soilTypeOptions = useMemo(
-        () => Array.from(new Set(
-            mobileRecordsForCropType
+        () => {
+            const recordedOptions = Array.from(new Set(
+                mobileRecordsForCropType
                 .filter((record) => matchesSelectedCropClass(getMobileCropClass(record)))
                 .map((record) => normalizeSoilType(getMobileSoilType(record)))
                 .filter(Boolean)
-        )).sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' })),
+            ))
+
+            const extraOptions = recordedOptions
+                .filter((soilType) => !SOIL_TYPE_OPTIONS.includes(soilType))
+                .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }))
+
+            return [...SOIL_TYPE_OPTIONS, ...extraOptions]
+        },
         [mobileRecordsForCropType, matchesSelectedCropClass, getMobileCropClass, normalizeSoilType]
     )
 
@@ -1907,7 +2099,7 @@ export function MapViewPage() {
 
                 const sourceLabel = hasDistinctRecordedMobilePolygon(record)
                     ? 'mobile recorded polygon'
-                    : 'mobile recorded field boundary'
+                    : 'recorded field boundary'
 
                 acc.push({
                     type: 'Feature',
@@ -2034,32 +2226,16 @@ export function MapViewPage() {
     // ── Derived stats ──────────────────────────────────────────────────────────
     const visibleFieldCount = visibleRegistryFields.length
     const visibleSpatialCount = activeFieldBoundaryFeatures.length + activeBlocks.length + pointOnlyFields.length
-    const shouldShowCropClassFilter = selectedCropType !== 'all' && (
-        selectedCropType === 'Sugarcane'
-        || selectedCropType === 'Break Crop'
-        || cropClassOptions.length > 0
-    )
-    const shouldShowSoilTypeFilter = selectedSoilType !== 'all' || soilTypeOptions.length > 0
     const cropFocusLabel = selectedCropType === 'all'
         ? 'All crops'
         : selectedCropClass === 'all'
             ? selectedCropType
             : `${selectedCropType} / ${selectedCropClass}`
-    const cropClassLabel = selectedCropType === 'Sugarcane'
-        ? 'Crop Class / Ratoon'
-        : selectedCropType === 'Break Crop'
-            ? 'Break Crop'
-            : 'Crop Class'
-    const allCropClassLabel = selectedCropType === 'Sugarcane'
-        ? 'ALL RATOONS'
-        : selectedCropType === 'Break Crop'
-            ? 'ALL BREAK CROPS'
-            : 'ALL CLASSES'
     const selectedCollectorLabel = selectedCollector === 'all'
         ? 'ALL CONTACT PERSONS'
         : collectorOptions.find((option) => option.value === selectedCollector)?.label ?? selectedCollector
     // ── Labels ────────────────────────────────────────────────────────────────
-    const activeTileSource = mapLayer === 'satellite' ? SATELLITE_TILE_SOURCES[satelliteSourceIndex] : TERRAIN_TILE_SOURCE
+    const useS2Dr3TileLayer = mapLayer === 'satellite' && Boolean(S2DR3_TILE_URL_TEMPLATE)
 
     // ── Loading / error states ────────────────────────────────────────────────
     if (isLoading) {
@@ -2088,330 +2264,406 @@ export function MapViewPage() {
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <Box sx={{
-            bgcolor: SURFACE,
-            minHeight: '100vh',
             display: 'flex',
             flexDirection: 'column',
+            gap: { xs: 2, md: 2.4 },
             fontFamily: MONO,
             position: 'relative',
+            minHeight: 0,
         }}>
-            {/* Background gradient */}
-            <Box sx={{
-                position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-                background: `
-                    radial-gradient(circle at 15% 12%, rgba(155,225,93,0.16) 0%, transparent 28%),
-                    radial-gradient(circle at 82% 8%, rgba(27,94,32,0.12) 0%, transparent 24%),
-                    linear-gradient(180deg, #f7faf4 0%, #eef3ea 100%)
-                `,
-            }} />
-
-            <Box sx={{ position: 'relative', zIndex: 1, px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 }, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: '360px minmax(0, 1fr)' }, gap: 2.5, alignItems: 'stretch', minHeight: 0 }}>
-
-                    {/* ── Left Rail ──────────────────────────────────────── */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-
-                        {/* Filter Deck */}
-                        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05, duration: 0.65, ease: [0.16, 1, 0.3, 1] }}>
-                            <HudPanel
-                                sx={{
-                                    p: 2.1,
-                                    background: `
-                                        radial-gradient(circle at 0% 0%, ${alpha(GREEN_OK, 0.18)} 0%, transparent 30%),
-                                        radial-gradient(circle at 100% 0%, ${alpha(CYAN, 0.1)} 0%, transparent 32%),
-                                        linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(247,250,246,0.98) 100%)
-                                    `,
-                                }}
-                                accentColor={CYAN}
-                                disableScanlines
-                            >
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.2, flexWrap: 'wrap' }}>
-                                    <SectionBadge label="Filter Deck" color={CYAN} />
-                                    <Box sx={{
-                                        px: 1.2,
-                                        py: 0.65,
-                                        borderRadius: '999px',
-                                        bgcolor: alpha(GREEN_OK, 0.18),
-                                        border: `1px solid ${alpha(GREEN_OK, 0.28)}`,
-                                    }}>
-                                        <Typography sx={{ fontSize: '0.5rem', color: CYAN, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: MONO, fontWeight: 700 }}>
-                                            Live Filters
-                                        </Typography>
-                                    </Box>
-                                </Box>
-
-                                <Typography sx={{ fontSize: '1.18rem', fontWeight: 800, fontFamily: DISPLAY, mt: 1.35, mb: 0.7, color: '#102715', letterSpacing: '-0.03em' }}>
-                                    Shape the map stage
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.74rem', color: TEXT_MID, lineHeight: 1.7, mb: 1.7 }}>
-                                    Narrow the visible boundaries and polygon layers, then keep the map focused on the recorded fields that matter right now.
-                                </Typography>
-
-                                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1, mb: 1.5 }}>
-                                    {[
-                                        {
-                                            label: 'Visible',
-                                            value: String(visibleFieldCount),
-                                            tone: CYAN,
-                                        },
-                                        {
-                                            label: 'Crop Focus',
-                                            value: cropFocusLabel,
-                                            tone: GREEN_OK,
-                                        },
-                                        {
-                                            label: 'Boundary',
-                                            value: collectionFilter === 'recorded' ? 'Recorded' : collectionFilter === 'pending' ? 'Pending' : 'All',
-                                            tone: AMBER_WARN,
-                                        },
-                                    ].map((item) => (
-                                        <Box
-                                            key={item.label}
-                                            sx={{
-                                                p: 1.05,
-                                                borderRadius: '16px',
-                                                border: `1px solid ${alpha(item.tone, 0.22)}`,
-                                                bgcolor: alpha(item.tone, 0.1),
-                                            }}
-                                        >
-                                            <Typography sx={{ fontSize: '0.48rem', color: alpha(item.tone, 0.95), letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: MONO, fontWeight: 700, mb: 0.45 }}>
-                                                {item.label}
-                                            </Typography>
-                                            <Typography sx={{ fontSize: '0.86rem', color: '#102715', fontFamily: DISPLAY, fontWeight: 700, lineHeight: 1.1 }}>
-                                                {item.value}
-                                            </Typography>
-                                        </Box>
-                                    ))}
-                                </Box>
-
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1 }}>
-                                    <ControlSelect
-                                        label="Crop Type"
-                                        value={selectedCropType}
-                                        onChange={setSelectedCropType}
-                                        renderValue={(value) => value === 'all' ? 'ALL CROPS' : value.toUpperCase()}
-                                    >
-                                        <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                            ALL CROPS
-                                        </MenuItem>
-                                        {cropTypes.map((type) => (
-                                            <MenuItem key={type} value={type} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>{type.toUpperCase()}</MenuItem>
-                                        ))}
-                                    </ControlSelect>
-                                    {shouldShowCropClassFilter && (
-                                        <ControlSelect
-                                            label={cropClassLabel}
-                                            value={selectedCropClass}
-                                            onChange={setSelectedCropClass}
-                                            renderValue={(value) => value === 'all' ? allCropClassLabel : value.toUpperCase()}
-                                        >
-                                            <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                                {allCropClassLabel}
-                                            </MenuItem>
-                                            {cropClassOptions.map((cropClass) => (
-                                                <MenuItem key={cropClass} value={cropClass} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                                    {cropClass.toUpperCase()}
-                                                </MenuItem>
-                                            ))}
-                                        </ControlSelect>
-                                    )}
-                                    {shouldShowSoilTypeFilter && (
-                                        <ControlSelect
-                                            label="Soil Type"
-                                            value={selectedSoilType}
-                                            onChange={setSelectedSoilType}
-                                            renderValue={(value) => value === 'all' ? 'ALL SOIL TYPES' : value.toUpperCase()}
-                                        >
-                                            <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                                ALL SOIL TYPES
-                                            </MenuItem>
-                                            {soilTypeOptions.map((soilType) => (
-                                                <MenuItem key={soilType} value={soilType} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                                    {soilType.toUpperCase()}
-                                                </MenuItem>
-                                            ))}
-                                        </ControlSelect>
-                                    )}
-                                    <ControlSelect
-                                        label="Contact Person"
-                                        value={selectedCollector}
-                                        onChange={setSelectedCollector}
-                                        renderValue={(value) =>
-                                            value === 'all'
-                                                ? 'ALL CONTACT PERSONS'
-                                                : selectedCollectorLabel.toUpperCase()
-                                        }
-                                    >
-                                        <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                            ALL CONTACT PERSONS
-                                        </MenuItem>
-                                        {collectorOptions.map((collector) => (
-                                            <MenuItem key={collector.value} value={collector.value} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
-                                                {collector.label.toUpperCase()}
-                                            </MenuItem>
-                                        ))}
-                                    </ControlSelect>
-                                </Box>
-
-                            </HudPanel>
-                        </motion.div>
-
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.03, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            >
+                <HudPanel
+                    sx={{
+                        p: { xs: 1.6, md: 2.1 },
+                        borderRadius: '20px',
+                        background: `
+                            radial-gradient(circle at 0% 0%, ${alpha(GREEN_OK, 0.18)} 0%, transparent 30%),
+                            radial-gradient(circle at 100% 0%, ${alpha(CYAN, 0.1)} 0%, transparent 32%),
+                            linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(247,250,246,0.98) 100%)
+                        `,
+                    }}
+                    accentColor={CYAN}
+                    disableScanlines
+                >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.2, flexWrap: 'wrap' }}>
+                        <SectionBadge label="Filter Deck" color={CYAN} />
+                        <Box sx={{
+                            px: 1.2,
+                            py: 0.65,
+                            borderRadius: '999px',
+                            bgcolor: alpha(GREEN_OK, 0.18),
+                            border: `1px solid ${alpha(GREEN_OK, 0.28)}`,
+                        }}>
+                            <Typography sx={{ fontSize: '0.5rem', color: CYAN, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: MONO, fontWeight: 700 }}>
+                                Live Filters
+                            </Typography>
+                        </Box>
                     </Box>
 
-                    {/* ── Map Panel ──────────────────────────────────────── */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 18 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.08, duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-                        style={{ minHeight: 0 }}
+                    <Typography sx={{ fontSize: '1.18rem', fontWeight: 800, fontFamily: DISPLAY, mt: 1.35, mb: 0.7, color: '#102715' }}>
+                        Shape the map stage
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.74rem', color: TEXT_MID, lineHeight: 1.7, mb: 1.7 }}>
+                        Narrow the visible boundaries and polygon layers, then keep the map focused on the recorded fields that matter right now.
+                    </Typography>
+
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 1, mb: 1.5 }}>
+                        {[
+                            {
+                                label: 'Visible',
+                                value: String(visibleFieldCount),
+                                tone: CYAN,
+                            },
+                            {
+                                label: 'Crop Focus',
+                                value: cropFocusLabel,
+                                tone: GREEN_OK,
+                            },
+                            {
+                                label: 'Boundary',
+                                value: collectionFilter === 'recorded' ? 'Recorded' : collectionFilter === 'pending' ? 'Pending' : 'All',
+                                tone: AMBER_WARN,
+                            },
+                        ].map((item) => (
+                            <Box
+                                key={item.label}
+                                sx={{
+                                    p: 1.05,
+                                    borderRadius: '16px',
+                                    border: `1px solid ${alpha(item.tone, 0.22)}`,
+                                    bgcolor: alpha(item.tone, 0.1),
+                                    minWidth: 0,
+                                }}
+                            >
+                                <Typography sx={{ fontSize: '0.48rem', color: alpha(item.tone, 0.95), letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: MONO, fontWeight: 700, mb: 0.45 }}>
+                                    {item.label}
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.86rem', color: '#102715', fontFamily: DISPLAY, fontWeight: 700, lineHeight: 1.1, overflowWrap: 'anywhere' }}>
+                                    {item.value}
+                                </Typography>
+                            </Box>
+                        ))}
+                    </Box>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1 }}>
+                        <ControlSelect
+                            label="Crop Type"
+                            value={selectedCropType}
+                            onChange={setSelectedCropType}
+                            renderValue={(value) => value === 'all' ? 'ALL CROPS' : value.toUpperCase()}
+                        >
+                            <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
+                                ALL CROPS
+                            </MenuItem>
+                            {cropTypes.map((type) => (
+                                <MenuItem key={type} value={type} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
+                                    {type.toUpperCase()}
+                                </MenuItem>
+                            ))}
+                        </ControlSelect>
+
+                        <ControlSelect
+                            label="Soil Type"
+                            value={selectedSoilType}
+                            onChange={setSelectedSoilType}
+                            renderValue={(value) => value === 'all' ? 'ALL SOIL TYPES' : value.toUpperCase()}
+                        >
+                            <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
+                                ALL SOIL TYPES
+                            </MenuItem>
+                            {soilTypeOptions.map((soilType) => (
+                                <MenuItem key={soilType} value={soilType} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
+                                    {soilType.toUpperCase()}
+                                </MenuItem>
+                            ))}
+                        </ControlSelect>
+
+                        <ControlSelect
+                            label="Contact Person"
+                            value={selectedCollector}
+                            onChange={setSelectedCollector}
+                            renderValue={(value) =>
+                                value === 'all'
+                                    ? 'ALL CONTACT PERSONS'
+                                    : selectedCollectorLabel.toUpperCase()
+                            }
+                        >
+                            <MenuItem value="all" sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
+                                ALL CONTACT PERSONS
+                            </MenuItem>
+                            {collectorOptions.map((collector) => (
+                                <MenuItem key={collector.value} value={collector.value} sx={{ fontSize: '0.72rem', fontFamily: MONO }}>
+                                    {collector.label.toUpperCase()}
+                                </MenuItem>
+                            ))}
+                        </ControlSelect>
+                    </Box>
+                </HudPanel>
+            </motion.div>
+
+            <motion.div
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                style={{ minHeight: 0 }}
+            >
+                <HudPanel
+                    sx={{
+                        p: 0,
+                        borderRadius: { xs: '22px', md: '26px' },
+                        height: { xs: 'calc(100vh - 260px)', md: 'calc(100vh - 290px)' },
+                        minHeight: { xs: 420, md: 388 },
+                        maxHeight: { md: 720 },
+                        bgcolor: 'rgba(246,250,244,0.82)',
+                        boxShadow: '0 30px 70px rgba(31,52,43,0.14)',
+                    }}
+                    accentColor={CYAN}
+                    disableScanlines
+                >
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            borderRadius: 'inherit',
+                            overflow: 'hidden',
+                            '& .leaflet-container': {
+                                background: '#dfe8d7',
+                            },
+                        }}
                     >
-                        <HudPanel sx={{ p: 0, borderRadius: '30px', minHeight: { xs: 560, xl: 'calc(100vh - 220px)' }, height: { xs: 560, xl: 'calc(100vh - 220px)' }, bgcolor: 'rgba(246,250,244,0.82)' }} accentColor={CYAN}>
-                            <Box sx={{ position: 'absolute', inset: 0, borderRadius: 'inherit', overflow: 'hidden' }}>
-                                <MapContainer center={resolvedMapCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-                                    <TileLayer
-                                        key={`${mapLayer}-${activeTileSource.id}`}
-                                        attribution={activeTileSource.attribution}
-                                        url={activeTileSource.url}
-                                        eventHandlers={{ tileerror: handleTileError, load: handleTileLoad }}
-                                    />
-                                    {mapLayer === 'satellite' && (
-                                        <TileLayer
-                                            key={SATELLITE_HYBRID_LABELS_SOURCE.id}
-                                            attribution={SATELLITE_HYBRID_LABELS_SOURCE.attribution}
-                                            url={SATELLITE_HYBRID_LABELS_SOURCE.url}
-                                            opacity={0.95}
-                                        />
-                                    )}
-                                    <MapBoundsFitter
-                                        fieldShapes={activeFieldBoundaryFeatures}
-                                        fields={filteredFields}
-                                        blocks={activeBlocks}
-                                        mobileRecords={filteredMobilePointRecords}
-                                        center={resolvedMapCenter}
-                                        focusCenter={focusedBoundaryCenter}
-                                        focusGeometry={focusedBoundaryGeometry}
-                                        focusKey={focusedBoundaryKey ?? focusObservation?.id ?? null}
-                                    />
-                                    <FieldBoundaryLayer
-                                        features={activeFieldBoundaryFeatures}
-                                        linkedFields={linkedFields}
-                                        fieldLookupByIdentity={fieldLookupByIdentity}
-                                        mobileRecordsForBoundaryLinking={recordedBoundaryMobileRecords}
-                                        mobileRecordByFeatureKey={mobileRecordByFeatureKey}
-                                        selectedBoundaryKey={selectedBoundaryKey}
-                                        onSelectBoundary={setSelectedBoundaryKey}
-                                        getBoundaryStyle={getBoundaryStyle}
-                                        getCollectionColor={getCollectionColor}
-                                        getCollectionLabel={getCollectionLabel}
-                                    />
-                                    <BlockLayer
-                                        blocks={activeBlocks}
-                                        linkedFields={linkedFields}
-                                        fieldLookupByIdentity={fieldLookupByIdentity}
-                                        mobileRecordsForBoundaryLinking={recordedBoundaryMobileRecords}
-                                        selectedBoundaryKey={selectedBoundaryKey}
-                                        onSelectBoundary={setSelectedBoundaryKey}
-                                        getBoundaryStyle={getBoundaryStyle}
-                                        getCollectionColor={getCollectionColor}
-                                        getCollectionLabel={getCollectionLabel}
-                                    />
-                                    <FieldMarkerLayer fields={pointOnlyFields} />
-                                </MapContainer>
-                                <MapCenterObject color={CYAN} label="Map Center" size={58} />
-                            </Box>
-
-                            {/* Map HUD — top bar */}
-                            <Box sx={{ position: 'absolute', top: 18, left: 18, right: 18, zIndex: 1000, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.2, flexWrap: 'wrap', pointerEvents: 'none' }}>
-                                {/* Map Controls */}
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5, borderRadius: '18px', bgcolor: 'rgba(255,255,255,0.88)', border: '1px solid rgba(27,94,32,0.12)', boxShadow: '0 12px 30px rgba(21,31,24,0.08)', pointerEvents: 'auto' }}>
-                                    <Tooltip title="Back to Overview" placement="left">
-                                        <IconButton onClick={() => navigate('/')} size="small" sx={{ width: 42, height: 42, color: CYAN_DIM, borderRadius: '14px', '&:hover': { bgcolor: alpha(CYAN, 0.07), color: CYAN } }}>
-                                            <HomeRounded sx={{ fontSize: 18 }} />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Locate Me" placement="left">
-                                        <IconButton onClick={handleLocateMe} size="small" sx={{ width: 42, height: 42, color: CYAN_DIM, borderRadius: '14px', '&:hover': { bgcolor: alpha(CYAN, 0.07), color: CYAN } }}>
-                                            <MyLocation sx={{ fontSize: 18 }} />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title={mapLayer === 'satellite' ? 'Switch to Terrain' : 'Switch to Satellite'} placement="left">
-                                        <IconButton onClick={handleLayerToggle} size="small" sx={{ width: 42, height: 42, borderRadius: '14px', color: mapLayer === 'satellite' ? CYAN : AMBER_WARN, '&:hover': { bgcolor: alpha(CYAN, 0.07) } }}>
-                                            {mapLayer === 'satellite' ? <SatelliteAlt sx={{ fontSize: 18 }} /> : <GridOn sx={{ fontSize: 18 }} />}
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title={showMobileRecords ? 'Hide Mobile Feed' : 'Show Mobile Feed'} placement="left">
-                                        <IconButton onClick={() => setShowMobileRecords((v) => !v)} size="small" sx={{ width: 42, height: 42, borderRadius: '14px', color: showMobileRecords ? AMBER_WARN : CYAN_DIM, '&:hover': { bgcolor: alpha(CYAN, 0.07) } }}>
-                                            <Layers sx={{ fontSize: 18 }} />
-                                        </IconButton>
-                                    </Tooltip>
-                                </Box>
-                            </Box>
-
-                            {/* Tile status notice */}
-                            {tileStatusNotice && (
-                                <Box sx={{ position: 'absolute', top: 82, right: 18, zIndex: 1000, maxWidth: 320, pointerEvents: 'none' }}>
-                                    <HudPanel sx={{ p: 1.4, pointerEvents: 'auto' }} accentColor={AMBER_WARN}>
-                                        <Typography sx={{ fontSize: '0.54rem', color: AMBER_WARN, letterSpacing: '0.14em', textTransform: 'uppercase', fontFamily: MONO }}>
-                                            Tile Source Notice
-                                        </Typography>
-                                        <Typography sx={{ fontSize: '0.68rem', color: TEXT_MID, mt: 0.7, lineHeight: 1.6 }}>
-                                            {tileStatusNotice}
-                                        </Typography>
-                                    </HudPanel>
-                                </Box>
+                        <MapContainer
+                            center={resolvedMapCenter}
+                            zoom={13}
+                            maxZoom={MAP_MAX_ZOOM}
+                            className="map-view-leaflet"
+                            style={{ height: '100%', width: '100%' }}
+                            zoomControl={false}
+                        >
+                            {useS2Dr3TileLayer ? (
+                                <TileLayer
+                                    key="s2dr3-deep-resolution"
+                                    attribution={S2DR3_ATTRIBUTION}
+                                    url={S2DR3_TILE_URL_TEMPLATE}
+                                    maxZoom={MAP_MAX_ZOOM}
+                                    maxNativeZoom={METER_LEVEL_FOCUS_ZOOM}
+                                    eventHandlers={{ tileerror: handleTileError, load: handleTileLoad }}
+                                />
+                            ) : mapLayer === 'satellite' ? (
+                                <TileLayer
+                                    key={WORLD_IMAGERY_TILE_SOURCE.id}
+                                    attribution={WORLD_IMAGERY_TILE_SOURCE.attribution}
+                                    url={WORLD_IMAGERY_TILE_SOURCE.url}
+                                    maxZoom={MAP_MAX_ZOOM}
+                                    eventHandlers={{ tileerror: handleTileError, load: handleTileLoad }}
+                                />
+                            ) : (
+                                <TileLayer
+                                    key={TERRAIN_TILE_SOURCE.id}
+                                    attribution={TERRAIN_TILE_SOURCE.attribution}
+                                    url={TERRAIN_TILE_SOURCE.url}
+                                    maxZoom={MAP_MAX_ZOOM}
+                                    maxNativeZoom={TERRAIN_NATIVE_TILE_ZOOM}
+                                    eventHandlers={{ tileerror: handleTileError, load: handleTileLoad }}
+                                />
                             )}
-
-                            {/* Empty state */}
-                            {visibleSpatialCount === 0 && (
-                                <Box sx={{ position: 'absolute', inset: 0, zIndex: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', p: 2 }}>
-                                    <HudPanel sx={{ p: 2.2, maxWidth: 360, textAlign: 'center' }} accentColor={AMBER_WARN}>
-                                        <Typography sx={{ fontSize: '0.58rem', color: AMBER_WARN, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: MONO }}>
-                                            No Spatial Matches
-                                        </Typography>
-                                        <Typography sx={{ fontSize: '1rem', fontWeight: 700, fontFamily: DISPLAY, mt: 1, color: '#102715' }}>
-                                            No field polygons or boundaries match this filter combination.
-                                        </Typography>
-                                        <Typography sx={{ fontSize: '0.72rem', color: TEXT_MID, mt: 0.9, lineHeight: 1.6 }}>
-                                            Try changing the collection status, crop type, or spray filter to widen the map view.
-                                        </Typography>
-                                    </HudPanel>
-                                </Box>
+                            {mapLayer === 'satellite' && (
+                                <TileLayer
+                                    key={SATELLITE_HYBRID_LABELS_SOURCE.id}
+                                    attribution={SATELLITE_HYBRID_LABELS_SOURCE.attribution}
+                                    url={SATELLITE_HYBRID_LABELS_SOURCE.url}
+                                    opacity={0.95}
+                                    maxZoom={MAP_MAX_ZOOM}
+                                    maxNativeZoom={REFERENCE_LABEL_NATIVE_TILE_ZOOM}
+                                    zIndex={2}
+                                />
                             )}
+                            <MapBoundsFitter
+                                fieldShapes={activeFieldBoundaryFeatures}
+                                fields={filteredFields}
+                                blocks={activeBlocks}
+                                mobileRecords={filteredMobilePointRecords}
+                                center={resolvedMapCenter}
+                                focusCenter={focusedBoundaryCenter}
+                                focusGeometry={focusedBoundaryGeometry}
+                                focusKey={focusedBoundaryKey ?? focusObservation?.id ?? null}
+                            />
+                            <FieldBoundaryLayer
+                                features={activeFieldBoundaryFeatures}
+                                linkedFields={linkedFields}
+                                fieldLookupByIdentity={fieldLookupByIdentity}
+                                mobileRecordsForBoundaryLinking={recordedBoundaryMobileRecords}
+                                mobileRecordByFeatureKey={mobileRecordByFeatureKey}
+                                selectedBoundaryKey={selectedBoundaryKey}
+                                onSelectBoundary={setSelectedBoundaryKey}
+                                onFieldClick={setSelectedPanel}
+                                getBoundaryStyle={getBoundaryStyle}
+                                getCollectionColor={getCollectionColor}
+                                getCollectionLabel={getCollectionLabel}
+                            />
+                            <BlockLayer
+                                blocks={activeBlocks}
+                                linkedFields={linkedFields}
+                                fieldLookupByIdentity={fieldLookupByIdentity}
+                                mobileRecordsForBoundaryLinking={recordedBoundaryMobileRecords}
+                                selectedBoundaryKey={selectedBoundaryKey}
+                                onSelectBoundary={setSelectedBoundaryKey}
+                                onFieldClick={setSelectedPanel}
+                                getBoundaryStyle={getBoundaryStyle}
+                                getCollectionColor={getCollectionColor}
+                                getCollectionLabel={getCollectionLabel}
+                            />
+                            <FieldMarkerLayer fields={pointOnlyFields} onFieldClick={setSelectedPanel} />
+                        </MapContainer>
 
-                            {/* Map HUD — bottom bar */}
-                            <Box sx={{ position: 'absolute', bottom: 18, left: 18, right: 18, zIndex: 1000, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 1.2, flexWrap: 'wrap', pointerEvents: 'none' }}>
-                                <HudPanel sx={{ p: 2, minWidth: 220, pointerEvents: 'auto' }} accentColor={CYAN}>
-                                    <SectionBadge label="Legend" color={CYAN} />
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1, mt: 1.35 }}>
-                                        <LegendRow color={GREEN_OK}   label="Boundary with mobile/form record" shape="line" />
-                                        <LegendRow color={GREEN_OK}   label="Boundary without mobile/form record" shape="line" dashed />
-                                        <LegendRow color={AMBER_WARN} label="Mobile-only recorded polygon" shape="line" />
-                                        <LegendRow color={CYAN}       label="Unlinked reference boundary" shape="line" />
+                        {/* ── Field Info Side Panel ─────────────────────────── */}
+                        {selectedPanel && (
+                            <Box
+                                component={motion.div}
+                                key={selectedPanel.fieldName + selectedPanel.blockId}
+                                initial={{ x: 340, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                                sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    width: { xs: '80%', sm: 310 },
+                                    maxWidth: 330,
+                                    zIndex: 1002,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    bgcolor: 'rgba(245,250,244,0.97)',
+                                    borderLeft: `1.5px solid ${alpha(CYAN, 0.2)}`,
+                                    borderRadius: '0 inherit inherit 0',
+                                    boxShadow: '-20px 0 50px rgba(21,31,24,0.16)',
+                                    backdropFilter: 'blur(12px)',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                {/* Header */}
+                                <Box sx={{
+                                    px: 2.5, pt: 2.5, pb: 2,
+                                    borderBottom: `1px solid ${alpha(CYAN, 0.12)}`,
+                                    bgcolor: alpha(CYAN, 0.04),
+                                    flexShrink: 0,
+                                }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                                            <Typography sx={{
+                                                fontSize: '1rem',
+                                                fontWeight: 800,
+                                                color: '#102715',
+                                                fontFamily: DISPLAY,
+                                                lineHeight: 1.2,
+                                                mb: 0.5,
+                                                wordBreak: 'break-word',
+                                            }}>
+                                                {selectedPanel.fieldName}
+                                            </Typography>
+                                            {selectedPanel.blockId && (
+                                                <Typography sx={{ fontSize: '0.72rem', color: TEXT_MID, fontFamily: MONO, fontWeight: 500 }}>
+                                                    Block: {selectedPanel.blockId}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => setSelectedPanel(null)}
+                                            sx={{ width: 32, height: 32, borderRadius: '10px', color: TEXT_DIM, flexShrink: 0, '&:hover': { bgcolor: alpha(CYAN, 0.08), color: CYAN } }}
+                                        >
+                                            <Close sx={{ fontSize: 17 }} />
+                                        </IconButton>
                                     </Box>
-                                </HudPanel>
+                                </Box>
+
+                                {/* Scrollable body */}
+                                <Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, py: 2 }}>
+                                    {selectedPanel.mobileRecord
+                                        ? <MobileRecordInfoPanel record={selectedPanel.mobileRecord} />
+                                        : <FieldInfoPanel
+                                            field={selectedPanel.field}
+                                            collectionLabel={selectedPanel.collectionLabel}
+                                            sourceLabel={selectedPanel.sourceLabel}
+                                        />
+                                    }
+                                </Box>
                             </Box>
-                        </HudPanel>
-                    </motion.div>
-                </Box>
-            </Box>
+                        )}
+                    </Box>
+
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            top: { xs: 14, md: 16 },
+                            left: { xs: 14, md: 18 },
+                            zIndex: 1000,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            p: 0.5,
+                            borderRadius: '18px',
+                            bgcolor: 'rgba(255,255,255,0.9)',
+                            border: '1px solid rgba(27,94,32,0.12)',
+                            boxShadow: '0 12px 30px rgba(21,31,24,0.08)',
+                            pointerEvents: 'auto',
+                        }}
+                    >
+                        <Tooltip title="Locate Me" placement="bottom">
+                            <IconButton onClick={handleLocateMe} size="small" sx={{ width: 42, height: 42, color: CYAN_DIM, borderRadius: '14px', '&:hover': { bgcolor: alpha(CYAN, 0.07), color: CYAN } }}>
+                                <MyLocation sx={{ fontSize: 18 }} />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title={mapLayer === 'satellite' ? 'Switch to Terrain' : 'Switch to Satellite'} placement="bottom">
+                            <IconButton onClick={handleLayerToggle} size="small" sx={{ width: 42, height: 42, borderRadius: '14px', color: mapLayer === 'satellite' ? CYAN : AMBER_WARN, '&:hover': { bgcolor: alpha(CYAN, 0.07) } }}>
+                                {mapLayer === 'satellite' ? <SatelliteAlt sx={{ fontSize: 18 }} /> : <GridOn sx={{ fontSize: 18 }} />}
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title={showMobileRecords ? 'Hide Mobile Feed' : 'Show Mobile Feed'} placement="bottom">
+                            <IconButton onClick={() => setShowMobileRecords((v) => !v)} size="small" sx={{ width: 42, height: 42, borderRadius: '14px', color: showMobileRecords ? AMBER_WARN : CYAN_DIM, '&:hover': { bgcolor: alpha(CYAN, 0.07) } }}>
+                                <Layers sx={{ fontSize: 18 }} />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
+
+                    {tileStatusNotice && (
+                        <Box sx={{ position: 'absolute', top: 82, right: 18, zIndex: 1000, maxWidth: 320, pointerEvents: 'none' }}>
+                            <HudPanel sx={{ p: 1.4, pointerEvents: 'auto' }} accentColor={AMBER_WARN} disableScanlines>
+                                <Typography sx={{ fontSize: '0.54rem', color: AMBER_WARN, letterSpacing: '0.14em', textTransform: 'uppercase', fontFamily: MONO }}>
+                                    Tile Source Notice
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.68rem', color: TEXT_MID, mt: 0.7, lineHeight: 1.6 }}>
+                                    {tileStatusNotice}
+                                </Typography>
+                            </HudPanel>
+                        </Box>
+                    )}
+
+                    {visibleSpatialCount === 0 && (
+                        <Box sx={{ position: 'absolute', inset: 0, zIndex: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', p: 2 }}>
+                            <HudPanel sx={{ p: 2.2, maxWidth: 360, textAlign: 'center' }} accentColor={AMBER_WARN} disableScanlines>
+                                <Typography sx={{ fontSize: '0.58rem', color: AMBER_WARN, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: MONO }}>
+                                    No Spatial Matches
+                                </Typography>
+                                <Typography sx={{ fontSize: '1rem', fontWeight: 700, fontFamily: DISPLAY, mt: 1, color: '#102715' }}>
+                                    No field polygons or boundaries match this contact person.
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.72rem', color: TEXT_MID, mt: 0.9, lineHeight: 1.6 }}>
+                                    Select all contact persons to widen the map view.
+                                </Typography>
+                            </HudPanel>
+                        </Box>
+                    )}
+
+                </HudPanel>
+            </motion.div>
 
             {/* Leaflet global styles */}
             <style>{`
-                
-
-                .hud-popup .leaflet-popup-content-wrapper {
-                    background: ${POPUP_BG} !important;
-                    color: ${POPUP_TEXT} !important;
-                    border-radius: 14px !important;
-                    border: 1px solid rgba(67,160,71,0.28) !important;
-                    padding: 0 !important;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.72), 0 0 0 1px rgba(67,160,71,0.1) !important;
-                }
-                .hud-popup .leaflet-popup-content { margin: 0 !important; width: auto !important; }
-                .hud-popup .leaflet-popup-tip { background: ${POPUP_BG} !important; border-top: 1px solid rgba(67,160,71,0.28); }
-                .hud-popup .leaflet-popup-close-button { color: rgba(214,247,221,0.55) !important; font-size: 18px !important; padding: 6px 8px !important; }
-                .hud-popup .leaflet-popup-close-button:hover { color: ${POPUP_TEXT} !important; background: none !important; }
                 .leaflet-control-zoom { border: 1px solid rgba(27,94,32,0.2) !important; border-radius: 10px !important; overflow: hidden; background: rgba(5,14,18,0.88) !important; backdrop-filter: blur(12px); }
                 .leaflet-control-zoom a { background: transparent !important; color: rgba(27,94,32,0.6) !important; border-bottom: 1px solid rgba(27,94,32,0.1) !important; font-size: 16px !important; line-height: 28px !important; height: 30px !important; width: 30px !important; }
                 .leaflet-control-zoom a:hover { background: rgba(27,94,32,0.08) !important; color: #1b5e20 !important; }

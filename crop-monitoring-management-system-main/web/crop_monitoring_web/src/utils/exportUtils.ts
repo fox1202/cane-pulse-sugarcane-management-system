@@ -1,12 +1,24 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
-import type { FullObservation } from '@/types/database.types';
+import type { FullObservation, ObservationEntryForm, SugarcaneMonitoringRecord } from '@/types/database.types';
 import type { MobileObservationEntryFormFields, MobileObservationRecord } from '@/services/database.service';
 import { format } from 'date-fns';
 
 type ExportObservationRecord = FullObservation | MobileObservationRecord
 type AutoTableCapableDoc = jsPDF & { lastAutoTable?: { finalY?: number } }
+type EntryFormExportSource = {
+    recordId?: unknown
+    sourceRowId?: unknown
+    entryForm?: Partial<ObservationEntryForm>
+    monitoringSheet?: SugarcaneMonitoringRecord
+    observation?: Partial<FullObservation>
+}
+
+interface FieldRecordTableCsvColumn {
+    header: string
+    getValue: (source: EntryFormExportSource) => unknown
+}
 
 function isMobileObservationRecord(observation: ExportObservationRecord): observation is MobileObservationRecord {
     return 'source_table' in observation
@@ -89,6 +101,381 @@ function hasCoordinateValue(value?: number): boolean {
     return typeof value === 'number' && !Number.isNaN(value) && value !== 0
 }
 
+function formatFieldRecordDateValue(value?: string, pattern: string = 'dd MMM yyyy') {
+    if (!value) return '-'
+
+    try {
+        return format(new Date(value), pattern)
+    } catch {
+        return value
+    }
+}
+
+function formatFieldRecordDateTimeValue(value?: string) {
+    return formatFieldRecordDateValue(value, 'dd MMM yyyy HH:mm')
+}
+
+function formatFieldRecordNumericValue(value?: number, maximumFractionDigits: number = 2) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
+
+    return value.toLocaleString(undefined, {
+        maximumFractionDigits,
+        minimumFractionDigits: 0,
+    })
+}
+
+function formatFieldRecordTextValue(value?: string | number | null) {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? String(value) : '-'
+    }
+
+    if (typeof value === 'string') {
+        return value.trim() || '-'
+    }
+
+    return '-'
+}
+
+function pickFieldRecordTextValue(...values: unknown[]): string | number | undefined {
+    for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value
+        }
+
+        if (typeof value === 'string' && value.trim()) {
+            return value
+        }
+    }
+
+    return undefined
+}
+
+function pickFieldRecordNumericValue(...values: unknown[]): number | undefined {
+    for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value
+        }
+
+        if (typeof value === 'string' && value.trim()) {
+            const normalized = Number(value.toString().trim().replace(/\s+/g, '').replace(/,/g, ''))
+            if (Number.isFinite(normalized)) {
+                return normalized
+            }
+        }
+    }
+
+    return undefined
+}
+
+function pickFieldRecordDateValue(...values: unknown[]): string | undefined {
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim()) {
+            return value
+        }
+    }
+
+    return undefined
+}
+
+function pickFieldRecordLinkValue(...values: unknown[]): string | undefined {
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim()) {
+            return value.trim()
+        }
+    }
+
+    return undefined
+}
+
+function stringifyEntryCsvValue(value: unknown): unknown {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value
+    if (value instanceof Date) return value.toISOString()
+    try {
+        return JSON.stringify(value)
+    } catch {
+        return String(value)
+    }
+}
+
+function downloadCsv(rows: Record<string, unknown>[], filename: string) {
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+}
+
+const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
+    { header: 'Date Recorded', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.date_recorded, entryForm?.date_recorded, rawSheet?.date_recorded, source.observation?.date_recorded))
+    } },
+    { header: 'Trials', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.field_id, currentSheet?.field_name, entryForm?.field_id, rawSheet?.field_id, rawSheet?.field_name, rawSheet?.Trial, source.observation?.field_name, entryForm?.selected_field))
+    } },
+    { header: 'Block ID', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.block_id, rawSheet?.block_id, source.observation?.block_id, entryForm?.block_id))
+    } },
+    { header: 'Area (ha)', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.area, entryForm?.area, entryForm?.block_size, rawSheet?.area))
+    } },
+    { header: 'Irrigation Type', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.irrigation_type, entryForm?.irrigation_type, rawSheet?.irrigation_type, source.observation?.irrigation_management?.irrigation_type))
+    } },
+    { header: 'Water Source', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.water_source, entryForm?.water_source, rawSheet?.water_source, source.observation?.irrigation_management?.water_source))
+    } },
+    { header: 'TAM (mm)', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.tam_mm, entryForm?.tam_mm, rawSheet?.tam_mm, rawSheet?.tam, entryForm?.tamm_area))
+    } },
+    { header: 'Soil Type', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.soil_type, entryForm?.soil_type, rawSheet?.soil_type, source.observation?.soil_characteristics?.soil_type))
+    } },
+    { header: 'Soil pH', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.soil_ph, entryForm?.soil_ph, rawSheet?.soil_ph, rawSheet?.ph, rawSheet?.pH, source.observation?.soil_characteristics?.soil_ph))
+    } },
+    { header: 'Field Remarks', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.field_remarks, currentSheet?.remarks, entryForm?.field_remarks, entryForm?.remarks, rawSheet?.field_remarks, rawSheet?.remarks, source.observation?.crop_monitoring?.remarks))
+    } },
+    { header: 'Trial Number', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.trial_number, entryForm?.trial_number, rawSheet?.trial_number))
+    } },
+    { header: 'Trial Name', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.trial_name, entryForm?.trial_name, rawSheet?.trial_name))
+    } },
+    { header: 'Contact Person', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.contact_person, entryForm?.contact_person, rawSheet?.contact_person, rawSheet?.contact_person_scientist))
+    } },
+    { header: 'Crop Type', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.crop_type, entryForm?.crop_type, rawSheet?.crop_type, source.observation?.crop_information?.crop_type))
+    } },
+    { header: 'Crop Class', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.crop_class, entryForm?.crop_class, rawSheet?.crop_class))
+    } },
+    { header: 'Planting Date', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.planting_date, entryForm?.planting_date, rawSheet?.planting_date, source.observation?.crop_information?.planting_date))
+    } },
+    { header: 'Soil Sampling Date', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.soil_sampling_date, entryForm?.soil_sampling_date, rawSheet?.soil_sampling_date))
+    } },
+    { header: 'Soil Sampling Results', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return pickFieldRecordLinkValue(currentSheet?.soil_test_pdf_url, currentSheet?.soil_test_pdf_path, entryForm?.soil_test_pdf_url, rawSheet?.soil_test_pdf_url, rawSheet?.soil_test_pdf_path) ?? ''
+    } },
+    { header: 'Foliar Sampling Date', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.foliar_sampling_date, entryForm?.foliar_sampling_date, rawSheet?.foliar_sampling_date))
+    } },
+    { header: 'Foliar Sampling Results', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return pickFieldRecordLinkValue(currentSheet?.foliar_analysis_pdf_url, entryForm?.foliar_analysis_pdf_url, rawSheet?.foliar_analysis_pdf_url) ?? ''
+    } },
+    { header: 'Previous Cutting Date', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.previous_cutting_date, currentSheet?.previous_cutting, entryForm?.previous_cutting_date, entryForm?.cutting_date, rawSheet?.previous_cutting_date, rawSheet?.previous_cutting, rawSheet?.cutting_date))
+    } },
+    { header: 'Expected Harvest Date', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.expected_harvest_date, entryForm?.expected_harvest_date, rawSheet?.expected_harvest_date, source.observation?.crop_information?.expected_harvest_date))
+    } },
+    { header: 'Residue Type', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.residue_type, entryForm?.residue_type, rawSheet?.residue_type))
+    } },
+    { header: 'Residue Management Method', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.residue_management_method, entryForm?.residue_management_method, rawSheet?.residue_management_method, rawSheet?.management_method))
+    } },
+    { header: 'Residue Remarks', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.residual_management_remarks, entryForm?.residual_management_remarks, rawSheet?.residual_management_remarks, rawSheet?.residue_remarks))
+    } },
+    { header: 'Fertilizer Type', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.fertilizer_type, rawSheet?.fertilizer_type, entryForm?.fertilizer_type, source.observation?.nutrient_management?.fertilizer_type, rawSheet?.fertilizer_type_1))
+    } },
+    { header: 'Nutrient Application Date', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.nutrient_application_date, currentSheet?.fertilizer_application_date, rawSheet?.application_date, rawSheet?.nutrient_application_date, rawSheet?.fertilizer_application_date, entryForm?.nutrient_application_date, source.observation?.nutrient_management?.application_date, typeof rawSheet?.fertilizer_application_date_1 === 'string' ? rawSheet.fertilizer_application_date_1 : undefined))
+    } },
+    { header: 'Application Rate', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.application_rate, rawSheet?.application_rate, entryForm?.application_rate, source.observation?.nutrient_management?.application_rate, rawSheet?.fertilizer_application_rate_1))
+    } },
+    { header: 'Herbicide Name', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.herbicide_name, rawSheet?.herbicide_name, entryForm?.herbicide_name, currentSheet?.weed_control, rawSheet?.weed_control, source.observation?.control_methods?.weed_control, rawSheet?.herbicide_name_1))
+    } },
+    { header: 'Weed Application Date', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.weed_application_date, rawSheet?.weed_application_date, entryForm?.weed_application_date, rawSheet?.herbicide_application_date, typeof rawSheet?.herbicide_application_date_1 === 'string' ? rawSheet.herbicide_application_date_1 : undefined))
+    } },
+    { header: 'Weed Application Rate', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.weed_application_rate, rawSheet?.weed_application_rate, entryForm?.weed_application_rate, rawSheet?.herbicide_application_rate, rawSheet?.herbicide_application_rate_1))
+    } },
+    { header: 'Pest Remarks', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(rawSheet?.pest_control, rawSheet?.pest_remarks, currentSheet?.pest_remarks, currentSheet?.pest_control, entryForm?.pest_remarks, source.observation?.control_methods?.pest_control, source.observation?.crop_protection?.remarks))
+    } },
+    { header: 'Disease Remarks', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(rawSheet?.disease_control, rawSheet?.disease_remarks, currentSheet?.disease_remarks, currentSheet?.disease_control, entryForm?.disease_remarks, source.observation?.control_methods?.disease_control))
+    } },
+    { header: 'Harvest Date', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateValue(pickFieldRecordDateValue(rawSheet?.harvest_date, rawSheet?.actual_cutting_date, rawSheet?.cutting_date, currentSheet?.harvest_date, entryForm?.harvest_date, source.observation?.harvest?.harvest_date))
+    } },
+    { header: 'Yield', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordNumericValue(pickFieldRecordNumericValue(rawSheet?.yield, rawSheet?.harvest_yield, currentSheet?.harvest_yield, currentSheet?.yield, entryForm?.yield, source.observation?.harvest?.yield))
+    } },
+    { header: 'Quality Remarks', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.quality_remarks, entryForm?.quality_remarks, rawSheet?.quality_remarks, rawSheet?.cane_quality_remarks))
+    } },
+    { header: 'Created', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateTimeValue(pickFieldRecordDateValue(currentSheet?.created_at, entryForm?.created_at, rawSheet?.created_at, source.observation?.created_at))
+    } },
+]
+
+function buildFieldRecordTableCsvData(sources: EntryFormExportSource[]): Record<string, unknown>[] {
+    return sources.map((source) => (
+        Object.fromEntries(
+            FIELD_RECORD_TABLE_CSV_COLUMNS.map((column) => [
+                column.header,
+                stringifyEntryCsvValue(column.getValue(source)),
+            ])
+        )
+    ))
+}
+
+function buildObservationEntryFormExportSource(obs: ExportObservationRecord): EntryFormExportSource {
+    if (isMobileObservationRecord(obs)) {
+        return {
+            recordId: obs.id,
+            sourceRowId: obs.source_row_id,
+            entryForm: obs.entry_form,
+            monitoringSheet: obs.monitoring_sheet,
+            observation: obs,
+        }
+    }
+
+    return {
+        recordId: obs.id,
+        observation: obs,
+    }
+}
+
+function buildMonitoringEntryFormExportSource(record: SugarcaneMonitoringRecord): EntryFormExportSource {
+    return {
+        recordId: record.id,
+        sourceRowId: record.id,
+        monitoringSheet: record,
+    }
+}
+
 /**
  * Export observations to CSV
  */
@@ -132,19 +519,31 @@ export const exportToCSV = (data: ExportObservationRecord[], filename = 'observa
         }
     })
 
-    const csv = Papa.unparse(flatData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+    downloadCsv(flatData, filename)
 };
+
+/**
+ * Export the same columns displayed in the Field Records table.
+ */
+export const exportEntryFormRecordsToCSV = (
+    data: ExportObservationRecord[],
+    filename = `field-records-table-${new Date().toISOString().split('T')[0]}.csv`
+) => {
+    downloadCsv(
+        buildFieldRecordTableCsvData(data.map(buildObservationEntryFormExportSource)),
+        filename
+    )
+}
+
+export const exportSugarcaneMonitoringRowsToEntryFormCSV = (
+    data: SugarcaneMonitoringRecord[],
+    filename = `sugarcane-field-management-${new Date().toISOString().split('T')[0]}.csv`
+) => {
+    downloadCsv(
+        buildFieldRecordTableCsvData(data.map(buildMonitoringEntryFormExportSource)),
+        filename
+    )
+}
 
 /**
  * Generate PDF Report for a single observation
