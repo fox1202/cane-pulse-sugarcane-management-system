@@ -23,11 +23,13 @@ import {
     PieChart as RechartsPieChart,
     ResponsiveContainer,
 } from 'recharts'
+import { useAuth } from '@/contexts/AuthContext'
 import { HARVEST_PROXIMITY_TASKS } from '@/data/farmingCalendar'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
 import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
 import { getAreaCropGroup } from '@/utils/cropGrouping'
 import { formatDateOnlyLabel, getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
+import { canAccessRoles } from '@/utils/roleAccess'
 
 const MINT = '#56b870'
 const MINT_DARK = '#2f7f4f'
@@ -1019,6 +1021,7 @@ function ProtocolStep({ step, index, inView }: { step: string; index: number; in
 }
 
 export function HomePage() {
+    const { user } = useAuth()
     const {
         data: monitoring = [],
         isLoading: monitoringLoading,
@@ -1276,6 +1279,28 @@ export function HomePage() {
         'Complete harvest date, yield, and quality remarks, then save or edit the form before submission.',
     ]
     const totalSteps = steps.length
+    const canUseFieldRecords = canAccessRoles(user?.role, ['admin', 'supervisor'], user?.email)
+    const moduleCards = [
+        {
+            title: 'Map View',
+            desc: 'Move into the spatial workspace for boundaries, centroids, and hybrid basemap context in one place.',
+            path: '/map',
+            icon: <MapOutlined sx={{ fontSize: 26 }} />,
+            delay: 0.15,
+            accent: false,
+        },
+        ...(canUseFieldRecords ? [
+            {
+                title: 'Field Records',
+                desc: 'Review live crop observations that have real recorded dates, such as 25 March 2026.',
+                path: '/data',
+                icon: <TableChartOutlined sx={{ fontSize: 26 }} />,
+                delay: 0.25,
+                accent: false,
+                loadMode: 'monitoring-records' as const,
+            },
+        ] : []),
+    ]
 
     return (
         <Box sx={{ bgcolor: CREAM, minHeight: '100vh', position: 'relative', fontFamily: '"Times New Roman", Times, serif' }}>
@@ -1451,25 +1476,7 @@ export function HomePage() {
                 )}
 
                 <Grid container spacing={3} sx={{ mb: 8 }}>
-                    {[
-                        {
-                            title: 'Map View',
-                            desc: 'Move into the spatial workspace for boundaries, centroids, and hybrid basemap context in one place.',
-                            path: '/map',
-                            icon: <MapOutlined sx={{ fontSize: 26 }} />,
-                            delay: 0.15,
-                            accent: false,
-                        },
-                        {
-                            title: 'Field Records',
-                            desc: 'Review live crop observations that have real recorded dates, such as 25 March 2026.',
-                            path: '/data',
-                            icon: <TableChartOutlined sx={{ fontSize: 26 }} />,
-                            delay: 0.25,
-                            accent: false,
-                            loadMode: 'monitoring-records' as const,
-                        },
-                    ].map((item) => (
+                    {moduleCards.map((item) => (
                         <Grid size={{ xs: 12, md: 6 }} key={item.title} sx={{ display: 'flex' }}>
                             <ModuleCard {...item} />
                         </Grid>

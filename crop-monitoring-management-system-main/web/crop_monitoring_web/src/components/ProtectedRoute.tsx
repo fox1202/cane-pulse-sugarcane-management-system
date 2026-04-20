@@ -31,7 +31,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         return <Navigate to="/login" state={{ from: location }} replace />
     }
 
-    if (allowedRoles && user && !canAccessRoles(user.role, allowedRoles)) {
+    if (allowedRoles && user && !canAccessRoles(user.role, allowedRoles, user.email)) {
         return <Navigate to="/" replace />
     }
 

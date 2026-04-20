@@ -157,6 +157,10 @@ export interface ObservationEntryBulkImportResult {
     failures: string[]
 }
 
+export interface CreateObservationEntryFormSubmissionOptions {
+    allowExistingRowOverwrite?: boolean
+}
+
 export interface MobileObservationRecord extends FullObservation {
     source_table: string
     source_row_id?: string
@@ -1883,7 +1887,8 @@ export async function uploadFoliarAnalysisPdf(file: File, fieldKey: string): Pro
 
 export async function createObservationEntryFormSubmission(
     submission: ObservationEntryFormSubmissionInput,
-    predefinedFields?: PredefinedField[]
+    predefinedFields?: PredefinedField[],
+    options: CreateObservationEntryFormSubmissionOptions = {}
 ): Promise<ObservationEntryForm> {
     const { submission: resolvedSubmission, linkedField } = await resolveObservationEntrySubmission(submission, predefinedFields)
     const duplicateMatch = await findDuplicateFieldManagementSubmission(
@@ -1891,7 +1896,7 @@ export async function createObservationEntryFormSubmission(
         linkedField?.id ?? null
     )
 
-    if (duplicateMatch) {
+    if (duplicateMatch && !(duplicateMatch.kind === 'unchanged' && options.allowExistingRowOverwrite)) {
         const label = firstNonEmptyString(
             resolvedSubmission.trial_name,
             resolvedSubmission.field_name,

@@ -37,6 +37,12 @@ const GOLD_DIM = 'rgba(27,94,32,0.55)'
 const PANEL = 'rgba(255,255,255,0.86)'
 const PANEL_ALT = 'rgba(255,249,244,0.92)'
 const TEXT_DIM = 'rgba(0,0,0,0.45)'
+const roleLabels = {
+    supervisor: 'Regional Supervisor',
+    collector: 'Users',
+} as const
+
+type RequestedRole = keyof typeof roleLabels
 
 function AuthMiniBadge({ label }: { label: string }) {
     return (
@@ -109,26 +115,29 @@ export function SignUpPage() {
     const [lastName, setLastName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [role, setRole] = useState<'admin' | 'supervisor'>('supervisor')
+    const [role, setRole] = useState<RequestedRole>('supervisor')
     const [showPassword, setShowPassword] = useState(false)
 
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
+    const [profileProvisioned, setProfileProvisioned] = useState(true)
     const [loading, setLoading] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
+        setProfileProvisioned(true)
         setLoading(true)
 
         try {
-            await requestSignUp({
+            const result = await requestSignUp({
                 email,
                 password,
                 first_name: firstName,
                 last_name: lastName,
                 role,
             })
+            setProfileProvisioned(result.profileProvisioned)
             setSuccess(true)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to submit request. Please try again.')
@@ -168,7 +177,7 @@ export function SignUpPage() {
                 >
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, flexWrap: 'wrap', mb: 2.2 }}>
                         <AuthMiniBadge label="Check email" />
-                        <AuthMiniBadge label="Review pending" />
+                        <AuthMiniBadge label={profileProvisioned ? 'Review pending' : 'Admin follow-up'} />
                     </Box>
 
                     <Box
@@ -205,7 +214,15 @@ export function SignUpPage() {
                     </Typography>
 
                     <Typography sx={{ fontSize: '0.95rem', color: 'rgba(35,64,52,0.7)', lineHeight: 1.8, maxWidth: 480, mx: 'auto', mb: 4 }}>
-                        Your access request for <strong>{email}</strong> has been received. Confirm the email from your inbox first, then wait for an administrator to approve the account before signing in.
+                        {profileProvisioned ? (
+                            <>
+                                Your {roleLabels[role]} access request for <strong>{email}</strong> has been received. Confirm the email from your inbox first, then wait for the superuser to approve the account before signing in.
+                            </>
+                        ) : (
+                            <>
+                                Your account for <strong>{email}</strong> was created. The superuser may need to add it to the approval queue before approving your access.
+                            </>
+                        )}
                     </Typography>
 
                     <Button
@@ -380,7 +397,7 @@ export function SignUpPage() {
                                     </Box>
                                 </Typography>
                                 <Typography sx={{ fontSize: '0.86rem', color: 'rgba(35,64,52,0.68)', lineHeight: 1.8, maxWidth: 400 }}>
-                                    Apply for supervisor or administrator access to Cane Pulse, the sugarcane management system, and we will route your request for approval.
+                                    Apply for user or supervisor access to Cane Pulse, the sugarcane management system, and we will route your request for approval.
                                 </Typography>
                             </Box>
                         </motion.div>
@@ -448,9 +465,9 @@ export function SignUpPage() {
                                 fullWidth
                                 required
                                 value={role}
-                                onChange={(e) => setRole(e.target.value as 'admin' | 'supervisor')}
+                                onChange={(e) => setRole(e.target.value as RequestedRole)}
                                 variant="outlined"
-                                helperText="Supervisor and administrator roles are manually reviewed before activation."
+                                helperText="Users and supervisors are manually reviewed before activation."
                                 sx={authFieldSx}
                                 InputProps={{
                                     startAdornment: (
@@ -460,8 +477,8 @@ export function SignUpPage() {
                                     ),
                                 }}
                             >
+                                <MenuItem value="collector">Users</MenuItem>
                                 <MenuItem value="supervisor">Regional Supervisor</MenuItem>
-                                <MenuItem value="admin">System Administrator</MenuItem>
                             </TextField>
 
                             <TextField

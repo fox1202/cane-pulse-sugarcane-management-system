@@ -2290,37 +2290,6 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     [breakCropFields]
   )
 
-  const fallowFieldData = useMemo<RankedDatum[]>(
-    () => fallowFields
-      .slice()
-      .sort((left, right) => (right.areaHa ?? 0) - (left.areaHa ?? 0))
-      .map((field, index) => ({
-        label: field.trialName || field.fieldLabel,
-        value: Number((field.areaHa ?? 0).toFixed(2)),
-        color: PALETTE[index % PALETTE.length],
-        helper: field.trialName && field.trialName !== field.fieldLabel
-          ? `${field.fieldLabel} • ${field.sectionBlock}`
-          : field.sectionBlock,
-        navigation: {
-          searchParams: {
-            cropType: 'Fallow Period',
-          },
-          focusField: {
-            fieldName: field.field,
-            sectionName: field.section || undefined,
-            blockId: field.block || undefined,
-            cropType: 'Fallow Period',
-          },
-        },
-      })),
-    [fallowFields]
-  )
-
-  const fallowShare = useMemo(
-    () => (totalMeasuredArea > 0 ? (totalFallowArea / totalMeasuredArea) * 100 : 0),
-    [totalFallowArea, totalMeasuredArea]
-  )
-
   const areaLeader = useMemo(
     () => [...areaOverviewData].sort((left, right) => right.value - left.value)[0] ?? null,
     [areaOverviewData]

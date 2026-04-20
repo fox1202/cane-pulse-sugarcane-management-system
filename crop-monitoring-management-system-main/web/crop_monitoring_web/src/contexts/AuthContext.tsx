@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { AuthUser, AuthState, LoginCredentials } from '@/types/auth.types'
 import { User } from '@supabase/supabase-js'
+import { resolveUserRole } from '@/utils/roleAccess'
 
 interface AuthContextType extends AuthState {
     signIn: (credentials: LoginCredentials) => Promise<void>
@@ -34,10 +35,12 @@ function getUserStatus(user: User): AuthUser['status'] {
 }
 
 function mapSupabaseUser(user: User): AuthUser {
+    const email = user.email || ''
+
     return {
         id: user.id,
-        email: user.email || '',
-        role: getUserRole(user),
+        email,
+        role: resolveUserRole(getUserRole(user), email),
         status: getUserStatus(user),
         full_name: user.user_metadata?.full_name,
         user_metadata: user.user_metadata,
@@ -54,10 +57,12 @@ type ProfileRecord = {
 }
 
 function mapProfileUser(user: User, profile: ProfileRecord): AuthUser {
+    const email = profile.email || user.email || ''
+
     return {
         id: user.id,
-        email: profile.email || user.email || '',
-        role: profile.role,
+        email,
+        role: resolveUserRole(profile.role, email),
         status: profile.status,
         full_name: `${profile.first_name} ${profile.last_name}`.trim(),
         user_metadata: user.user_metadata,

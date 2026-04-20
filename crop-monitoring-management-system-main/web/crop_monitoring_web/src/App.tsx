@@ -127,41 +127,51 @@ function App() {
                 <Route
                   path="data"
                   element={
-                    <Suspense fallback={<LoadingFallback />}>
-                      <DataManagementPage />
-                    </Suspense>
+                    <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <DataManagementPage />
+                      </Suspense>
+                    </ProtectedRoute>
                   }
                 />
                 <Route
                   path="debug-db"
                   element={
-                    <Suspense fallback={<LoadingFallback />}>
-                      <DebugDbPage />
-                    </Suspense>
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <DebugDbPage />
+                      </Suspense>
+                    </ProtectedRoute>
                   }
                 />
                 <Route
                   path="supabase-test"
                   element={
-                    <Suspense fallback={<LoadingFallback />}>
-                      <SupabaseConnectionTest />
-                    </Suspense>
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <SupabaseConnectionTest />
+                      </Suspense>
+                    </ProtectedRoute>
                   }
                 />
                 <Route
                   path="raw-data"
                   element={
-                    <Suspense fallback={<LoadingFallback />}>
-                      <RawDataViewerPage />
-                    </Suspense>
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <RawDataViewerPage />
+                      </Suspense>
+                    </ProtectedRoute>
                   }
                 />
                 <Route
                   path="entry-forms"
                   element={
-                    <Suspense fallback={<LoadingFallback />}>
-                      <ObservationEntryFormPage />
-                    </Suspense>
+                    <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <ObservationEntryFormPage />
+                      </Suspense>
+                    </ProtectedRoute>
                   }
                 />
                 <Route

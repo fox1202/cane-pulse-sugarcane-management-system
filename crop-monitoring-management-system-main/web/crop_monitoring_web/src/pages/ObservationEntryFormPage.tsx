@@ -12,12 +12,14 @@ import {
 } from '@mui/material'
 import { AddCircleOutline, RefreshOutlined, DownloadOutlined } from '@mui/icons-material'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
+import { useAuth } from '@/contexts/AuthContext'
 import { ObservationEntryIntakeDialog } from '@/components/Data/ObservationEntryIntakeDialog'
 import {
     ObservationEntryDataTable,
 } from '@/components/Data/ObservationEntryDataTable'
 import type { SugarcaneMonitoringRecord } from '@/types/database.types'
 import { exportSugarcaneMonitoringRowsToEntryFormCSV } from '@/utils/exportUtils'
+import { hasPermission } from '@/utils/roleAccess'
 
 const trialSortCollator = new Intl.Collator(undefined, {
     numeric: true,
@@ -52,6 +54,7 @@ function compareEntryRows(left: SugarcaneMonitoringRecord, right: SugarcaneMonit
 }
 
 export function ObservationEntryFormPage() {
+    const { user } = useAuth()
     const [intakeOpen, setIntakeOpen] = useState(false)
     const [saveSuccessMessage, setSaveSuccessMessage] = useState('')
     const {
@@ -66,6 +69,8 @@ export function ObservationEntryFormPage() {
         () => [...monitoringRows].sort(compareEntryRows),
         [monitoringRows]
     )
+    const canAddData = hasPermission(user?.role, 'addData')
+    const canDownloadCsv = hasPermission(user?.role, 'downloadCsv')
 
     const handleRefresh = async () => {
         await refetchMonitoring()
@@ -74,6 +79,11 @@ export function ObservationEntryFormPage() {
     const handleExportCSV = () => {
         if (tableRows.length === 0) {
             alert('No data to export')
+            return
+        }
+
+        if (!canDownloadCsv) {
+            alert('CSV downloads are not available for your account.')
             return
         }
 
@@ -91,13 +101,15 @@ export function ObservationEntryFormPage() {
     return (
         <Container maxWidth="xl" sx={{ pb: 6, pt: 4 }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
-                <Button
-                    variant="contained"
-                    startIcon={<AddCircleOutline />}
-                    onClick={() => setIntakeOpen(true)}
-                >
-                    Enter Record
-                </Button>
+                {canAddData && (
+                    <Button
+                        variant="contained"
+                        startIcon={<AddCircleOutline />}
+                        onClick={() => setIntakeOpen(true)}
+                    >
+                        Enter Record
+                    </Button>
+                )}
                 <Button
                     variant="outlined"
                     startIcon={<RefreshOutlined />}
@@ -110,7 +122,7 @@ export function ObservationEntryFormPage() {
                     variant="outlined"
                     startIcon={<DownloadOutlined />}
                     onClick={handleExportCSV}
-                    disabled={tableRows.length === 0}
+                    disabled={!canDownloadCsv || tableRows.length === 0}
                 >
                     Export CSV
                 </Button>
@@ -140,15 +152,17 @@ export function ObservationEntryFormPage() {
                 </Paper>
             )}
 
-            <ObservationEntryIntakeDialog
-                open={intakeOpen}
-                onClose={() => setIntakeOpen(false)}
-                onSubmitted={async () => {
-                    await handleRefresh()
-                }}
-                onSaved={setSaveSuccessMessage}
-                existingRecords={monitoringRows}
-            />
+            {canAddData && (
+                <ObservationEntryIntakeDialog
+                    open={intakeOpen}
+                    onClose={() => setIntakeOpen(false)}
+                    onSubmitted={async () => {
+                        await handleRefresh()
+                    }}
+                    onSaved={setSaveSuccessMessage}
+                    existingRecords={monitoringRows}
+                />
+            )}
             <Snackbar
                 open={!!saveSuccessMessage}
                 autoHideDuration={4000}

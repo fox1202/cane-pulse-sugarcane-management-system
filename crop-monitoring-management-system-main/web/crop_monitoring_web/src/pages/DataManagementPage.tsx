@@ -1,4 +1,5 @@
-import React, { useState, useMemo, Component, ReactNode } from 'react'
+import React, { useState, useMemo, Component } from 'react'
+import type { ErrorInfo, ReactNode } from 'react'
 import {
     Container,
     Box,
@@ -26,7 +27,7 @@ import { ObservationEditDialog } from '@/components/Data/ObservationEditDialog'
 import { exportEntryFormRecordsToCSV, generatePDFReport } from '@/utils/exportUtils'
 import type { MobileObservationRecord } from '@/services/database.service'
 import { updateMobileObservationRecord, deleteMobileObservationRecord } from '@/services/database.service'
-import { hasAdminLevelAccess } from '@/utils/roleAccess'
+import { hasPermission } from '@/utils/roleAccess'
 
 interface ErrorBoundaryProps {
     children: ReactNode;
@@ -34,12 +35,15 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
     hasError: boolean;
-    error: any;
+    error: unknown;
 }
 
 type ObservationPageRecord = FullObservation | MobileObservationRecord
 
 const normalizeFilterToken = (value?: string | null) => (value ?? '').trim().toLowerCase()
+
+const getErrorMessage = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error)
 
 const isMobileObservationRecord = (observation: ObservationPageRecord): observation is MobileObservationRecord => {
     return 'source_table' in observation
@@ -149,11 +153,11 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         this.state = { hasError: false, error: null };
     }
 
-    static getDerivedStateFromError(error: any) {
+    static getDerivedStateFromError(error: unknown) {
         return { hasError: true, error };
     }
 
-    componentDidCatch(error: any, errorInfo: any) {
+    componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
         console.error('Uncaught error:', error, errorInfo);
     }
 
@@ -163,7 +167,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                 <Box p={4}>
                     <Alert severity="error">
                         <Typography variant="h6">Something went wrong</Typography>
-                        <pre style={{ whiteSpace: 'pre-wrap' }}>{this.state.error?.toString()}</pre>
+                        <pre style={{ whiteSpace: 'pre-wrap' }}>{getErrorMessage(this.state.error)}</pre>
                     </Alert>
                 </Box>
             );
@@ -209,9 +213,10 @@ function DataManagementPageContent() {
     const [editOpen, setEditOpen] = useState(false)
     const [selectedIds, setSelectedIds] = useState<string[]>([])
 
-    const isAdmin = hasAdminLevelAccess(user?.role)
-    const supportsEditing = true
-    const canDeleteRecords = isAdmin
+    const canManageFields = hasPermission(user?.role, 'manageFields')
+    const canDownloadCsv = hasPermission(user?.role, 'downloadCsv')
+    const supportsEditing = canManageFields
+    const canDeleteRecords = canManageFields
 
     const filteredObservations = useMemo(() => {
         return observations.filter((observation) =>
@@ -271,9 +276,9 @@ function DataManagementPageContent() {
                 await deleteMobileObservationRecord(targetRecord)
                 setSelectedIds((prev) => prev.filter((selectedId) => selectedId !== id))
                 void refetch()
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error('Failed to delete observation:', err)
-                alert(`Failed to delete the record: ${err.message || 'Unknown error'}`)
+                alert(`Failed to delete the record: ${getErrorMessage(err)}`)
             }
         }
     }
@@ -328,7 +333,7 @@ function DataManagementPageContent() {
                         variant="outlined"
                         startIcon={<DownloadOutlined />}
                         onClick={() => exportEntryFormRecordsToCSV(filteredObservations)}
-                        disabled={filteredObservations.length === 0}
+                        disabled={!canDownloadCsv || filteredObservations.length === 0}
                     >
                         Export CSV
                     </Button>
@@ -419,8 +424,8 @@ function DataManagementPageContent() {
                                     await Promise.all(selectedRecords.map((record) => deleteMobileObservationRecord(record)))
                                     setSelectedIds([])
                                     await refetch()
-                                } catch (err: any) {
-                                    alert(`Failed to delete records: ${err?.message || 'Unknown error'}`)
+                                } catch (err: unknown) {
+                                    alert(`Failed to delete records: ${getErrorMessage(err)}`)
                                 }
                             }
                         }}
@@ -430,6 +435,7 @@ function DataManagementPageContent() {
                     <Button
                         size="small"
                         variant="outlined"
+                        disabled={!canDownloadCsv}
                         onClick={() => {
                             const selectedObservations = filteredObservations.filter((obs) => selectedIds.includes(obs.id))
                             exportEntryFormRecordsToCSV(selectedObservations)

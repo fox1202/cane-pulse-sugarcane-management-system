@@ -16,6 +16,7 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
+import { CloudUpload } from '@mui/icons-material';
 import L from 'leaflet';
 import { MapContainer, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import {
@@ -43,6 +44,7 @@ import type {
 import { SUGARCANE_CROP_CLASS_OPTIONS } from '@/utils/cropClassOptions';
 import { FALLOW_PERIOD_CROP_CLASS_LABEL } from '@/utils/cropGrouping';
 import { buildObservationCalendarSearch } from '@/utils/farmingCalendarLinks';
+import { parseKMLFile, extractGeometryFromKML, isValidKMLFile, extractPointsFromKML, createPolygonFromPoints, sortPointsForPolygon, type KMLParseResult, type KMLPoint } from '@/utils/kmlImport';
 
 interface ObservationEntryIntakeDialogProps {
     open: boolean;
@@ -113,6 +115,7 @@ const FALLOW_CROP_CLASS_OPTIONS = [FALLOW_PERIOD_CROP_CLASS_LABEL];
 const RESIDUE_TYPE_OPTIONS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Sugarcane', 'None'];
 const RESIDUE_MANAGEMENT_METHOD_OPTIONS = ['Ploughed in', 'Parting', 'Broadcasting', 'None'];
 const DRAW_NEW_FIELD_VALUE = '__draw_new_field__';
+const UPLOAD_KML_FIELD_VALUE = '__upload_kml_field__';
 const DEFAULT_DRAW_CENTER: [number, number] = [-18.922, 31.134];
 const MAX_APPLICATION_LOOPS = 10;
 const WHITE_SELECT_MENU_PROPS = {
@@ -926,6 +929,26 @@ function buildFieldRegistryKey(field: Pick<PredefinedField, 'field_name' | 'sect
     return normalizeLookupValue(field.field_name);
 }
 
+function isSameRegistryField(left: PredefinedField, right: PredefinedField): boolean {
+    if (left.id && right.id && String(left.id) === String(right.id)) {
+        return true;
+    }
+
+    const leftKey = buildFieldRegistryKey(left);
+    const rightKey = buildFieldRegistryKey(right);
+
+    if (leftKey && rightKey && leftKey === rightKey) {
+        return true;
+    }
+
+    const leftName = normalizeLookupValue(left.field_name);
+    const rightName = normalizeLookupValue(right.field_name);
+    const leftBlock = normalizeLookupValue(left.block_id);
+    const rightBlock = normalizeLookupValue(right.block_id);
+
+    return Boolean(leftName && leftName === rightName && (!leftBlock || !rightBlock || leftBlock === rightBlock));
+}
+
 function buildSelectableFieldRegistry(
     liveFields: PredefinedField[],
     records: SugarcaneMonitoringRecord[]
@@ -945,10 +968,68 @@ function buildSelectableFieldRegistry(
 }
 
 function mergeCreatedFieldIntoRegistry(fields: PredefinedField[] | undefined, createdField: PredefinedField): PredefinedField[] {
-    return buildSelectableFieldRegistry([...(fields ?? []), createdField], []).map((field) => {
-        const matchesCreatedField = buildFieldRegistryKey(field) === buildFieldRegistryKey(createdField);
-        return matchesCreatedField ? { ...field, ...createdField } : field;
+    let didReplace = false;
+    const mergedFields = (fields ?? []).map((field) => {
+        if (!isSameRegistryField(field, createdField)) {
+            return field;
+        }
+
+        didReplace = true;
+        return { ...field, ...createdField };
     });
+
+    if (!didReplace) {
+        mergedFields.push(createdField);
+    }
+
+    return buildSelectableFieldRegistry(mergedFields, []);
+}
+
+function findExistingFieldForKMLImport(
+    fields: PredefinedField[],
+    fieldName: string,
+    blockId?: string,
+    sectionName?: string
+): PredefinedField | null {
+    const normalizedFieldName = normalizeLookupValue(fieldName);
+    const normalizedBlockId = normalizeLookupValue(blockId);
+    const normalizedSectionName = normalizeLookupValue(sectionName);
+
+    if (!normalizedFieldName) {
+        return null;
+    }
+
+    const nameMatches = fields.filter((field) =>
+        normalizeLookupValue(field.field_name) === normalizedFieldName
+    );
+
+    if (nameMatches.length === 0) {
+        return null;
+    }
+
+    const blockMatch = normalizedBlockId
+        ? nameMatches.find((field) => normalizeLookupValue(field.block_id) === normalizedBlockId)
+        : undefined;
+
+    if (blockMatch) {
+        return blockMatch;
+    }
+
+    const sectionMatch = normalizedSectionName
+        ? nameMatches.find((field) => normalizeLookupValue(field.section_name) === normalizedSectionName)
+        : undefined;
+
+    return sectionMatch ?? nameMatches[0] ?? null;
+}
+
+function formatFieldIdentity(fieldName: string, blockId?: string, sectionName?: string): string {
+    const parts = [
+        fieldName.trim(),
+        blockId?.trim() ? `Field ID ${blockId.trim()}` : '',
+        sectionName?.trim() ? `Section ${sectionName.trim()}` : '',
+    ].filter(Boolean);
+
+    return parts.join(' - ');
 }
 
 export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialogProps> = ({
@@ -972,6 +1053,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const [parseSummary, setParseSummary] = useState<string | null>(null);
     const [isCreatingCustomField, setIsCreatingCustomField] = useState(false);
     const [drawPoints, setDrawPoints] = useState<DrawPoint[]>([]);
+    const [isUploadingKML, setIsUploadingKML] = useState(false);
+    const [_kmlFile, setKmlFile] = useState<File | null>(null);
+    const [kmlFeatures, setKmlFeatures] = useState<KMLParseResult['features']>([]);
+    const [selectedKMLFeatureIndex, setSelectedKMLFeatureIndex] = useState<number>(0);
+    const [kmlError, setKmlError] = useState<string | null>(null);
+    const [kmlPoints, setKmlPoints] = useState<KMLPoint[]>([]);
+    const [selectedPointIndices, setSelectedPointIndices] = useState<Set<number>>(new Set());
+    const [kmlMode, setKmlMode] = useState<'geometry' | 'points'>('geometry');
+    const kmlFileInputRef = useRef<HTMLInputElement>(null);
 
     const {
         data: livePredefinedFields = [],
@@ -999,6 +1089,14 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setSaveMode(null);
         setIsCreatingCustomField(false);
         setDrawPoints([]);
+        setIsUploadingKML(false);
+        setKmlFile(null);
+        setKmlFeatures([]);
+        setSelectedKMLFeatureIndex(0);
+        setKmlError(null);
+        setKmlPoints([]);
+        setSelectedPointIndices(new Set());
+        setKmlMode('geometry');
     }, [open, user?.id]);
 
     const selectedField = useMemo(
@@ -1350,6 +1448,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         if (fieldName === DRAW_NEW_FIELD_VALUE) {
             setIsCreatingCustomField(true);
             setDrawPoints([]);
+            setIsUploadingKML(false);
             setParseSummary(null);
             setFormData(() => buildFreshFormData(
                 createEmptySubmission(user?.id || ''),
@@ -1358,8 +1457,26 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             return;
         }
 
+        if (fieldName === UPLOAD_KML_FIELD_VALUE) {
+            setIsUploadingKML(true);
+            setIsCreatingCustomField(false);
+            setDrawPoints([]);
+            setParseSummary(null);
+            setKmlFile(null);
+            setKmlFeatures([]);
+            setKmlError(null);
+            setFormData(() => buildFreshFormData(
+                createEmptySubmission(user?.id || ''),
+                user?.id || '',
+            ));
+            // Trigger file input dialog
+            setTimeout(() => kmlFileInputRef.current?.click(), 100);
+            return;
+        }
+
         const match = getPredefinedFieldByName(predefinedFields, fieldName);
         setIsCreatingCustomField(false);
+        setIsUploadingKML(false);
         setDrawPoints([]);
 
         if (!match) {
@@ -1398,6 +1515,146 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setDrawPoints([]);
     };
 
+    const handleKMLFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!isValidKMLFile(file)) {
+            setKmlError('Please select a valid KML file (.kml or .kmz)');
+            return;
+        }
+
+        setKmlError(null);
+        setKmlFile(file);
+
+        try {
+            const result = await parseKMLFile(file);
+
+            if (result.error || result.features.length === 0) {
+                setKmlError(result.error || 'No features found in KML file');
+                setKmlFeatures([]);
+                setKmlPoints([]);
+                return;
+            }
+
+            setKmlFeatures(result.features);
+            setSelectedKMLFeatureIndex(0);
+
+            // Also extract points from the KML file
+            const points = extractPointsFromKML(result.features);
+            setKmlPoints(points);
+
+            // Auto-detect if we have geometry or points and set mode accordingly
+            if (points.length >= 3) {
+                setKmlMode('points');
+                setSelectedPointIndices(new Set(points.map((_, i) => i)));
+            } else {
+                setKmlMode('geometry');
+            }
+        } catch (err: any) {
+            setKmlError(`Failed to parse KML file: ${err.message}`);
+            setKmlFeatures([]);
+            setKmlPoints([]);
+        }
+    };
+
+    const handleSelectKMLFeature = (index: number) => {
+        setSelectedKMLFeatureIndex(index);
+        setKmlError(null);
+
+        const selectedFeature = kmlFeatures[index];
+        if (!selectedFeature) return;
+
+        const geometryResult = extractGeometryFromKML([selectedFeature]);
+        if (!geometryResult) {
+            setKmlError('Selected KML feature does not contain a valid polygon or multi-polygon geometry');
+            return;
+        }
+
+        const { geometry, centroid } = geometryResult;
+        const estimatedArea = estimateGeometryAreaHa(geometry);
+
+        // Update form data with KML geometry
+        setFormData((prev) => ({
+            ...prev,
+            field_name: selectedFeature.name || 'Imported Field',
+            area: prev.area ?? estimatedArea,
+            block_size: prev.block_size ?? prev.area ?? estimatedArea,
+            spatial_data: geometry,
+            geom_polygon: geometry,
+            latitude: centroid?.latitude ?? prev.latitude ?? 0,
+            longitude: centroid?.longitude ?? prev.longitude ?? 0,
+        }));
+    };
+
+    const handleCancelKMLUpload = () => {
+        setIsUploadingKML(false);
+        setKmlFile(null);
+        setKmlFeatures([]);
+        setSelectedKMLFeatureIndex(0);
+        setKmlError(null);
+        setFormData(() => buildFreshFormData(
+            createEmptySubmission(user?.id || ''),
+            user?.id || '',
+        ));
+    };
+
+    const handleTogglePointSelection = (index: number) => {
+        const newSelection = new Set(selectedPointIndices);
+        if (newSelection.has(index)) {
+            newSelection.delete(index);
+        } else {
+            newSelection.add(index);
+        }
+        setSelectedPointIndices(newSelection);
+    };
+
+    const handleCreatePolygonFromPoints = () => {
+        if (selectedPointIndices.size < 3) {
+            setKmlError('You need to select at least 3 points to create a polygon');
+            return;
+        }
+
+        // Get selected points in order
+        const selectedPoints = Array.from(selectedPointIndices)
+            .sort((a, b) => a - b)
+            .map((i) => kmlPoints[i]);
+
+        // Sort points counter-clockwise to form a valid polygon
+        const sortedPoints = sortPointsForPolygon(selectedPoints);
+
+        // Create polygon from sorted points
+        const polygonResult = createPolygonFromPoints(sortedPoints);
+        if (!polygonResult) {
+            setKmlError('Failed to create polygon from selected points');
+            return;
+        }
+
+        const { geometry, centroid } = polygonResult;
+        const estimatedArea = estimateGeometryAreaHa(geometry);
+
+        // Update form data with polygon geometry
+        setFormData((prev) => ({
+            ...prev,
+            area: prev.area ?? estimatedArea,
+            block_size: prev.block_size ?? prev.area ?? estimatedArea,
+            spatial_data: geometry,
+            geom_polygon: geometry,
+            latitude: centroid?.latitude ?? prev.latitude ?? 0,
+            longitude: centroid?.longitude ?? prev.longitude ?? 0,
+        }));
+
+        setKmlError(null);
+    };
+
+    const handleSelectAllPoints = () => {
+        setSelectedPointIndices(new Set(kmlPoints.map((_, i) => i)));
+    };
+
+    const handleClearPointSelection = () => {
+        setSelectedPointIndices(new Set());
+    };
+
     const handleSubmit = async (mode: 'close' | 'add_another' = 'close') => {
         setSaving(true);
         setSaveMode(mode);
@@ -1405,12 +1662,14 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setParseSummary(null);
 
         try {
-            if (!formData.field_name && !isCreatingCustomField) {
+            if (!formData.field_name && !isCreatingCustomField && !isUploadingKML) {
                 throw new Error('Please select a field before saving.');
             }
 
             let resolvedField = selectedField;
-            const registryFields = predefinedFields;
+            let registryFields = predefinedFields;
+            let allowExistingRowOverwrite = false;
+            let overwroteKMLBoundary = false;
 
             if (isCreatingCustomField) {
                 const normalizedFieldName = formData.field_name.trim();
@@ -1476,6 +1735,119 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 ));
             }
 
+            if (isUploadingKML) {
+                const normalizedFieldName = formData.field_name.trim();
+                const normalizedBlockId = formData.block_id?.trim() ?? '';
+                const normalizedSectionName = formData.section_name?.trim() ?? '';
+                const kmlGeometry = formData.geom_polygon || formData.spatial_data;
+
+                if (!normalizedFieldName) {
+                    throw new Error('Please enter a name for the field imported from KML.');
+                }
+
+                if (!normalizedBlockId) {
+                    throw new Error('Please enter a block ID for the KML-imported field.');
+                }
+
+                if (!kmlGeometry) {
+                    throw new Error('No valid geometry was extracted from the KML file.');
+                }
+
+                if (!formData.latitude || !formData.longitude) {
+                    throw new Error('Unable to calculate the center of the KML geometry.');
+                }
+
+                const existingKMLField = findExistingFieldForKMLImport(
+                    predefinedFields,
+                    normalizedFieldName,
+                    normalizedBlockId,
+                    normalizedSectionName
+                );
+                const kmlArea = formData.area ?? formData.block_size ?? estimateGeometryAreaHa(kmlGeometry);
+
+                if (existingKMLField) {
+                    const existingIdentity = formatFieldIdentity(
+                        existingKMLField.field_name,
+                        existingKMLField.block_id,
+                        existingKMLField.section_name
+                    );
+                    const uploadedIdentity = formatFieldIdentity(
+                        normalizedFieldName,
+                        normalizedBlockId,
+                        normalizedSectionName
+                    );
+                    const shouldOverwrite = window.confirm(
+                        `The KML field "${existingIdentity}" is already in the database. Do you want to overwrite it with the uploaded KML boundary "${uploadedIdentity}"?`
+                    );
+
+                    if (!shouldOverwrite) {
+                        throw new Error('KML upload cancelled. The existing database boundary was not changed.');
+                    }
+
+                    const overwrittenField: PredefinedField = {
+                        ...existingKMLField,
+                        field_name: normalizedFieldName,
+                        section_name: normalizedSectionName || existingKMLField.section_name || '',
+                        block_id: normalizedBlockId || existingKMLField.block_id || '',
+                        area: kmlArea ?? existingKMLField.area,
+                        latitude: formData.latitude,
+                        longitude: formData.longitude,
+                        geom: kmlGeometry,
+                        crop_type: formData.crop_type || existingKMLField.crop_type,
+                        date_recorded: formData.date_recorded || existingKMLField.date_recorded,
+                    };
+
+                    queryClient.setQueryData<PredefinedField[]>(
+                        ['live-predefined-fields'],
+                        (currentFields) => mergeCreatedFieldIntoRegistry(currentFields, overwrittenField)
+                    );
+
+                    registryFields = mergeCreatedFieldIntoRegistry(registryFields, overwrittenField);
+                    resolvedField = overwrittenField;
+                    allowExistingRowOverwrite = true;
+                    overwroteKMLBoundary = true;
+                } else {
+                    const createdField = await createPredefinedField({
+                        field_name: normalizedFieldName,
+                        section_name: normalizedSectionName,
+                        block_id: normalizedBlockId,
+                        latitude: formData.latitude,
+                        longitude: formData.longitude,
+                        geom: kmlGeometry,
+                        created_by: user?.id,
+                        crop_type: formData.crop_type,
+                        date_recorded: formData.date_recorded || undefined,
+                    });
+
+                    queryClient.setQueryData<PredefinedField[]>(
+                        ['live-predefined-fields'],
+                        (currentFields) => mergeCreatedFieldIntoRegistry(currentFields, createdField)
+                    );
+
+                    registryFields = mergeCreatedFieldIntoRegistry(registryFields, createdField);
+                    resolvedField = createdField;
+                }
+
+                setIsUploadingKML(false);
+                setKmlFile(null);
+                setKmlFeatures([]);
+                setFormData((prev) => buildFreshFormData(
+                    {
+                        ...prev,
+                        field_name: normalizedFieldName,
+                        block_id: resolvedField?.block_id || normalizedBlockId,
+                        area: kmlArea,
+                        block_size: kmlArea,
+                        spatial_data: kmlGeometry,
+                        geom_polygon: kmlGeometry,
+                        latitude: formData.latitude,
+                        longitude: formData.longitude,
+                    },
+                    user?.id || prev.collector_id || '',
+                    resolvedField ?? undefined,
+                ));
+            }
+
             if (!resolvedField) {
                 throw new Error('Please choose a field or trial from the field management table.');
             }
@@ -1488,6 +1860,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 field_name: resolvedField.field_name || formData.field_name,
                 section_name: resolvedField.section_name || formData.section_name,
                 block_id: resolvedField.block_id || formData.block_id,
+                area: formData.area ?? formData.block_size ?? resolvedField.area,
+                block_size: formData.block_size ?? formData.area ?? resolvedField.area,
                 spatial_data: formData.spatial_data ?? resolvedField.geom ?? undefined,
                 geom_polygon: formData.geom_polygon ?? resolvedField.geom ?? undefined,
                 latitude: formData.latitude ?? resolvedField.latitude ?? 0,
@@ -1502,7 +1876,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 ? registryFields
                 : [resolvedField, ...registryFields];
 
-            const savedEntry = await createObservationEntryFormSubmission(submission, submissionFields);
+            const savedEntry = await createObservationEntryFormSubmission(
+                submission,
+                submissionFields,
+                { allowExistingRowOverwrite }
+            );
 
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['field-records'] }),
@@ -1511,13 +1889,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 queryClient.invalidateQueries({ queryKey: ['dashboard-sugarcane-analytics'] }),
                 queryClient.invalidateQueries({ queryKey: ['live-predefined-fields'] }),
                 queryClient.invalidateQueries({ queryKey: ['overview-predefined-fields'] }),
-                ...(isCreatingCustomField ? [queryClient.invalidateQueries({ queryKey: ['observation-entry-forms'] })] : []),
+                ...(isCreatingCustomField || isUploadingKML ? [queryClient.invalidateQueries({ queryKey: ['observation-entry-forms'] })] : []),
             ]);
 
             window.dispatchEvent(new CustomEvent(LIVE_DATA_UPDATED_EVENT));
 
             await onSubmitted();
-            onSaved?.('Successfully saved to the database.');
+            onSaved?.(overwroteKMLBoundary
+                ? 'KML boundary overwritten and saved to the database.'
+                : 'Successfully saved to the database.');
 
             if (mode === 'add_another') {
                 const collectorId = user?.id || submission.collector_id || '';
@@ -1641,16 +2021,185 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 </Paper>
                             </Grid>
                         )}
+                        {isUploadingKML && (
+                            <Grid size={{ xs: 12 }}>
+                                {kmlError && <Alert severity="error" sx={{ mb: 1 }}>{kmlError}</Alert>}
+                                {kmlFeatures.length > 0 ? (
+                                    <Paper
+                                        variant="outlined"
+                                        sx={{
+                                            borderRadius: 3,
+                                            p: 2,
+                                            borderColor: 'rgba(86,184,112,0.24)',
+                                            bgcolor: 'rgba(255,255,255,0.96)',
+                                        }}
+                                    >
+                                        <Stack spacing={2}>
+                                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                                                <Button
+                                                    variant={kmlMode === 'geometry' ? 'contained' : 'outlined'}
+                                                    onClick={() => setKmlMode('geometry')}
+                                                    sx={{ flex: 1 }}
+                                                >
+                                                    Use Polygon Geometry
+                                                </Button>
+                                                {kmlPoints.length >= 3 && (
+                                                    <Button
+                                                        variant={kmlMode === 'points' ? 'contained' : 'outlined'}
+                                                        onClick={() => setKmlMode('points')}
+                                                        sx={{ flex: 1 }}
+                                                    >
+                                                        Create from Points ({kmlPoints.length})
+                                                    </Button>
+                                                )}
+                                            </Stack>
+
+                                            {kmlMode === 'geometry' && (
+                                                <Stack spacing={1}>
+                                                    <Alert severity="success">
+                                                        Found {kmlFeatures.length} feature(s) in the KML file. Select the one to use as the field boundary:
+                                                    </Alert>
+                                                    <Stack spacing={1}>
+                                                        {kmlFeatures.map((feature, index) => (
+                                                            <Button
+                                                                key={index}
+                                                                onClick={() => handleSelectKMLFeature(index)}
+                                                                variant={selectedKMLFeatureIndex === index ? 'contained' : 'outlined'}
+                                                                fullWidth
+                                                                sx={{
+                                                                    textAlign: 'left',
+                                                                    justifyContent: 'flex-start',
+                                                                    py: 1.5,
+                                                                }}
+                                                            >
+                                                                <Typography variant="body2">
+                                                                    {feature.name || `Feature ${index + 1}`}
+                                                                    {feature.geometry?.type && ` - ${feature.geometry.type}`}
+                                                                </Typography>
+                                                            </Button>
+                                                        ))}
+                                                    </Stack>
+                                                </Stack>
+                                            )}
+
+                                            {kmlMode === 'points' && kmlPoints.length >= 3 && (
+                                                <Stack spacing={1.5}>
+                                                    <Alert severity="info">
+                                                        Found {kmlPoints.length} point(s) in the KML file. Select at least 3 points to create a polygon boundary:
+                                                    </Alert>
+                                                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                                                        <Button
+                                                            size="small"
+                                                            variant="outlined"
+                                                            onClick={handleSelectAllPoints}
+                                                            sx={{ flex: 1 }}
+                                                        >
+                                                            Select All
+                                                        </Button>
+                                                        <Button
+                                                            size="small"
+                                                            variant="outlined"
+                                                            onClick={handleClearPointSelection}
+                                                            sx={{ flex: 1 }}
+                                                        >
+                                                            Clear Selection
+                                                        </Button>
+                                                        <Button
+                                                            size="small"
+                                                            variant="contained"
+                                                            onClick={handleCreatePolygonFromPoints}
+                                                            disabled={selectedPointIndices.size < 3}
+                                                            sx={{ flex: 1 }}
+                                                        >
+                                                            Create Polygon ({selectedPointIndices.size})
+                                                        </Button>
+                                                    </Stack>
+                                                    <Stack
+                                                        spacing={1}
+                                                        sx={{
+                                                            maxHeight: '300px',
+                                                            overflowY: 'auto',
+                                                            border: '1px solid rgba(0,0,0,0.12)',
+                                                            borderRadius: 1,
+                                                            p: 1,
+                                                        }}
+                                                    >
+                                                        {kmlPoints.map((point, index) => (
+                                                            <Button
+                                                                key={index}
+                                                                onClick={() => handleTogglePointSelection(index)}
+                                                                variant={selectedPointIndices.has(index) ? 'contained' : 'outlined'}
+                                                                fullWidth
+                                                                size="small"
+                                                                sx={{
+                                                                    textAlign: 'left',
+                                                                    justifyContent: 'flex-start',
+                                                                    py: 1,
+                                                                }}
+                                                            >
+                                                                <Stack direction="column" spacing={0.5} alignItems="flex-start">
+                                                                    <Typography variant="body2">
+                                                                        {point.name}
+                                                                    </Typography>
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        Lat: {point.latitude}, Lng: {point.longitude}
+                                                                    </Typography>
+                                                                </Stack>
+                                                            </Button>
+                                                        ))}
+                                                    </Stack>
+                                                </Stack>
+                                            )}
+                                        </Stack>
+                                    </Paper>
+                                ) : (
+                                    <Paper
+                                        variant="outlined"
+                                        sx={{
+                                            borderRadius: 3,
+                                            p: 2,
+                                            borderColor: 'rgba(86,184,112,0.24)',
+                                            bgcolor: 'rgba(255,255,255,0.96)',
+                                        }}
+                                    >
+                                        <Stack spacing={2} alignItems="center">
+                                            <CloudUpload sx={{ fontSize: 48, color: 'text.secondary' }} />
+                                            <Typography variant="body1" align="center">
+                                                Click the "Upload Field from KML" option above, or select a KML file:
+                                            </Typography>
+                                            <Button
+                                                variant="contained"
+                                                startIcon={<CloudUpload />}
+                                                onClick={() => kmlFileInputRef.current?.click()}
+                                            >
+                                                Choose KML File
+                                            </Button>
+                                        </Stack>
+                                    </Paper>
+                                )}
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                                    <Button
+                                        size="small"
+                                        variant="text"
+                                        onClick={handleCancelKMLUpload}
+                                    >
+                                        Cancel KML Upload
+                                    </Button>
+                                </Box>
+                            </Grid>
+                        )}
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 select
                                 fullWidth
                                 label="Field Name"
-                                value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : formData.field_name}
+                                value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : isUploadingKML ? UPLOAD_KML_FIELD_VALUE : formData.field_name}
                                 onChange={(e) => handleFieldSelection(e.target.value)}
                                 helperText={isCreatingCustomField
                                     ? 'Drawing a new field or trial. Save the form to add it to the field management table and monitoring records.'
-                                    : 'Choose a field from the field management table, or use "Draw New Trial / Field".'}
+                                    : isUploadingKML
+                                    ? 'Import field boundary from a KML file. Save to add it to the field management table and monitoring records.'
+                                    : 'Choose a field from the field management table, draw a new one, or upload from a KML file.'}
                                 SelectProps={{
                                     MenuProps: WHITE_SELECT_MENU_PROPS,
                                 }}
@@ -1666,16 +2215,28 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 <MenuItem value={DRAW_NEW_FIELD_VALUE} sx={{ fontWeight: 800, color: 'primary.main' }}>
                                     Draw New Trial / Field
                                 </MenuItem>
+                                <MenuItem value={UPLOAD_KML_FIELD_VALUE} sx={{ fontWeight: 800, color: 'secondary.main' }}>
+                                    Upload Field from KML
+                                </MenuItem>
                             </TextField>
+                            <input
+                                ref={kmlFileInputRef}
+                                type="file"
+                                accept=".kml,.kmz"
+                                style={{ display: 'none' }}
+                                onChange={handleKMLFileSelect}
+                            />
                         </Grid>
-                        {isCreatingCustomField ? (
+                        {isCreatingCustomField || isUploadingKML ? (
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <TextField
                                     fullWidth
-                                    label="New Trial / Field Name"
+                                    label={isCreatingCustomField ? "New Trial / Field Name" : "Field Name"}
                                     value={formData.field_name || ''}
                                     onChange={(e) => updateField('field_name', e.target.value)}
-                                    helperText="This name will be saved into the field management table for future use."
+                                    helperText={isCreatingCustomField
+                                        ? "This name will be saved into the field management table for future use."
+                                        : "Enter a name for this field imported from KML."}
                                 />
                             </Grid>
                         ) : (
@@ -1689,18 +2250,20 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 />
                             </Grid>
                         )}
-                        {isCreatingCustomField && (
+                        {(isCreatingCustomField || isUploadingKML) && (
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <TextField
                                     fullWidth
                                     label="Field ID"
                                     value={formData.block_id || ''}
                                     onChange={(e) => updateField('block_id', e.target.value)}
-                                    helperText="Set the block where this new field or trial belongs."
+                                    helperText={isCreatingCustomField
+                                        ? "Set the block where this new field or trial belongs."
+                                        : "Set the block for this KML-imported field."}
                                 />
                             </Grid>
                         )}
-                        <Grid size={{ xs: 12, md: isCreatingCustomField ? 6 : 4 }}>
+                        <Grid size={{ xs: 12, md: isCreatingCustomField || isUploadingKML ? 6 : 4 }}>
                             <TextField
                                 type="number"
                                 fullWidth
@@ -1710,6 +2273,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 inputProps={{ min: 0, step: '0.01' }}
                                 helperText={isCreatingCustomField
                                     ? 'Area is estimated from the drawn boundary first, but you can edit it before saving.'
+                                    : isUploadingKML
+                                    ? 'Area can be calculated from the KML geometry or edited before saving.'
                                     : 'Auto-filled from the selected field, but editable before saving.'}
                             />
                         </Grid>

@@ -1,4 +1,5 @@
--- Promote r227412f@students.uz.ac.zw to system administrator.
+-- Approve r227412f@students.uz.ac.zw as supervisor.
+-- The only Cane Pulse superuser/admin is silentabrahamganda02@gmail.com.
 -- Run this in Supabase SQL Editor with a privileged role.
 
 begin;
@@ -10,7 +11,7 @@ select
   coalesce(nullif(u.raw_user_meta_data->>'first_name', ''), 'System'),
   coalesce(nullif(u.raw_user_meta_data->>'last_name', ''), 'Administrator'),
   u.email,
-  'admin',
+  'supervisor',
   'approved'
 from auth.users u
 where lower(u.email) = lower('r227412f@students.uz.ac.zw')
@@ -20,10 +21,10 @@ where lower(u.email) = lower('r227412f@students.uz.ac.zw')
     where p.id = u.id
   );
 
--- Ensure role/status are correct.
+-- Ensure role/status are correct without granting superuser access.
 update public.profiles
 set
-  role = 'admin',
+  role = 'supervisor',
   status = 'approved'
 where lower(email) = lower('r227412f@students.uz.ac.zw');
 

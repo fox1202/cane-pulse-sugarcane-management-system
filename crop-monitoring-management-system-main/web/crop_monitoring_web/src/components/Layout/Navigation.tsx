@@ -12,6 +12,7 @@ import {
   HomeRounded,
   InsightsRounded,
   MapRounded,
+  ShieldRounded,
   SpaRounded,
   TableChartRounded,
 } from '@mui/icons-material'
@@ -22,21 +23,35 @@ import {
   BRAND_DESCRIPTION,
   BRAND_NAME,
 } from '@/branding/brand'
+import type { UserRole } from '@/types/auth.types'
+import { canAccessRoles, getRoleLabel, hasPermission, type AppPermission } from '@/utils/roleAccess'
 
 interface NavItemDef {
   path: string
   label: string
   sub: string
   icon: React.ReactNode
+  requiredPermission?: AppPermission
+  allowedRoles?: readonly UserRole[]
 }
 
 const PRIMARY_NAV: NavItemDef[] = [
   { path: '/', label: 'Overview', sub: 'System pulse', icon: <HomeRounded fontSize="small" /> },
-  { path: '/data', label: 'Field Records', sub: 'Observation rows', icon: <TableChartRounded fontSize="small" /> },
-  { path: '/entry-forms', label: 'Entry Forms', sub: 'Web form intake', icon: <AgricultureRounded fontSize="small" /> },
+  { path: '/data', label: 'Field Records', sub: 'Observation rows', icon: <TableChartRounded fontSize="small" />, allowedRoles: ['admin', 'supervisor'] },
+  { path: '/entry-forms', label: 'Entry Forms', sub: 'Web form intake', icon: <AgricultureRounded fontSize="small" />, allowedRoles: ['admin', 'supervisor'] },
   { path: '/field-statistics', label: 'Field Statistics', sub: 'Charts and coverage', icon: <InsightsRounded fontSize="small" /> },
   { path: '/calendar', label: 'Farming Calendar', sub: 'Season timing', icon: <CalendarMonthRounded fontSize="small" /> },
   { path: '/map', label: 'Map View', sub: 'Trials and boundaries', icon: <MapRounded fontSize="small" /> },
+]
+
+const ADMIN_NAV: NavItemDef[] = [
+  {
+    path: '/security',
+    label: 'Security Center',
+    sub: 'Approvals and roles',
+    icon: <ShieldRounded fontSize="small" />,
+    requiredPermission: 'accessBackend',
+  },
 ]
 
 export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
@@ -51,7 +66,14 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('') || 'U'
-  const roleLabel = (user?.role ?? 'collector').replace(/^./, (char) => char.toUpperCase())
+  const roleLabel = getRoleLabel(user?.role)
+  const navItems = [...PRIMARY_NAV, ...ADMIN_NAV].filter((item) => {
+    if (item.allowedRoles && !canAccessRoles(user?.role, item.allowedRoles, user?.email)) {
+      return false
+    }
+
+    return item.requiredPermission ? hasPermission(user?.role, item.requiredPermission) : true
+  })
 
   return (
     <Box
@@ -154,7 +176,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
       </Box>
 
       <Box sx={{ px: 2.1, flex: 1, overflowY: 'auto', pb: 2.1 }}>
-        {PRIMARY_NAV.map((item, index) => {
+        {navItems.map((item, index) => {
           const active = location.pathname === item.path
 
           return (

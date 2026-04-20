@@ -32,7 +32,23 @@ function normalizeEmail(value) {
 }
 
 function normalizeRole(value) {
-    return VALID_ROLES.has(value) ? value : null
+    const normalizedValue = typeof value === 'string'
+        ? value.trim().toLowerCase().replace(/[\s-]+/g, '_')
+        : ''
+
+    if (normalizedValue === 'administrator' || normalizedValue === 'system_administrator') {
+        return 'admin'
+    }
+
+    if (normalizedValue === 'regional_supervisor') {
+        return 'supervisor'
+    }
+
+    if (normalizedValue === 'user' || normalizedValue === 'users') {
+        return 'collector'
+    }
+
+    return VALID_ROLES.has(normalizedValue) ? normalizedValue : null
 }
 
 function normalizeStatus(value) {
@@ -320,6 +336,7 @@ async function main() {
                     email,
                     role,
                     status: 'approved',
+                    is_active: true,
                 })
 
                 if (error) {
@@ -334,7 +351,7 @@ async function main() {
             if (!args.dryRun) {
                 const { error } = await adminClient
                     .from('profiles')
-                    .update({ status: 'approved' })
+                    .update({ status: 'approved', role, is_active: true })
                     .eq('id', profile.id)
 
                 if (error) {

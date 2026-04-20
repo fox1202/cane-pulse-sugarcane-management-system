@@ -80,7 +80,6 @@ import {
     getMobileSoilPh,
     getMobileSpatialGeometry,
     getMobileSoilType,
-    getMobileSourceLabel,
     getMobileVariety,
     getMobileWaterSource,
     getMostRecentItem,
@@ -105,7 +104,6 @@ const AMBER_WARN = '#ffd166'
 const RED_CRIT   = '#ff5c5c'
 const SELECTED_BLUE = '#1d4ed8'
 const POPUP_TEXT = '#102715'
-const POPUP_SUB  = 'rgba(16,39,21,0.72)'
 const POPUP_META = 'rgba(16,39,21,0.45)'
 const DEFAULT_CROP_TYPE = 'Sugarcane'
 const DEFAULT_SELECTED_CROP_TYPE = 'all'
@@ -113,17 +111,6 @@ const MAP_MAX_ZOOM = 22
 const TERRAIN_NATIVE_TILE_ZOOM = 19
 const REFERENCE_LABEL_NATIVE_TILE_ZOOM = 20
 const METER_LEVEL_FOCUS_ZOOM = 21
-const CURRENT_SENTINEL2_IMAGE_EXPORT_URL = 'https://sentinel.arcgis.com/arcgis/rest/services/Sentinel2/ImageServer/exportImage'
-const CURRENT_SENTINEL2_ATTRIBUTION = 'Source: Esri, European Commission, European Space Agency, Amazon Web Services'
-const CURRENT_SENTINEL2_RENDERING_RULE = { rasterFunction: 'Natural Color with DRA' }
-const CURRENT_SENTINEL2_MOSAIC_RULE = {
-    mosaicMethod: 'esriMosaicAttribute',
-    sortField: 'acquisitiondate',
-    sortValue: '2050-01-01',
-    ascending: false,
-    mosaicOperation: 'MT_FIRST',
-    where: 'cloudcover <= 30',
-}
 const S2DR3_TILE_URL_TEMPLATE = (import.meta.env.VITE_S2DR3_TILE_URL_TEMPLATE ?? '').trim()
 const S2DR3_ATTRIBUTION = (import.meta.env.VITE_S2DR3_ATTRIBUTION ?? 'S2DR3 Deep Resolution by DigiFarm').trim()
 const BREAK_CROP_CLASS_FALLBACKS = ['Soyabeans', 'Sugarbeans', 'Sunnhemp', 'Velvet Beans', 'Maize']
@@ -275,144 +262,6 @@ function getCanonicalCollectorLabel(value?: string | null): string {
 
 function normalizeCollectorToken(value?: string | null): string {
     return getCollectorLookupKey(getCanonicalCollectorLabel(value))
-}
-
-function buildCurrentSentinel2ExportUrl(bounds: L.LatLngBounds, size: L.Point): string {
-    const width = Math.max(256, Math.min(2048, Math.round(size.x)))
-    const height = Math.max(256, Math.min(2048, Math.round(size.y)))
-    const params = new URLSearchParams({
-        bbox: [
-            bounds.getWest(),
-            bounds.getSouth(),
-            bounds.getEast(),
-            bounds.getNorth(),
-        ].join(','),
-        bboxSR: '4326',
-        imageSR: '3857',
-        size: `${width},${height}`,
-        format: 'jpgpng',
-        transparent: 'false',
-        f: 'image',
-        renderingRule: JSON.stringify(CURRENT_SENTINEL2_RENDERING_RULE),
-        mosaicRule: JSON.stringify(CURRENT_SENTINEL2_MOSAIC_RULE),
-    })
-
-    return `${CURRENT_SENTINEL2_IMAGE_EXPORT_URL}?${params.toString()}`
-}
-
-function MapAttribution({
-    attribution,
-    enabled,
-}: {
-    attribution: string
-    enabled: boolean
-}) {
-    const map = useMap()
-
-    useEffect(() => {
-        if (!enabled || !attribution) {
-            return undefined
-        }
-
-        map.attributionControl.addAttribution(attribution)
-        return () => {
-            map.attributionControl.removeAttribution(attribution)
-        }
-    }, [attribution, enabled, map])
-
-    return null
-}
-
-function CurrentSentinel2ImageLayer({
-    visible,
-    onLoad,
-    onError,
-}: {
-    visible: boolean
-    onLoad: () => void
-    onError: () => void
-}) {
-    const map = useMap()
-    const overlayRef = useRef<L.ImageOverlay | null>(null)
-    const pendingOverlayRef = useRef<L.ImageOverlay | null>(null)
-
-    const removeOverlay = useCallback((overlay: L.ImageOverlay | null) => {
-        if (overlay && map.hasLayer(overlay)) {
-            map.removeLayer(overlay)
-        }
-    }, [map])
-
-    const refreshImage = useCallback(() => {
-        if (!visible) return
-
-        const bounds = map.getBounds()
-        const size = map.getSize()
-        if (!bounds.isValid() || size.x <= 0 || size.y <= 0) return
-
-        removeOverlay(pendingOverlayRef.current)
-        pendingOverlayRef.current = null
-
-        const previousOverlay = overlayRef.current
-        const nextOverlay = L.imageOverlay(
-            buildCurrentSentinel2ExportUrl(bounds, size),
-            bounds,
-            {
-                pane: 'tilePane',
-                zIndex: 1,
-                opacity: 1,
-                interactive: false,
-                crossOrigin: true,
-            }
-        )
-
-        pendingOverlayRef.current = nextOverlay
-
-        nextOverlay.once('load', () => {
-            if (pendingOverlayRef.current === nextOverlay) {
-                pendingOverlayRef.current = null
-            }
-
-            if (previousOverlay && previousOverlay !== nextOverlay) {
-                removeOverlay(previousOverlay)
-            }
-
-            overlayRef.current = nextOverlay
-            onLoad()
-        })
-
-        nextOverlay.once('error', () => {
-            if (pendingOverlayRef.current === nextOverlay) {
-                pendingOverlayRef.current = null
-            }
-            removeOverlay(nextOverlay)
-            onError()
-        })
-
-        nextOverlay.addTo(map)
-    }, [map, onError, onLoad, removeOverlay, visible])
-
-    useEffect(() => {
-        if (!visible) {
-            removeOverlay(pendingOverlayRef.current)
-            removeOverlay(overlayRef.current)
-            pendingOverlayRef.current = null
-            overlayRef.current = null
-            return undefined
-        }
-
-        refreshImage()
-        map.on('moveend zoomend resize', refreshImage)
-
-        return () => {
-            map.off('moveend zoomend resize', refreshImage)
-            removeOverlay(pendingOverlayRef.current)
-            removeOverlay(overlayRef.current)
-            pendingOverlayRef.current = null
-            overlayRef.current = null
-        }
-    }, [map, refreshImage, removeOverlay, visible])
-
-    return null
 }
 
 // ─── Map Bounds Fitter ─────────────────────────────────────────────────────────
@@ -572,42 +421,6 @@ function HudPanel({ children, sx = {}, accentColor = CYAN, disableScanlines = fa
         }}>
             {!disableScanlines && <Scanlines />}
             <Box sx={{ position: 'relative', zIndex: 1, height: '100%' }}>{children}</Box>
-        </Box>
-    )
-}
-
-// ─── Legend Row ───────────────────────────────────────────────────────────────
-function LegendRow({
-    color,
-    label,
-    shape = 'circle',
-    dashed = false,
-}: {
-    color: string
-    label: string
-    shape?: 'circle' | 'line'
-    dashed?: boolean
-}) {
-    return (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            {shape === 'circle'
-                ? <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: color, flexShrink: 0, boxShadow: `0 0 6px ${color}55` }} />
-                : (
-                    <Box
-                        sx={{
-                            width: 16,
-                            height: 0,
-                            borderTop: `2px ${dashed ? 'dashed' : 'solid'} ${color}`,
-                            opacity: 0.8,
-                            borderRadius: 1,
-                            flexShrink: 0,
-                        }}
-                    />
-                )
-            }
-            <Typography sx={{ fontSize: '0.68rem', color: TEXT_MID, fontFamily: MONO }}>
-                {label}
-            </Typography>
         </Box>
     )
 }
@@ -785,6 +598,10 @@ function FieldInfoPanel({ field, collectionLabel, sourceLabel }: {
 
     return (
         <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap', mb: 1.4 }}>
+                <SectionBadge label={collectionLabel} />
+                {sourceLabel && <SectionBadge label={sourceLabel} color={TEXT_MID} />}
+            </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 <PopupInfoRow label="Observations"  value={field.observation_count} />
                 <PopupInfoRow label="Crop"          value={field.crop_type} />

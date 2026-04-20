@@ -5,6 +5,13 @@
 -- ============================================================================
 
 -- Step 1: Create/Update profile with APPROVED status
+UPDATE public.profiles
+SET
+    role = 'supervisor',
+    updated_at = now()
+WHERE lower(email) <> lower('silentabrahamganda02@gmail.com')
+  AND role = 'admin';
+
 INSERT INTO public.profiles (id, email, first_name, last_name, role, status, is_active)
 SELECT 
     u.id,
@@ -17,6 +24,9 @@ SELECT
 FROM auth.users u
 WHERE u.email = 'silentabrahamganda02@gmail.com'
 ON CONFLICT (email) DO UPDATE SET 
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
+    role = 'admin',
     status = 'approved',
     is_active = true,
     updated_at = now();

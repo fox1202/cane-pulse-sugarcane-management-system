@@ -1,44 +1,9 @@
 -- ============================================================================
--- CREATE PROPER PROFILES TABLE + AUTH INTEGRATION
+-- ACCESS REQUEST PROFILE PROVISIONING
 -- ============================================================================
--- This script creates the profiles table that the app expects
--- Run this in Supabase SQL Editor FIRST, then create the users in Auth
+-- Run this in the Supabase SQL Editor to ensure sign-up access requests create
+-- pending profile rows with the requested role.
 -- ============================================================================
-
-create extension if not exists pgcrypto;
-
--- ============================================================================
--- 1. CREATE PROFILES TABLE (linked to Supabase Auth)
--- ============================================================================
-
-create table if not exists public.profiles (
-    id uuid primary key references auth.users on delete cascade,
-    first_name text not null,
-    last_name text not null,
-    email text not null unique,
-    role text not null default 'collector' check (role in ('collector', 'supervisor', 'admin')),
-    status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
-    is_active boolean default true,
-    phone text,
-    department text,
-    notes text,
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
-);
-
--- ============================================================================
--- 2. CREATE INDEXES
--- ============================================================================
-
-create index if not exists idx_profiles_email on public.profiles(email);
-create index if not exists idx_profiles_status on public.profiles(status);
-create index if not exists idx_profiles_role on public.profiles(role);
-
--- ============================================================================
--- 3. ENABLE ROW LEVEL SECURITY (RLS)
--- ============================================================================
-
-alter table public.profiles enable row level security;
 
 create or replace function public.current_user_is_admin()
 returns boolean
@@ -57,50 +22,16 @@ as $$
     )
 $$;
 
--- Allow users to view their own profile
-drop policy if exists "Users can view their own profile" on public.profiles;
-create policy "Users can view their own profile"
-    on public.profiles for select
-    using (auth.uid() = id);
-
 drop policy if exists "Admins can read all profiles" on public.profiles;
 create policy "Admins can read all profiles"
     on public.profiles for select
     using (public.current_user_is_admin());
-
--- Allow users to update their own profile
-drop policy if exists "Users can update their own profile" on public.profiles;
-create policy "Users can update their own profile"
-    on public.profiles for update
-    using (auth.uid() = id);
 
 drop policy if exists "Admins can update profiles" on public.profiles;
 create policy "Admins can update profiles"
     on public.profiles for update
     using (public.current_user_is_admin())
     with check (public.current_user_is_admin());
-
--- ============================================================================
--- 4. AUTO UPDATE TIMESTAMP TRIGGER
--- ============================================================================
-
-create or replace function public.update_updated_at_column()
-returns trigger as $$
-begin
-    new.updated_at = now();
-    return new;
-end;
-$$ language plpgsql;
-
-drop trigger if exists update_profiles_updated_at on public.profiles;
-create trigger update_profiles_updated_at
-    before update on public.profiles
-    for each row
-    execute procedure public.update_updated_at_column();
-
--- ============================================================================
--- 5. ACCESS REQUEST PROFILE PROVISIONING
--- ============================================================================
 
 create or replace function public.normalize_profile_role(requested_role text)
 returns text
@@ -143,8 +74,24 @@ begin
     );
     profile_last_name := coalesce(profile_last_name, 'User');
 
-    insert into public.profiles (id, email, first_name, last_name, role, status, is_active)
-    values (new.id, profile_email, profile_first_name, profile_last_name, requested_role, 'pending', false)
+    insert into public.profiles (
+        id,
+        email,
+        first_name,
+        last_name,
+        role,
+        status,
+        is_active
+    )
+    values (
+        new.id,
+        profile_email,
+        profile_first_name,
+        profile_last_name,
+        requested_role,
+        'pending',
+        false
+    )
     on conflict (id) do update set
         email = excluded.email,
         first_name = coalesce(nullif(public.profiles.first_name, ''), excluded.first_name),
@@ -195,7 +142,15 @@ begin
         raise exception 'Matching auth user was not found for this access request.';
     end if;
 
-    insert into public.profiles (id, email, first_name, last_name, role, status, is_active)
+    insert into public.profiles (
+        id,
+        email,
+        first_name,
+        last_name,
+        role,
+        status,
+        is_active
+    )
     values (
         new_user_id,
         normalized_email,
@@ -232,12 +187,3 @@ end;
 $$;
 
 grant execute on function public.create_pending_profile_for_auth_signup(uuid, text, text, text, text) to anon, authenticated;
-
--- ============================================================================
--- END OF SCHEMA CREATION
--- ============================================================================
--- Next steps:
--- 1. Use Supabase Auth settings to disable email confirmation (Password reset)
--- 2. Create users manually in Auth tab, then create matching profiles below
--- 3. OR use the admin API to automate user + profile creation
--- ============================================================================

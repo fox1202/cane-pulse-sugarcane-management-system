@@ -64,6 +64,13 @@ CREATE TRIGGER update_profiles_updated_at
     EXECUTE PROCEDURE public.update_updated_at_column();
 
 -- Step 6: INSERT/UPDATE profile for silentabrahamganda02@gmail.com
+UPDATE public.profiles
+SET
+    role = 'supervisor',
+    updated_at = now()
+WHERE lower(email) <> lower('silentabrahamganda02@gmail.com')
+  AND role = 'admin';
+
 INSERT INTO public.profiles (id, email, first_name, last_name, role, status, is_active, department)
 SELECT 
     u.id,
@@ -77,6 +84,9 @@ SELECT
 FROM auth.users u
 WHERE u.email = 'silentabrahamganda02@gmail.com'
 ON CONFLICT (email) DO UPDATE SET 
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
+    role = 'admin',
     status = 'approved',
     is_active = true,
     updated_at = now();

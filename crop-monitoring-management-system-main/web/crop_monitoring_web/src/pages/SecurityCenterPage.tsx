@@ -49,6 +49,16 @@ const TEXT_ON     = 'rgba(255,255,255,0.88)'
 const getErrorMessage = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
 
+const roleLabels: Record<string, string> = {
+    admin: 'Superuser',
+    supervisor: 'Regional Supervisor',
+    collector: 'Users',
+}
+
+function getRoleLabel(role: string) {
+    return roleLabels[role.toLowerCase()] || role
+}
+
 // ─── Shared atoms ──────────────────────────────────────────────────────────────
 function GlassPanel({ children, sx = {}, accent = VIOLET }: { children: React.ReactNode; sx?: object; accent?: string }) {
     return (
@@ -108,7 +118,7 @@ function RoleBadge({ role }: { role: string }) {
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.7, px: 1.2, py: 0.4, borderRadius: '6px', bgcolor: c.bg, border: `1px solid ${c.border}` }}>
             <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: c.color, flexShrink: 0 }} />
             <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: c.color, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                {role}
+                {getRoleLabel(role)}
             </Typography>
         </Box>
     )
@@ -401,27 +411,12 @@ export function SecurityCenterPage() {
             await loadData()
             setSuccessMessage(
                 type === 'approve'
-                    ? 'User approved. If their Supabase auth email is still unconfirmed, they must confirm it from email before login.'
+                    ? `User approved as ${getRoleLabel(user.role)}. If their Supabase auth email is still unconfirmed, they must confirm it from email before login.`
                     : 'User successfully rejected'
             )
         } catch (err) {
             setError(`Failed to ${type} user: ${getErrorMessage(err)}`)
         } finally { setActionLoading(null) }
-    }
-
-    // demote an admin to collector (or change role generally)
-    const handleChangeRole = async (email: string, currentRole: string) => {
-        if (currentRole !== 'admin') return
-        setLoading(true)
-        try {
-            await import('@/services/staff.service').then(s => s.updateUserRoleByEmail(email, 'collector'))
-            setSuccessMessage(`Role updated for ${email}`)
-            await loadData()
-        } catch (err) {
-            setError(`Failed to change role: ${getErrorMessage(err)}`)
-        } finally {
-            setLoading(false)
-        }
     }
 
     const tabs = [
@@ -509,7 +504,7 @@ export function SecurityCenterPage() {
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
                                 <StatCard title="Pending Requests" count={stats.totalPending} icon={<Lock sx={{ fontSize: 20 }} />} color={RED_ERR} loading={loading} />
                                 <StatCard title="Active Staff"     count={stats.totalStaff}   icon={<Group sx={{ fontSize: 20 }} />} color={GREEN_OK} loading={loading} />
-                                <StatCard title="Administrators"   count={stats.totalAdmins}  icon={<VerifiedUser sx={{ fontSize: 20 }} />} color={VIOLET} loading={loading} />
+                                <StatCard title="Superusers"        count={stats.totalAdmins}  icon={<VerifiedUser sx={{ fontSize: 20 }} />} color={VIOLET} loading={loading} />
                             </Box>
 
                             {/* Security posture summary */}
@@ -624,15 +619,6 @@ export function SecurityCenterPage() {
                                                 {/* Role */}
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <RoleBadge role={user.role} />
-                                                    {user.role === 'admin' && (
-                                                        <ActionBtn
-                                                            label="DEMOTE"
-                                                            color={AMBER}
-                                                            onClick={() => handleChangeRole(user.email, user.role)}
-                                                            disabled={loading}
-                                                            outline
-                                                        />
-                                                    )}
                                                 </Box>
                                                 {/* Status */}
                                                 <StatusBadge status={user.status} />
