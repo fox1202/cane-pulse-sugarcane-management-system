@@ -41,30 +41,45 @@ function mapSupabaseUser(user: User): AuthUser {
         id: user.id,
         email,
         role: resolveUserRole(getUserRole(user), email),
+        profile_role: undefined,
         status: getUserStatus(user),
         full_name: user.user_metadata?.full_name,
         user_metadata: user.user_metadata,
     }
 }
 
+function normalizeProfileStatus(status?: string | null): AuthUser['status'] {
+    const normalizedStatus = String(status ?? '').trim().toLowerCase()
+
+    if (normalizedStatus === 'approved' || normalizedStatus === 'pending' || normalizedStatus === 'rejected') {
+        return normalizedStatus
+    }
+
+    return 'pending'
+}
+
 type ProfileRecord = {
     id: string
-    email: string
-    first_name: string
-    last_name: string
-    role: AuthUser['role']
-    status: AuthUser['status']
+    email?: string | null
+    first_name?: string | null
+    last_name?: string | null
+    role?: string | null
+    status?: string | null
 }
 
 function mapProfileUser(user: User, profile: ProfileRecord): AuthUser {
     const email = profile.email || user.email || ''
+    const status = normalizeProfileStatus(profile.status)
+    const firstName = profile.first_name?.trim() ?? ''
+    const lastName = profile.last_name?.trim() ?? ''
 
     return {
         id: user.id,
         email,
         role: resolveUserRole(profile.role, email),
-        status: profile.status,
-        full_name: `${profile.first_name} ${profile.last_name}`.trim(),
+        profile_role: profile.role?.trim() || undefined,
+        status,
+        full_name: `${firstName} ${lastName}`.trim(),
         user_metadata: user.user_metadata,
     }
 }
@@ -127,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const profile = await fetchProfileRecord(sessionUser.id)
                 if (!active) return
 
-                if (!profile || profile.status !== 'approved') {
+                if (!profile || normalizeProfileStatus(profile.status) !== 'approved') {
                     await supabase.auth.signOut().catch(() => undefined)
                     if (!active) return
 
@@ -160,6 +175,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             void syncSession(session?.user ?? null)
         })
 
+        const refreshProfileFromDatabase = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            void syncSession(session?.user ?? null)
+        }
+
+        const refreshVisibleProfile = () => {
+            if (document.visibilityState === 'visible') {
+                void refreshProfileFromDatabase()
+            }
+        }
+
+        window.addEventListener('focus', refreshProfileFromDatabase)
+        document.addEventListener('visibilitychange', refreshVisibleProfile)
+
         // Listen for auth changes
         const {
             data: { subscription },
@@ -169,6 +198,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return () => {
             active = false
+            window.removeEventListener('focus', refreshProfileFromDatabase)
+            document.removeEventListener('visibilitychange', refreshVisibleProfile)
             subscription.unsubscribe()
         }
     }, [])
@@ -191,9 +222,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 throw new Error('Profile not found. Please contact support.')
             }
 
-            if (profile.status !== 'approved') {
+            const profileStatus = normalizeProfileStatus(profile.status)
+
+            if (profileStatus !== 'approved') {
                 await supabase.auth.signOut() // Kill the session
-                const statusMsg = profile.status === 'pending'
+                const statusMsg = profileStatus === 'pending'
                     ? 'Your account is pending approval. Please contact the administrator.'
                     : 'Your account request was rejected.'
                 throw new Error(statusMsg)

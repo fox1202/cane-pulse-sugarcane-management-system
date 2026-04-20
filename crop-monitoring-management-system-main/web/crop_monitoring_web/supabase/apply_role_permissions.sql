@@ -8,7 +8,7 @@
 -- Roles:
 --   admin      -> full backend/admin/data/download access
 --   supervisor -> add/upload/view/download access
---   collector  -> view access
+--   collector  -> view/download access
 -- ============================================================================
 
 begin;
@@ -109,6 +109,7 @@ as $$
     )
     when 'collector' then permission_name in (
       'view_data',
+      'download_csv',
       'download_field_data',
       'download_soil_results'
     )
@@ -331,7 +332,7 @@ select
   role in ('admin', 'supervisor') as can_add_data,
   role in ('admin', 'supervisor') as can_upload_files,
   role in ('admin', 'supervisor', 'collector') as can_view_data,
-  role in ('admin', 'supervisor') as can_download_csv,
+  role in ('admin', 'supervisor', 'collector') as can_download_csv,
   role in ('admin', 'supervisor', 'collector') as can_download_field_data,
   role in ('admin', 'supervisor', 'collector') as can_download_soil_results
 from public.profiles

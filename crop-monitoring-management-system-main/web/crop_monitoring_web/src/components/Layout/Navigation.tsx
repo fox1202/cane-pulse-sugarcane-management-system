@@ -66,7 +66,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('') || 'U'
-  const roleLabel = getRoleLabel(user?.role)
+  const roleLabel = getRoleLabel(user?.profile_role ?? user?.role)
   const navItems = [...PRIMARY_NAV, ...ADMIN_NAV].filter((item) => {
     if (item.allowedRoles && !canAccessRoles(user?.role, item.allowedRoles, user?.email)) {
       return false

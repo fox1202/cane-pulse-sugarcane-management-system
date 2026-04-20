@@ -4,6 +4,7 @@ export interface AuthUser {
     id: string;
     email: string;
     role: UserRole;
+    profile_role?: string;
     full_name?: string;
     status: 'pending' | 'approved' | 'rejected';
     user_metadata?: {

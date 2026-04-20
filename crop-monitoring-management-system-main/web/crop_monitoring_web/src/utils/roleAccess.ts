@@ -40,6 +40,7 @@ const SUPERVISOR_PERMISSIONS = [
 
 const COLLECTOR_PERMISSIONS = [
   'viewData',
+  'downloadCsv',
   'downloadFieldData',
   'downloadSoilResults',
 ] as const satisfies readonly AppPermission[]
@@ -53,7 +54,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly AppPermission[]> = {
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Superuser',
   supervisor: 'Supervisor',
-  collector: 'User',
+  collector: 'Users',
 }
 
 export function normalizeEmail(value?: string | null): string {
@@ -64,16 +65,45 @@ export function isSuperuserEmail(email?: string | null): boolean {
   return normalizeEmail(email) === SUPERUSER_EMAIL
 }
 
-export function resolveUserRole(role?: UserRole | null, email?: string | null): UserRole {
+export function normalizeUserRole(role?: UserRole | string | null): UserRole {
+  const normalizedRole = String(role ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+
+  if (
+    normalizedRole === 'admin' ||
+    normalizedRole === 'administrator' ||
+    normalizedRole === 'system_administrator'
+  ) {
+    return 'admin'
+  }
+
+  if (normalizedRole === 'supervisor' || normalizedRole === 'regional_supervisor') {
+    return 'supervisor'
+  }
+
+  if (
+    normalizedRole === 'collector' ||
+    normalizedRole === 'user' ||
+    normalizedRole === 'users' ||
+    normalizedRole === 'field_assistant'
+  ) {
+    return 'collector'
+  }
+
+  return 'collector'
+}
+
+export function resolveUserRole(role?: UserRole | string | null, email?: string | null): UserRole {
   if (isSuperuserEmail(email)) {
     return 'admin'
   }
 
-  if (role === 'admin') {
+  const normalizedRole = normalizeUserRole(role)
+
+  if (normalizedRole === 'admin') {
     return 'supervisor'
   }
 
-  return role ?? 'collector'
+  return normalizedRole
 }
 
 export function hasAdminLevelAccess(role?: UserRole | null, email?: string | null): boolean {
@@ -100,9 +130,5 @@ export function canAccessRoles(
 }
 
 export function getRoleLabel(role?: UserRole | string | null): string {
-  if (role === 'admin' || role === 'supervisor' || role === 'collector') {
-    return ROLE_LABELS[role]
-  }
-
-  return 'User'
+  return ROLE_LABELS[normalizeUserRole(role)]
 }
