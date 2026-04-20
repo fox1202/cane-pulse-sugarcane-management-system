@@ -490,12 +490,6 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.date_recorded, entryForm?.date_recorded, rawSheet?.date_recorded, source.observation?.date_recorded))
     } },
-    { header: 'Field ID', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.field_id, entryForm?.field_id, rawSheet?.field_id, rawSheet?.Trial))
-    } },
     { header: 'Trials', getValue: (source) => {
         const currentSheet = source.monitoringSheet
         const entryForm = source.entryForm
