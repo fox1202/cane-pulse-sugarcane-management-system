@@ -1,4 +1,5 @@
 import * as togeojson from '@mapbox/togeojson';
+import { strFromU8, unzipSync } from 'fflate';
 
 export interface KMLParseResult {
     features: {
@@ -9,74 +10,109 @@ export interface KMLParseResult {
     error?: string;
 }
 
+function isKMZFile(file: File): boolean {
+    const fileName = file.name.toLowerCase();
+
+    return fileName.endsWith('.kmz') || file.type === 'application/vnd.google-earth.kmz';
+}
+
+async function extractKMLTextFromKMZ(file: File): Promise<string> {
+    const archive = unzipSync(new Uint8Array(await file.arrayBuffer()));
+    const kmlEntryName = Object.keys(archive)
+        .filter((entryName) => {
+            const normalizedName = entryName.toLowerCase();
+
+            return normalizedName.endsWith('.kml') && !normalizedName.startsWith('__macosx/');
+        })
+        .sort((left, right) => {
+            const leftIsDoc = left.toLowerCase().endsWith('/doc.kml') || left.toLowerCase() === 'doc.kml';
+            const rightIsDoc = right.toLowerCase().endsWith('/doc.kml') || right.toLowerCase() === 'doc.kml';
+
+            if (leftIsDoc === rightIsDoc) return left.localeCompare(right);
+            return leftIsDoc ? -1 : 1;
+        })[0];
+
+    if (!kmlEntryName) {
+        throw new Error('No KML file was found inside the KMZ archive.');
+    }
+
+    const kmlData = archive[kmlEntryName];
+    if (!kmlData) {
+        throw new Error(`The KML file inside ${file.name} could not be read.`);
+    }
+
+    const kmlString = strFromU8(kmlData).trim();
+
+    if (!kmlString) {
+        throw new Error(`The KML file inside ${file.name} is empty.`);
+    }
+
+    return kmlString;
+}
+
+async function readKMLTextFromFile(file: File): Promise<string> {
+    if (isKMZFile(file)) {
+        return extractKMLTextFromKMZ(file);
+    }
+
+    return file.text();
+}
+
 /**
- * Parse a KML file and extract features with their geometries
+ * Parse a KML or KMZ file and extract features with their geometries
  * Converts KML to GeoJSON format
  */
 export async function parseKMLFile(file: File): Promise<KMLParseResult> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+    try {
+        const kmlString = await readKMLTextFromFile(file);
 
-        reader.onload = (event) => {
-            try {
-                const kmlString = event.target?.result as string;
-                
-                if (!kmlString) {
-                    resolve({
-                        features: [],
-                        error: 'File is empty',
-                    });
-                    return;
-                }
+        if (!kmlString) {
+            return {
+                features: [],
+                error: 'File is empty',
+            };
+        }
 
-                // Parse KML string to XML
-                const parser = new DOMParser();
-                const kmlDOM = parser.parseFromString(kmlString, 'text/xml');
+        // Parse KML string to XML
+        const parser = new DOMParser();
+        const kmlDOM = parser.parseFromString(kmlString, 'text/xml');
 
-                // Check for parsing errors
-                if (kmlDOM.getElementsByTagName('parsererror').length > 0) {
-                    resolve({
-                        features: [],
-                        error: 'Invalid KML file format',
-                    });
-                    return;
-                }
+        // Check for parsing errors
+        if (kmlDOM.getElementsByTagName('parsererror').length > 0) {
+            return {
+                features: [],
+                error: 'Invalid KML/KMZ file format',
+            };
+        }
 
-                // Convert KML to GeoJSON using togeojson
-                const geoJSON = togeojson.kml(kmlDOM);
+        // Convert KML to GeoJSON using togeojson
+        const geoJSON = togeojson.kml(kmlDOM);
 
-                if (!geoJSON.features || geoJSON.features.length === 0) {
-                    resolve({
-                        features: [],
-                        error: 'No features found in KML file',
-                    });
-                    return;
-                }
+        if (!geoJSON.features || geoJSON.features.length === 0) {
+            return {
+                features: [],
+                error: 'No features found in KML/KMZ file',
+            };
+        }
 
-                // Extract features with their properties and geometries
-                const features = geoJSON.features.map((feature: any) => ({
-                    name: feature.properties?.name || feature.properties?.Name || 'Unnamed Feature',
-                    geometry: feature.geometry,
-                    properties: feature.properties,
-                }));
+        // Extract features with their properties and geometries
+        const features = geoJSON.features.map((feature: any) => ({
+            name: feature.properties?.name || feature.properties?.Name || 'Unnamed Feature',
+            geometry: feature.geometry,
+            properties: feature.properties,
+        }));
 
-                resolve({
-                    features,
-                });
-            } catch (error: any) {
-                resolve({
-                    features: [],
-                    error: `Failed to parse KML file: ${error.message}`,
-                });
-            }
+        return {
+            features,
         };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
 
-        reader.onerror = () => {
-            reject(new Error('Failed to read file'));
+        return {
+            features: [],
+            error: `Failed to parse KML/KMZ file: ${message}`,
         };
-
-        reader.readAsText(file);
-    });
+    }
 }
 
 /**
@@ -170,11 +206,18 @@ export function calculatePolygonCentroid(
 }
 
 /**
- * Validate that a file is a KML file
+ * Validate that a file is a KML or KMZ file
  */
 export function isValidKMLFile(file: File): boolean {
     const validExtensions = ['.kml', '.kmz'];
-    const validMimeTypes = ['application/vnd.google-earth.kml+xml', 'application/octet-stream'];
+    const validMimeTypes = [
+        'application/vnd.google-earth.kml+xml',
+        'application/vnd.google-earth.kmz',
+        'application/vnd.google-earth.kmz+xml',
+        'application/zip',
+        'application/x-zip-compressed',
+        'application/octet-stream',
+    ];
 
     const fileName = file.name.toLowerCase();
     const hasValidExtension = validExtensions.some((ext) => fileName.endsWith(ext));

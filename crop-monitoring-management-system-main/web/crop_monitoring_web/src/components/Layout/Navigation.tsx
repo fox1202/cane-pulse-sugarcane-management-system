@@ -37,8 +37,8 @@ interface NavItemDef {
 
 const PRIMARY_NAV: NavItemDef[] = [
   { path: '/', label: 'Overview', sub: 'System pulse', icon: <HomeRounded fontSize="small" /> },
-  { path: '/data', label: 'Field Records', sub: 'Observation rows', icon: <TableChartRounded fontSize="small" />, allowedRoles: ['admin', 'supervisor'] },
-  { path: '/entry-forms', label: 'Entry Forms', sub: 'Web form intake', icon: <AgricultureRounded fontSize="small" />, allowedRoles: ['admin', 'supervisor'] },
+  { path: '/data', label: 'Field Records', sub: 'Observation rows', icon: <TableChartRounded fontSize="small" /> },
+  { path: '/entry-forms', label: 'Entry Forms', sub: 'Web form intake', icon: <AgricultureRounded fontSize="small" /> },
   { path: '/field-statistics', label: 'Field Statistics', sub: 'Charts and coverage', icon: <InsightsRounded fontSize="small" /> },
   { path: '/calendar', label: 'Farming Calendar', sub: 'Season timing', icon: <CalendarMonthRounded fontSize="small" /> },
   { path: '/map', label: 'Map View', sub: 'Trials and boundaries', icon: <MapRounded fontSize="small" /> },

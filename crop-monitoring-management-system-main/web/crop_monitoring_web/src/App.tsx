@@ -127,11 +127,9 @@ function App() {
                 <Route
                   path="data"
                   element={
-                    <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
-                      <Suspense fallback={<LoadingFallback />}>
-                        <DataManagementPage />
-                      </Suspense>
-                    </ProtectedRoute>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <DataManagementPage />
+                    </Suspense>
                   }
                 />
                 <Route
@@ -167,11 +165,9 @@ function App() {
                 <Route
                   path="entry-forms"
                   element={
-                    <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
-                      <Suspense fallback={<LoadingFallback />}>
-                        <ObservationEntryFormPage />
-                      </Suspense>
-                    </ProtectedRoute>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <ObservationEntryFormPage />
+                    </Suspense>
                   }
                 />
                 <Route

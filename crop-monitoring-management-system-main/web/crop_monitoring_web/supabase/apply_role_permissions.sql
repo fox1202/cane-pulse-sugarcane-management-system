@@ -8,7 +8,7 @@
 -- Roles:
 --   admin      -> full backend/admin/data/download access
 --   supervisor -> add/upload/view/download access
---   collector  -> view/download access
+--   collector  -> view access
 -- ============================================================================
 
 begin;
@@ -109,7 +109,6 @@ as $$
     )
     when 'collector' then permission_name in (
       'view_data',
-      'download_csv',
       'download_field_data',
       'download_soil_results'
     )
@@ -148,8 +147,8 @@ create policy "Admins can insert profiles"
   on public.profiles for insert
   with check (public.current_user_can('approve_users'));
 
--- Live field-management records: everyone can view/download; admins and
--- supervisors can add; only admins can edit/delete existing rows.
+-- Live field-management records: approved users can view; admins and
+-- supervisors can add/update; only admins can delete existing rows.
 do $$
 begin
   if to_regclass('public.sugarcane_field_management') is not null then
@@ -171,10 +170,11 @@ begin
       with check (public.current_user_can(''add_data''))';
 
     execute 'drop policy if exists "Admins can edit field management" on public.sugarcane_field_management';
-    execute 'create policy "Admins can edit field management"
+    execute 'drop policy if exists "Admins and supervisors can edit field management" on public.sugarcane_field_management';
+    execute 'create policy "Admins and supervisors can edit field management"
       on public.sugarcane_field_management for update
-      using (public.current_user_can(''manage_fields''))
-      with check (public.current_user_can(''manage_fields''))';
+      using (public.current_user_can(''add_data'') or public.current_user_can(''manage_fields''))
+      with check (public.current_user_can(''add_data'') or public.current_user_can(''manage_fields''))';
 
     execute 'drop policy if exists "Admins can delete field management" on public.sugarcane_field_management';
     execute 'create policy "Admins can delete field management"
@@ -331,7 +331,7 @@ select
   role in ('admin', 'supervisor') as can_add_data,
   role in ('admin', 'supervisor') as can_upload_files,
   role in ('admin', 'supervisor', 'collector') as can_view_data,
-  role in ('admin', 'supervisor', 'collector') as can_download_csv,
+  role in ('admin', 'supervisor') as can_download_csv,
   role in ('admin', 'supervisor', 'collector') as can_download_field_data,
   role in ('admin', 'supervisor', 'collector') as can_download_soil_results
 from public.profiles

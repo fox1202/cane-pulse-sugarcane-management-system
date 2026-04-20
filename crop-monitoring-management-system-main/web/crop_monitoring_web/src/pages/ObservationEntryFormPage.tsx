@@ -9,8 +9,9 @@ import {
     Alert,
     Snackbar,
     Stack,
+    Tooltip,
 } from '@mui/material'
-import { AddCircleOutline, RefreshOutlined, DownloadOutlined } from '@mui/icons-material'
+import { AddCircleOutline, DownloadOutlined, LockOutlined, RefreshOutlined } from '@mui/icons-material'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
 import { useAuth } from '@/contexts/AuthContext'
 import { ObservationEntryIntakeDialog } from '@/components/Data/ObservationEntryIntakeDialog'
@@ -101,7 +102,7 @@ export function ObservationEntryFormPage() {
     return (
         <Container maxWidth="xl" sx={{ pb: 6, pt: 4 }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
-                {canAddData && (
+                {canAddData ? (
                     <Button
                         variant="contained"
                         startIcon={<AddCircleOutline />}
@@ -109,6 +110,18 @@ export function ObservationEntryFormPage() {
                     >
                         Enter Record
                     </Button>
+                ) : (
+                    <Tooltip title="Record entry is locked for User accounts.">
+                        <span>
+                            <Button
+                                variant="contained"
+                                startIcon={<LockOutlined />}
+                                disabled
+                            >
+                                Enter Record
+                            </Button>
+                        </span>
+                    </Tooltip>
                 )}
                 <Button
                     variant="outlined"

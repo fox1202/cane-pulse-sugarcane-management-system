@@ -201,11 +201,25 @@ function extractMissingSugarcaneMonitoringColumn(error: unknown): string | null 
     return match?.[1] ?? null
 }
 
+function getReturnedRows(data: unknown): Record<string, unknown>[] {
+    if (Array.isArray(data)) {
+        return data.filter((row): row is Record<string, unknown> =>
+            Boolean(row) && typeof row === 'object' && !Array.isArray(row)
+        )
+    }
+
+    if (data && typeof data === 'object') {
+        return [data as Record<string, unknown>]
+    }
+
+    return []
+}
+
 async function persistFieldManagementMonitoringRowWithSchemaFallback(
     payload: Record<string, unknown>,
     rowId?: string | number | null
 ): Promise<{ data: Record<string, unknown>; droppedColumns: string[] }> {
-    let currentPayload: Record<string, unknown> = { ...payload }
+    const currentPayload: Record<string, unknown> = { ...payload }
     const droppedColumns: string[] = []
     let lastError: unknown = null
     const attemptedSignatures = new Set<string>()
@@ -217,22 +231,29 @@ async function persistFieldManagementMonitoringRowWithSchemaFallback(
         }
         attemptedSignatures.add(payloadSignature)
 
-        const query = rowId == null
-            ? supabase.from(MONITORING_TABLE_NAME).insert(currentPayload)
-            : supabase.from(MONITORING_TABLE_NAME).update(currentPayload).eq('id', String(rowId))
+        const writeRow = async () => {
+            const query = rowId == null
+                ? supabase.from(MONITORING_TABLE_NAME).insert(currentPayload)
+                : supabase.from(MONITORING_TABLE_NAME).update(currentPayload).eq('id', String(rowId))
 
-        const result = await query
-            .select('*')
-            .single()
+            return query.select('*')
+        }
 
-        if (!result.error && result.data) {
+        let result = await writeRow()
+        let returnedRows = getReturnedRows(result.data)
+
+        if (!result.error && returnedRows.length > 0) {
             return {
-                data: result.data as Record<string, unknown>,
+                data: returnedRows[0],
                 droppedColumns,
             }
         }
 
-        lastError = result.error
+        lastError = result.error ?? new Error(
+            rowId == null
+                ? 'The database did not return the saved field record.'
+                : 'The existing field was not found or could not be updated. No duplicate record was created.'
+        )
 
         if (!isSugarcaneMonitoringSchemaError(result.error)) {
             break
@@ -1274,6 +1295,26 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
     })
     const currentFertilizerApplication = getCurrentApplicationFromList(fertilizerApplications)
     const currentHerbicideApplication = getCurrentApplicationFromList(herbicideApplications)
+    const fertilizerApplicationDate = toNullableDateValue(
+        currentFertilizerApplication?.application_date ?? submission.nutrient_application_date
+    )
+    const fertilizerApplicationRate = toNullableNumber(
+        currentFertilizerApplication?.application_rate ?? submission.application_rate
+    )
+    const herbicideApplicationDate = toNullableDateValue(
+        currentHerbicideApplication?.application_date ?? submission.weed_application_date
+    )
+    const herbicideApplicationRate = toNullableNumber(
+        currentHerbicideApplication?.application_rate ?? submission.weed_application_rate
+    )
+    const fertilizerApplicationPayload = fertilizerApplications.map((application, index) => ({
+        ...application,
+        loop_number: application.loop_number ?? index + 1,
+    }))
+    const herbicideApplicationPayload = herbicideApplications.map((application, index) => ({
+        ...application,
+        loop_number: application.loop_number ?? index + 1,
+    }))
     const derivedCropStage = deriveGrowthStageLabel({
         crop_type: submission.crop_type,
         crop_class: submission.crop_class,
@@ -1284,6 +1325,7 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
     })
     return {
         Trial: toNullableString(submission.field_name || submission.field_id),
+        field_id: toNullableString(submission.field_id || submission.field_name),
         field_name: toNullableString(submission.field_name || submission.field_id),
         section_name: toNullableString(submission.section_name),
         block_id: toNullableString(submission.block_id),
@@ -1300,6 +1342,7 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
         date_recorded: toNullableDateValue(submission.date_recorded),
         trial_number: toNullableString(submission.trial_number),
         trial_name: toNullableString(submission.trial_name),
+        contact_person: toNullableString(submission.contact_person),
         contact_person_scientist: toNullableString(submission.contact_person),
         crop_type: toNullableString(submission.crop_type || submission.crop_class) || 'Sugarcane',
         crop_class: toNullableString(submission.crop_class),
@@ -1310,24 +1353,38 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
         soil_sampling_date: toNullableDateValue(submission.soil_sampling_date),
         soil_test_pdf_url: toNullableString(submission.soil_test_pdf_url),
         foliar_analysis_pdf_url: toNullableString(submission.foliar_analysis_pdf_url),
+        previous_cutting: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
+        previous_cutting_date: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
         cutting_date: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
         expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
         residue_type: toNullableString(submission.residue_type),
+        residue_management_method: toNullableString(submission.residue_management_method),
         management_method: toNullableString(submission.residue_management_method),
+        residual_management_remarks: toNullableString(submission.residual_management_remarks),
         residue_remarks: toNullableString(submission.residual_management_remarks),
         field_remarks: toNullableString(submission.field_remarks),
         fertilizer_type: toNullableString(currentFertilizerApplication?.fertilizer_type ?? submission.fertilizer_type),
-        application_date: toNullableDateValue(currentFertilizerApplication?.application_date ?? submission.nutrient_application_date),
-        application_rate: toNullableNumber(currentFertilizerApplication?.application_rate ?? submission.application_rate),
+        fertilizer_application_date: fertilizerApplicationDate,
+        nutrient_application_date: fertilizerApplicationDate,
+        application_date: fertilizerApplicationDate,
+        application_rate: fertilizerApplicationRate,
         foliar_sampling_date: toNullableDateValue(currentFertilizerApplication?.foliar_sampling_date ?? submission.foliar_sampling_date),
+        fertilizer_applications: fertilizerApplicationPayload.length > 0 ? fertilizerApplicationPayload : null,
         herbicide_name: toNullableString(currentHerbicideApplication?.herbicide_name ?? submission.herbicide_name),
-        weed_application_date: toNullableDateValue(currentHerbicideApplication?.application_date ?? submission.weed_application_date),
-        weed_application_rate: toNullableNumber(currentHerbicideApplication?.application_rate ?? submission.weed_application_rate),
+        herbicide_application_date: herbicideApplicationDate,
+        herbicide_application_rate: herbicideApplicationRate,
+        weed_application_date: herbicideApplicationDate,
+        weed_application_rate: herbicideApplicationRate,
+        herbicide_applications: herbicideApplicationPayload.length > 0 ? herbicideApplicationPayload : null,
         pest_control: toNullableString(submission.pest_remarks),
+        pest_remarks: toNullableString(submission.pest_remarks),
         disease_control: toNullableString(submission.disease_remarks),
+        disease_remarks: toNullableString(submission.disease_remarks),
         harvest_date: toNullableDateValue(submission.harvest_date),
+        harvest_yield: toNullableNumber(submission.yield),
         yield: toNullableNumber(submission.yield),
         harvest_method: toNullableString(submission.harvest_method),
+        quality_remarks: toNullableString(submission.quality_remarks),
         cane_quality_remarks: toNullableString(submission.quality_remarks),
         geom_polygon: submission.geom_polygon ?? submission.spatial_data ?? null,
         ...buildFertilizerApplicationColumns(fertilizerApplications),
@@ -1888,15 +1945,16 @@ export async function uploadFoliarAnalysisPdf(file: File, fieldKey: string): Pro
 export async function createObservationEntryFormSubmission(
     submission: ObservationEntryFormSubmissionInput,
     predefinedFields?: PredefinedField[],
-    options: CreateObservationEntryFormSubmissionOptions = {}
+    _options: CreateObservationEntryFormSubmissionOptions = {}
 ): Promise<ObservationEntryForm> {
     const { submission: resolvedSubmission, linkedField } = await resolveObservationEntrySubmission(submission, predefinedFields)
+    const targetRowId = linkedField?.id ?? null
     const duplicateMatch = await findDuplicateFieldManagementSubmission(
         resolvedSubmission,
-        linkedField?.id ?? null
+        targetRowId
     )
 
-    if (duplicateMatch && !(duplicateMatch.kind === 'unchanged' && options.allowExistingRowOverwrite)) {
+    if (duplicateMatch?.kind === 'duplicate') {
         const label = firstNonEmptyString(
             resolvedSubmission.trial_name,
             resolvedSubmission.field_name,
@@ -1906,17 +1964,13 @@ export async function createObservationEntryFormSubmission(
         const recordedDate = toNullableDateValue(resolvedSubmission.date_recorded)
         const recordTiming = recordedDate ? ` on ${recordedDate}` : ' without a recorded date'
 
-        if (duplicateMatch.kind === 'unchanged') {
-            throw new Error(`The saved record for ${label}${recordTiming} already matches this data. Change at least one value before saving again.`)
-        }
-
         throw new Error(`An identical record for ${label}${recordTiming} already exists in the monitoring records.`)
     }
 
     const payload = buildSugarcaneFieldManagementPayload(resolvedSubmission)
     const { data, droppedColumns } = await persistFieldManagementMonitoringRowWithSchemaFallback(
         payload,
-        linkedField?.id ?? null
+        targetRowId
     )
 
     if (droppedColumns.length > 0) {

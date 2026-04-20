@@ -10,15 +10,20 @@ type AutoTableCapableDoc = jsPDF & { lastAutoTable?: { finalY?: number } }
 type EntryFormExportSource = {
     recordId?: unknown
     sourceRowId?: unknown
+    sourceTable?: unknown
     entryForm?: Partial<ObservationEntryForm>
     monitoringSheet?: SugarcaneMonitoringRecord
     observation?: Partial<FullObservation>
 }
+type ApplicationRecord = Record<string, unknown>
 
 interface FieldRecordTableCsvColumn {
     header: string
     getValue: (source: EntryFormExportSource) => unknown
+    omitWhenEmpty?: boolean
 }
+
+const MAX_APPLICATION_EXPORT_LOOPS = 10
 
 function isMobileObservationRecord(observation: ExportObservationRecord): observation is MobileObservationRecord {
     return 'source_table' in observation
@@ -177,14 +182,255 @@ function pickFieldRecordDateValue(...values: unknown[]): string | undefined {
     return undefined
 }
 
-function pickFieldRecordLinkValue(...values: unknown[]): string | undefined {
-    for (const value of values) {
-        if (typeof value === 'string' && value.trim()) {
-            return value.trim()
+function isObjectRecord(value: unknown): value is ApplicationRecord {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function parseApplicationRecords(value: unknown): ApplicationRecord[] {
+    if (Array.isArray(value)) {
+        return value.filter(isObjectRecord)
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+        try {
+            return parseApplicationRecords(JSON.parse(value))
+        } catch {
+            return []
         }
     }
 
-    return undefined
+    return isObjectRecord(value) ? [value] : []
+}
+
+function hasApplicationValues(application: ApplicationRecord | undefined, valueKeys: string[]) {
+    if (!application) return false
+
+    return valueKeys.some((key) => hasValue(application[key]))
+}
+
+function buildApplicationFromColumns(
+    rawSheet: Record<string, unknown> | undefined,
+    loop: number,
+    mapping: Record<string, string>
+): ApplicationRecord | null {
+    const application = Object.fromEntries(
+        Object.entries(mapping).map(([targetKey, rawKeyPrefix]) => [
+            targetKey,
+            rawSheet?.[`${rawKeyPrefix}_${loop}`],
+        ])
+    )
+
+    return isObjectRecord(application) ? application : null
+}
+
+function getApplicationAt(applications: ApplicationRecord[], index: number): ApplicationRecord | undefined {
+    return applications[index]
+}
+
+function normalizeFertilizerApplicationExport(
+    application: ApplicationRecord,
+    index: number
+): ApplicationRecord {
+    return {
+        loop_number: application.loop_number ?? index + 1,
+        fertilizer_type: application.fertilizer_type,
+        application_date: application.application_date,
+        application_rate: application.application_rate,
+        foliar_sampling_date: application.foliar_sampling_date,
+        remarks: application.remarks ?? application.fertilizer_application_remarks,
+    }
+}
+
+function normalizeHerbicideApplicationExport(
+    application: ApplicationRecord,
+    index: number
+): ApplicationRecord {
+    return {
+        loop_number: application.loop_number ?? index + 1,
+        herbicide_name: application.herbicide_name,
+        application_date: application.application_date,
+        application_rate: application.application_rate,
+        remarks: application.remarks ?? application.herbicide_application_remarks,
+    }
+}
+
+function getFertilizerApplications(source: EntryFormExportSource): ApplicationRecord[] {
+    const currentSheet = source.monitoringSheet
+    const entryForm = source.entryForm
+    const rawSheet = currentSheet?.raw_values
+
+    const candidates = [
+        currentSheet?.fertilizer_applications,
+        entryForm?.fertilizer_applications,
+        rawSheet?.fertilizer_applications,
+    ]
+
+    for (const candidate of candidates) {
+        const applications = parseApplicationRecords(candidate)
+            .map(normalizeFertilizerApplicationExport)
+            .filter((application) =>
+                hasApplicationValues(application, ['fertilizer_type', 'application_date', 'application_rate', 'foliar_sampling_date', 'remarks'])
+            )
+
+        if (applications.length > 0) {
+            return applications.slice(0, MAX_APPLICATION_EXPORT_LOOPS)
+        }
+    }
+
+    const fromLoopColumns: ApplicationRecord[] = []
+    for (let loop = 1; loop <= MAX_APPLICATION_EXPORT_LOOPS; loop += 1) {
+        const application = buildApplicationFromColumns(rawSheet, loop, {
+            fertilizer_type: 'fertilizer_type',
+            application_date: 'fertilizer_application_date',
+            application_rate: 'fertilizer_application_rate',
+            remarks: 'fertilizer_application_remarks',
+        })
+
+        if (hasApplicationValues(application ?? undefined, ['fertilizer_type', 'application_date', 'application_rate', 'remarks'])) {
+            fromLoopColumns.push(normalizeFertilizerApplicationExport(application as ApplicationRecord, loop - 1))
+        }
+    }
+
+    if (fromLoopColumns.length > 0) {
+        return fromLoopColumns
+    }
+
+    const single = normalizeFertilizerApplicationExport({
+        fertilizer_type: pickFieldRecordTextValue(currentSheet?.fertilizer_type, rawSheet?.fertilizer_type, entryForm?.fertilizer_type, source.observation?.nutrient_management?.fertilizer_type),
+        application_date: pickFieldRecordDateValue(currentSheet?.nutrient_application_date, currentSheet?.fertilizer_application_date, rawSheet?.nutrient_application_date, rawSheet?.fertilizer_application_date, rawSheet?.application_date, entryForm?.nutrient_application_date, source.observation?.nutrient_management?.application_date),
+        application_rate: pickFieldRecordNumericValue(currentSheet?.application_rate, rawSheet?.application_rate, entryForm?.application_rate, source.observation?.nutrient_management?.application_rate),
+        foliar_sampling_date: pickFieldRecordDateValue(currentSheet?.foliar_sampling_date, rawSheet?.foliar_sampling_date, entryForm?.foliar_sampling_date),
+    }, 0)
+
+    return hasApplicationValues(single, ['fertilizer_type', 'application_date', 'application_rate', 'foliar_sampling_date'])
+        ? [single]
+        : []
+}
+
+function getHerbicideApplications(source: EntryFormExportSource): ApplicationRecord[] {
+    const currentSheet = source.monitoringSheet
+    const entryForm = source.entryForm
+    const rawSheet = currentSheet?.raw_values
+
+    const candidates = [
+        currentSheet?.herbicide_applications,
+        entryForm?.herbicide_applications,
+        rawSheet?.herbicide_applications,
+    ]
+
+    for (const candidate of candidates) {
+        const applications = parseApplicationRecords(candidate)
+            .map(normalizeHerbicideApplicationExport)
+            .filter((application) =>
+                hasApplicationValues(application, ['herbicide_name', 'application_date', 'application_rate', 'remarks'])
+            )
+
+        if (applications.length > 0) {
+            return applications.slice(0, MAX_APPLICATION_EXPORT_LOOPS)
+        }
+    }
+
+    const fromLoopColumns: ApplicationRecord[] = []
+    for (let loop = 1; loop <= MAX_APPLICATION_EXPORT_LOOPS; loop += 1) {
+        const application = buildApplicationFromColumns(rawSheet, loop, {
+            herbicide_name: 'herbicide_name',
+            application_date: 'herbicide_application_date',
+            application_rate: 'herbicide_application_rate',
+            remarks: 'herbicide_application_remarks',
+        })
+
+        if (hasApplicationValues(application ?? undefined, ['herbicide_name', 'application_date', 'application_rate', 'remarks'])) {
+            fromLoopColumns.push(normalizeHerbicideApplicationExport(application as ApplicationRecord, loop - 1))
+        }
+    }
+
+    if (fromLoopColumns.length > 0) {
+        return fromLoopColumns
+    }
+
+    const single = normalizeHerbicideApplicationExport({
+        herbicide_name: pickFieldRecordTextValue(currentSheet?.herbicide_name, rawSheet?.herbicide_name, entryForm?.herbicide_name, currentSheet?.weed_control, rawSheet?.weed_control, source.observation?.control_methods?.weed_control),
+        application_date: pickFieldRecordDateValue(currentSheet?.weed_application_date, rawSheet?.weed_application_date, rawSheet?.herbicide_application_date, entryForm?.weed_application_date),
+        application_rate: pickFieldRecordNumericValue(currentSheet?.weed_application_rate, rawSheet?.weed_application_rate, rawSheet?.herbicide_application_rate, entryForm?.weed_application_rate),
+    }, 0)
+
+    return hasApplicationValues(single, ['herbicide_name', 'application_date', 'application_rate'])
+        ? [single]
+        : []
+}
+
+function buildFertilizerApplicationCsvColumns(): FieldRecordTableCsvColumn[] {
+    return Array.from({ length: MAX_APPLICATION_EXPORT_LOOPS }, (_, index) => {
+        const loop = index + 1
+
+        return [
+            {
+                header: `Fertilizer ${loop} Type`,
+                getValue: (source: EntryFormExportSource) => formatFieldRecordTextValue(
+                    pickFieldRecordTextValue(getApplicationAt(getFertilizerApplications(source), index)?.fertilizer_type)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Fertilizer ${loop} Application Date`,
+                getValue: (source: EntryFormExportSource) => formatFieldRecordDateValue(
+                    pickFieldRecordDateValue(getApplicationAt(getFertilizerApplications(source), index)?.application_date)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Fertilizer ${loop} Application Rate`,
+                getValue: (source: EntryFormExportSource) => formatFieldRecordNumericValue(
+                    pickFieldRecordNumericValue(getApplicationAt(getFertilizerApplications(source), index)?.application_rate)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Fertilizer ${loop} Remarks`,
+                getValue: (source: EntryFormExportSource) => formatFieldRecordTextValue(
+                    pickFieldRecordTextValue(getApplicationAt(getFertilizerApplications(source), index)?.remarks)
+                ),
+                omitWhenEmpty: true,
+            },
+        ]
+    }).flat()
+}
+
+function buildHerbicideApplicationCsvColumns(): FieldRecordTableCsvColumn[] {
+    return Array.from({ length: MAX_APPLICATION_EXPORT_LOOPS }, (_, index) => {
+        const loop = index + 1
+
+        return [
+            {
+                header: `Herbicide ${loop} Name`,
+                getValue: (source: EntryFormExportSource) => formatFieldRecordTextValue(
+                    pickFieldRecordTextValue(getApplicationAt(getHerbicideApplications(source), index)?.herbicide_name)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Herbicide ${loop} Application Date`,
+                getValue: (source: EntryFormExportSource) => formatFieldRecordDateValue(
+                    pickFieldRecordDateValue(getApplicationAt(getHerbicideApplications(source), index)?.application_date)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Herbicide ${loop} Application Rate`,
+                getValue: (source: EntryFormExportSource) => formatFieldRecordNumericValue(
+                    pickFieldRecordNumericValue(getApplicationAt(getHerbicideApplications(source), index)?.application_rate)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Herbicide ${loop} Remarks`,
+                getValue: (source: EntryFormExportSource) => formatFieldRecordTextValue(
+                    pickFieldRecordTextValue(getApplicationAt(getHerbicideApplications(source), index)?.remarks)
+                ),
+                omitWhenEmpty: true,
+            },
+        ]
+    }).flat()
 }
 
 function stringifyEntryCsvValue(value: unknown): unknown {
@@ -215,12 +461,40 @@ function downloadCsv(rows: Record<string, unknown>[], filename: string) {
     }
 }
 
+function hasExportCellValue(value: unknown): boolean {
+    if (value === null || value === undefined) return false
+    if (typeof value === 'number') return Number.isFinite(value)
+    if (typeof value === 'boolean') return true
+    if (typeof value === 'string') {
+        const normalized = value.trim()
+        return normalized.length > 0 && normalized !== '-'
+    }
+    if (Array.isArray(value)) return value.some(hasExportCellValue)
+    if (typeof value === 'object') return Object.values(value).some(hasExportCellValue)
+
+    return true
+}
+
+function resolveCsvColumns(sources: EntryFormExportSource[]): FieldRecordTableCsvColumn[] {
+    return FIELD_RECORD_TABLE_CSV_COLUMNS.filter((column) => {
+        if (!column.omitWhenEmpty) return true
+
+        return sources.some((source) => hasExportCellValue(column.getValue(source)))
+    })
+}
+
 const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
     { header: 'Date Recorded', getValue: (source) => {
         const currentSheet = source.monitoringSheet
         const entryForm = source.entryForm
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.date_recorded, entryForm?.date_recorded, rawSheet?.date_recorded, source.observation?.date_recorded))
+    } },
+    { header: 'Field ID', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.field_id, entryForm?.field_id, rawSheet?.field_id, rawSheet?.Trial))
     } },
     { header: 'Trials', getValue: (source) => {
         const currentSheet = source.monitoringSheet
@@ -239,6 +513,18 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const entryForm = source.entryForm
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.area, entryForm?.area, entryForm?.block_size, rawSheet?.area))
+    } },
+    { header: 'Latitude', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.latitude, entryForm?.latitude, rawSheet?.latitude, source.observation?.latitude), 6)
+    } },
+    { header: 'Longitude', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.longitude, entryForm?.longitude, rawSheet?.longitude, source.observation?.longitude), 6)
     } },
     { header: 'Irrigation Type', getValue: (source) => {
         const currentSheet = source.monitoringSheet
@@ -306,6 +592,23 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.crop_class, entryForm?.crop_class, rawSheet?.crop_class))
     } },
+    { header: 'Variety', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.variety, entryForm?.variety, rawSheet?.variety, source.observation?.crop_information?.variety))
+    } },
+    { header: 'Crop Stage', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.crop_stage, rawSheet?.crop_stage, source.observation?.crop_information?.crop_stage))
+    } },
+    { header: 'Stress', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.stress, entryForm?.stress, rawSheet?.stress, source.observation?.crop_monitoring?.stress))
+    } },
     { header: 'Planting Date', getValue: (source) => {
         const currentSheet = source.monitoringSheet
         const entryForm = source.entryForm
@@ -318,23 +621,11 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.soil_sampling_date, entryForm?.soil_sampling_date, rawSheet?.soil_sampling_date))
     } },
-    { header: 'Soil Sampling Results', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return pickFieldRecordLinkValue(currentSheet?.soil_test_pdf_url, currentSheet?.soil_test_pdf_path, entryForm?.soil_test_pdf_url, rawSheet?.soil_test_pdf_url, rawSheet?.soil_test_pdf_path) ?? ''
-    } },
     { header: 'Foliar Sampling Date', getValue: (source) => {
         const currentSheet = source.monitoringSheet
         const entryForm = source.entryForm
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.foliar_sampling_date, entryForm?.foliar_sampling_date, rawSheet?.foliar_sampling_date))
-    } },
-    { header: 'Foliar Sampling Results', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return pickFieldRecordLinkValue(currentSheet?.foliar_analysis_pdf_url, entryForm?.foliar_analysis_pdf_url, rawSheet?.foliar_analysis_pdf_url) ?? ''
     } },
     { header: 'Previous Cutting Date', getValue: (source) => {
         const currentSheet = source.monitoringSheet
@@ -402,6 +693,8 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.weed_application_rate, rawSheet?.weed_application_rate, entryForm?.weed_application_rate, rawSheet?.herbicide_application_rate, rawSheet?.herbicide_application_rate_1))
     } },
+    ...buildFertilizerApplicationCsvColumns(),
+    ...buildHerbicideApplicationCsvColumns(),
     { header: 'Pest Remarks', getValue: (source) => {
         const currentSheet = source.monitoringSheet
         const entryForm = source.entryForm
@@ -426,6 +719,12 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordNumericValue(pickFieldRecordNumericValue(rawSheet?.yield, rawSheet?.harvest_yield, currentSheet?.harvest_yield, currentSheet?.yield, entryForm?.yield, source.observation?.harvest?.yield))
     } },
+    { header: 'Harvest Method', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.harvest_method, entryForm?.harvest_method, rawSheet?.harvest_method, source.observation?.harvest?.harvest_method))
+    } },
     { header: 'Quality Remarks', getValue: (source) => {
         const currentSheet = source.monitoringSheet
         const entryForm = source.entryForm
@@ -438,12 +737,20 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordDateTimeValue(pickFieldRecordDateValue(currentSheet?.created_at, entryForm?.created_at, rawSheet?.created_at, source.observation?.created_at))
     } },
+    { header: 'Updated', getValue: (source) => {
+        const currentSheet = source.monitoringSheet
+        const entryForm = source.entryForm
+        const rawSheet = currentSheet?.raw_values
+        return formatFieldRecordDateTimeValue(pickFieldRecordDateValue(currentSheet?.updated_at, entryForm?.updated_at, rawSheet?.updated_at))
+    } },
 ]
 
 function buildFieldRecordTableCsvData(sources: EntryFormExportSource[]): Record<string, unknown>[] {
+    const columns = resolveCsvColumns(sources)
+
     return sources.map((source) => (
         Object.fromEntries(
-            FIELD_RECORD_TABLE_CSV_COLUMNS.map((column) => [
+            columns.map((column) => [
                 column.header,
                 stringifyEntryCsvValue(column.getValue(source)),
             ])
@@ -456,6 +763,7 @@ function buildObservationEntryFormExportSource(obs: ExportObservationRecord): En
         return {
             recordId: obs.id,
             sourceRowId: obs.source_row_id,
+            sourceTable: obs.source_table,
             entryForm: obs.entry_form,
             monitoringSheet: obs.monitoring_sheet,
             observation: obs,
@@ -464,6 +772,7 @@ function buildObservationEntryFormExportSource(obs: ExportObservationRecord): En
 
     return {
         recordId: obs.id,
+        sourceTable: 'observations',
         observation: obs,
     }
 }
@@ -472,6 +781,7 @@ function buildMonitoringEntryFormExportSource(record: SugarcaneMonitoringRecord)
     return {
         recordId: record.id,
         sourceRowId: record.id,
+        sourceTable: 'sugarcane_field_management',
         monitoringSheet: record,
     }
 }

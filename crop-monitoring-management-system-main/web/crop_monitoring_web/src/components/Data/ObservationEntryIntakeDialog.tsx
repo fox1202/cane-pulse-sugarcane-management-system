@@ -434,6 +434,20 @@ function estimateGeometryAreaHa(geometry: any): number | undefined {
     return Number((areaSqMeters / 10_000).toFixed(2));
 }
 
+function inferFieldIdFromKMLFeatureName(value?: string | null): string {
+    const raw = String(value ?? '').trim();
+    if (!raw || raw.toLowerCase() === 'unnamed feature') {
+        return '';
+    }
+
+    const cleaned = raw
+        .replace(/\s*[-_]\s*(polygon|multi\s*polygon|multipolygon|boundary|field)\s*$/i, '')
+        .replace(/\s+(polygon|multi\s*polygon|multipolygon|boundary|field)\s*$/i, '')
+        .trim();
+
+    return cleaned || raw;
+}
+
 function SectionHeading({ title }: { title: string }) {
     return (
         <Typography
@@ -1520,7 +1534,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         if (!file) return;
 
         if (!isValidKMLFile(file)) {
-            setKmlError('Please select a valid KML file (.kml or .kmz)');
+            setKmlError('Please select a valid KML or KMZ file (.kml or .kmz)');
             return;
         }
 
@@ -1531,7 +1545,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             const result = await parseKMLFile(file);
 
             if (result.error || result.features.length === 0) {
-                setKmlError(result.error || 'No features found in KML file');
+                setKmlError(result.error || 'No features found in KML/KMZ file');
                 setKmlFeatures([]);
                 setKmlPoints([]);
                 return;
@@ -1540,7 +1554,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             setKmlFeatures(result.features);
             setSelectedKMLFeatureIndex(0);
 
-            // Also extract points from the KML file
+            // Also extract points from the KML/KMZ file
             const points = extractPointsFromKML(result.features);
             setKmlPoints(points);
 
@@ -1551,8 +1565,34 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             } else {
                 setKmlMode('geometry');
             }
+
+            const firstPolygonFeatureIndex = result.features.findIndex((feature) => extractGeometryFromKML([feature]));
+            const firstPolygonFeature = firstPolygonFeatureIndex >= 0 ? result.features[firstPolygonFeatureIndex] : null;
+            const firstGeometryResult = firstPolygonFeature ? extractGeometryFromKML([firstPolygonFeature]) : null;
+
+            if (firstPolygonFeature && firstGeometryResult) {
+                const { geometry, centroid } = firstGeometryResult;
+                const estimatedArea = estimateGeometryAreaHa(geometry);
+                const fieldName = firstPolygonFeature.name || 'Imported Field';
+                const inferredFieldId = inferFieldIdFromKMLFeatureName(fieldName);
+
+                setSelectedKMLFeatureIndex(firstPolygonFeatureIndex);
+                setFormData((prev) => ({
+                    ...prev,
+                    selected_field: fieldName,
+                    field_id: fieldName,
+                    field_name: fieldName,
+                    block_id: prev.block_id?.trim() ? prev.block_id : inferredFieldId,
+                    area: prev.area ?? estimatedArea,
+                    block_size: prev.block_size ?? prev.area ?? estimatedArea,
+                    spatial_data: geometry,
+                    geom_polygon: geometry,
+                    latitude: centroid?.latitude ?? prev.latitude ?? 0,
+                    longitude: centroid?.longitude ?? prev.longitude ?? 0,
+                }));
+            }
         } catch (err: any) {
-            setKmlError(`Failed to parse KML file: ${err.message}`);
+            setKmlError(`Failed to parse KML/KMZ file: ${err.message}`);
             setKmlFeatures([]);
             setKmlPoints([]);
         }
@@ -1575,9 +1615,14 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         const estimatedArea = estimateGeometryAreaHa(geometry);
 
         // Update form data with KML geometry
+        const fieldName = selectedFeature.name || 'Imported Field';
+        const inferredFieldId = inferFieldIdFromKMLFeatureName(fieldName);
         setFormData((prev) => ({
             ...prev,
-            field_name: selectedFeature.name || 'Imported Field',
+            selected_field: fieldName,
+            field_id: fieldName,
+            field_name: fieldName,
+            block_id: prev.block_id?.trim() ? prev.block_id : inferredFieldId,
             area: prev.area ?? estimatedArea,
             block_size: prev.block_size ?? prev.area ?? estimatedArea,
             spatial_data: geometry,
@@ -1737,7 +1782,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
             if (isUploadingKML) {
                 const normalizedFieldName = formData.field_name.trim();
-                const normalizedBlockId = formData.block_id?.trim() ?? '';
+                const normalizedBlockId = formData.block_id?.trim() || inferFieldIdFromKMLFeatureName(normalizedFieldName);
                 const normalizedSectionName = formData.section_name?.trim() ?? '';
                 const kmlGeometry = formData.geom_polygon || formData.spatial_data;
 
@@ -1746,15 +1791,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 }
 
                 if (!normalizedBlockId) {
-                    throw new Error('Please enter a block ID for the KML-imported field.');
+                    throw new Error('Please enter a Field ID for the KML/KMZ-imported field.');
                 }
 
                 if (!kmlGeometry) {
-                    throw new Error('No valid geometry was extracted from the KML file.');
+                    throw new Error('No valid geometry was extracted from the KML/KMZ file.');
                 }
 
                 if (!formData.latitude || !formData.longitude) {
-                    throw new Error('Unable to calculate the center of the KML geometry.');
+                    throw new Error('Unable to calculate the center of the KML/KMZ geometry.');
                 }
 
                 const existingKMLField = findExistingFieldForKMLImport(
@@ -1777,7 +1822,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                         normalizedSectionName
                     );
                     const shouldOverwrite = window.confirm(
-                        `The KML field "${existingIdentity}" is already in the database. Do you want to overwrite it with the uploaded KML boundary "${uploadedIdentity}"?`
+                        `The KML/KMZ field "${existingIdentity}" is already in the database. Do you want to overwrite it with the uploaded KML/KMZ boundary "${uploadedIdentity}"?`
                     );
 
                     if (!shouldOverwrite) {
@@ -1896,7 +1941,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
             await onSubmitted();
             onSaved?.(overwroteKMLBoundary
-                ? 'KML boundary overwritten and saved to the database.'
+                ? 'KML/KMZ boundary overwritten and saved to the database.'
                 : 'Successfully saved to the database.');
 
             if (mode === 'add_another') {
@@ -2057,7 +2102,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                             {kmlMode === 'geometry' && (
                                                 <Stack spacing={1}>
                                                     <Alert severity="success">
-                                                        Found {kmlFeatures.length} feature(s) in the KML file. Select the one to use as the field boundary:
+                                                        Found {kmlFeatures.length} feature(s) in the KML/KMZ file. Select the one to use as the field boundary:
                                                     </Alert>
                                                     <Stack spacing={1}>
                                                         {kmlFeatures.map((feature, index) => (
@@ -2085,7 +2130,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                             {kmlMode === 'points' && kmlPoints.length >= 3 && (
                                                 <Stack spacing={1.5}>
                                                     <Alert severity="info">
-                                                        Found {kmlPoints.length} point(s) in the KML file. Select at least 3 points to create a polygon boundary:
+                                                        Found {kmlPoints.length} point(s) in the KML/KMZ file. Select at least 3 points to create a polygon boundary:
                                                     </Alert>
                                                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                                                         <Button
@@ -2165,14 +2210,14 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         <Stack spacing={2} alignItems="center">
                                             <CloudUpload sx={{ fontSize: 48, color: 'text.secondary' }} />
                                             <Typography variant="body1" align="center">
-                                                Click the "Upload Field from KML" option above, or select a KML file:
+                                                Click the "Upload Field from KML/KMZ" option above, or select a KML or KMZ file:
                                             </Typography>
                                             <Button
                                                 variant="contained"
                                                 startIcon={<CloudUpload />}
                                                 onClick={() => kmlFileInputRef.current?.click()}
                                             >
-                                                Choose KML File
+                                                Choose KML/KMZ File
                                             </Button>
                                         </Stack>
                                     </Paper>
@@ -2183,7 +2228,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         variant="text"
                                         onClick={handleCancelKMLUpload}
                                     >
-                                        Cancel KML Upload
+                                        Cancel KML/KMZ Upload
                                     </Button>
                                 </Box>
                             </Grid>
@@ -2198,8 +2243,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 helperText={isCreatingCustomField
                                     ? 'Drawing a new field or trial. Save the form to add it to the field management table and monitoring records.'
                                     : isUploadingKML
-                                    ? 'Import field boundary from a KML file. Save to add it to the field management table and monitoring records.'
-                                    : 'Choose a field from the field management table, draw a new one, or upload from a KML file.'}
+                                    ? 'Import field boundary from a KML or KMZ file. Save to add it to the field management table and monitoring records.'
+                                    : 'Choose a field from the field management table, or draw a new one.'}
                                 SelectProps={{
                                     MenuProps: WHITE_SELECT_MENU_PROPS,
                                 }}
@@ -2214,9 +2259,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 ))}
                                 <MenuItem value={DRAW_NEW_FIELD_VALUE} sx={{ fontWeight: 800, color: 'primary.main' }}>
                                     Draw New Trial / Field
-                                </MenuItem>
-                                <MenuItem value={UPLOAD_KML_FIELD_VALUE} sx={{ fontWeight: 800, color: 'secondary.main' }}>
-                                    Upload Field from KML
                                 </MenuItem>
                             </TextField>
                             <input
@@ -2236,7 +2278,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     onChange={(e) => updateField('field_name', e.target.value)}
                                     helperText={isCreatingCustomField
                                         ? "This name will be saved into the field management table for future use."
-                                        : "Enter a name for this field imported from KML."}
+                                        : "Enter a name for this field imported from KML/KMZ."}
                                 />
                             </Grid>
                         ) : (
@@ -2259,7 +2301,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     onChange={(e) => updateField('block_id', e.target.value)}
                                     helperText={isCreatingCustomField
                                         ? "Set the block where this new field or trial belongs."
-                                        : "Set the block for this KML-imported field."}
+                                        : "Auto-filled from the KML feature name; edit if needed."}
                                 />
                             </Grid>
                         )}
@@ -2274,7 +2316,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 helperText={isCreatingCustomField
                                     ? 'Area is estimated from the drawn boundary first, but you can edit it before saving.'
                                     : isUploadingKML
-                                    ? 'Area can be calculated from the KML geometry or edited before saving.'
+                                    ? 'Area can be calculated from the KML/KMZ geometry or edited before saving.'
                                     : 'Auto-filled from the selected field, but editable before saving.'}
                             />
                         </Grid>
