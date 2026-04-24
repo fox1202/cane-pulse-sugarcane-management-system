@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -12,9 +12,16 @@ import {
 } from '@mui/material'
 import {
     AgricultureOutlined,
+    AirOutlined,
     ArrowForward,
+    CloudOutlined,
+    DeviceThermostatOutlined,
+    GrainOutlined,
     MapOutlined,
     TableChartOutlined,
+    ThunderstormOutlined,
+    WaterDropOutlined,
+    WbSunnyOutlined,
 } from '@mui/icons-material'
 import { motion, useInView } from 'framer-motion'
 import {
@@ -24,12 +31,10 @@ import {
     ResponsiveContainer,
 } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
-import { HARVEST_PROXIMITY_TASKS } from '@/data/farmingCalendar'
-import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
-import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
-import { getAreaCropGroup } from '@/utils/cropGrouping'
-import { formatDateOnlyLabel, getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
+import type { PredefinedField } from '@/services/database.service'
+import { useLivePredefinedFields } from '@/hooks/useLivePredefinedFields'
 import { canAccessRoles } from '@/utils/roleAccess'
+import { summarizeLiveFieldLandUse } from '@/utils/liveFieldLandUse'
 
 const MINT = '#56b870'
 const MINT_DARK = '#2f7f4f'
@@ -45,6 +50,14 @@ const PANEL = 'rgba(255,255,255,0.94)'
 const PANEL_ALT = 'rgba(255,248,242,0.96)'
 const TEXT_DIM = 'rgba(35,64,52,0.52)'
 const TEXT_MID = 'rgba(35,64,52,0.72)'
+const WEATHER_REFRESH_MS = 10 * 60 * 1000
+const DEFAULT_WEATHER_COORDINATES = {
+    latitude: -21.0365,
+    longitude: 31.6146,
+    label: 'ZSAES field area',
+    source: 'fallback' as const,
+    fieldCount: 0,
+}
 
 function SoftPattern() {
     return (
@@ -142,13 +155,6 @@ function StatusBadge({ text, tone = 'mint' }: { text: string; tone?: 'mint' | 'p
     )
 }
 
-interface AreaFieldSnapshot {
-    fieldKey: string
-    fieldLabel: string
-    cropType: string
-    areaHa: number
-}
-
 interface AreaOverviewDatum {
     label: string
     areaHa: number
@@ -156,270 +162,196 @@ interface AreaOverviewDatum {
     fieldCount: number
 }
 
-interface CalendarFieldSeed {
-    fieldKey: string
-    fieldLabel: string
-    cropType: string
-    cropClass: string
-    expectedHarvestDate: string
+interface WeatherCoordinates {
+    latitude: number
+    longitude: number
+    label: string
+    source: 'device-location' | 'field-centroid' | 'fallback'
+    fieldCount: number
+    accuracyMeters?: number
 }
 
-type TaskSeverity = 'overdue' | 'today' | 'soon' | 'planned'
-
-interface UpcomingTask {
-    key: string
-    kind: string
-    activity: string
-    dateIso: string
-    fieldLabel: string
-    cropType: string
-    weekLabel: string
-    scheduleType: string
-    severity: TaskSeverity
-    daysUntil: number
+interface OpenMeteoCurrent {
+    time?: string
+    temperature_2m?: number
+    relative_humidity_2m?: number
+    apparent_temperature?: number
+    precipitation?: number
+    weather_code?: number
+    wind_speed_10m?: number
+    wind_direction_10m?: number
 }
 
-interface CalendarScheduleWarning {
-    key: string
-    fieldLabel: string
-    title: string
-    detail: string
-    dateIso: string | null
+interface OpenMeteoResponse {
+    timezone?: string
+    current?: OpenMeteoCurrent
 }
 
-function normalizeFieldToken(value?: string | null): string {
-    return (value ?? '').trim().toLowerCase()
-}
-
-function buildFieldIdentity(fieldName?: string | null, sectionName?: string | null, blockId?: string | null): string {
-    return [
-        normalizeFieldToken(sectionName),
-        normalizeFieldToken(blockId),
-        normalizeFieldToken(fieldName),
-    ].join('|')
-}
-
-function buildFieldLabel(fieldName?: string | null, sectionName?: string | null, blockId?: string | null): string {
-    return [fieldName, sectionName, blockId]
-        .map((value) => (value ?? '').trim())
-        .filter(Boolean)
-        .join(' / ') || 'Unknown field'
-}
-
-function normalizeGeometry(value: any): any | null {
-    if (!value) return null
-    if (typeof value === 'string') {
-        try {
-            return normalizeGeometry(JSON.parse(value))
-        } catch {
-            return null
-        }
-    }
-    if (value.type === 'Feature') return normalizeGeometry(value.geometry)
-    if (value.type === 'FeatureCollection') return normalizeGeometry(value.features?.[0]?.geometry)
-    if (value.geometry) return normalizeGeometry(value.geometry)
-    if (value.geom) return normalizeGeometry(value.geom)
-    return value
-}
-
-function getMetersPerDegreeLatitude(latitude: number): number {
-    const radians = latitude * (Math.PI / 180)
-    return 111132.92 - 559.82 * Math.cos(2 * radians) + 1.175 * Math.cos(4 * radians)
-}
-
-function getMetersPerDegreeLongitude(latitude: number): number {
-    const radians = latitude * (Math.PI / 180)
-    return 111412.84 * Math.cos(radians) - 93.5 * Math.cos(3 * radians)
-}
-
-function getRingAreaSqMeters(ring: number[][]): number {
-    if (!Array.isArray(ring) || ring.length < 3) {
-        return 0
-    }
-
-    const latitudes = ring
-        .map((point) => Number(point?.[1]))
-        .filter((value) => Number.isFinite(value))
-
-    if (latitudes.length === 0) {
-        return 0
-    }
-
-    const meanLatitude = latitudes.reduce((sum, value) => sum + value, 0) / latitudes.length
-    const metersPerLat = getMetersPerDegreeLatitude(meanLatitude)
-    const metersPerLon = getMetersPerDegreeLongitude(meanLatitude)
-
-    let area = 0
-
-    for (let index = 0; index < ring.length; index += 1) {
-        const current = ring[index] ?? []
-        const next = ring[(index + 1) % ring.length] ?? []
-        const currentX = Number(current[0]) * metersPerLon
-        const currentY = Number(current[1]) * metersPerLat
-        const nextX = Number(next[0]) * metersPerLon
-        const nextY = Number(next[1]) * metersPerLat
-
-        if (![currentX, currentY, nextX, nextY].every(Number.isFinite)) {
-            continue
-        }
-
-        area += currentX * nextY - nextX * currentY
-    }
-
-    return Math.abs(area) / 2
-}
-
-function getPolygonAreaSqMeters(rings: number[][][]): number {
-    if (!Array.isArray(rings) || rings.length === 0) {
-        return 0
-    }
-
-    const [outerRing = [], ...holes] = rings
-    const outerArea = getRingAreaSqMeters(outerRing)
-    const holeArea = holes.reduce((sum, ring) => sum + getRingAreaSqMeters(ring), 0)
-    return Math.max(outerArea - holeArea, 0)
-}
-
-function getGeometryAreaHa(geometry: any): number | null {
-    const normalized = normalizeGeometry(geometry)
-    if (!normalized?.type) {
-        return null
-    }
-
-    let areaSqMeters = 0
-
-    if (normalized.type === 'Polygon') {
-        areaSqMeters = getPolygonAreaSqMeters(normalized.coordinates ?? [])
-    } else if (normalized.type === 'MultiPolygon') {
-        areaSqMeters = (normalized.coordinates ?? [])
-            .reduce((sum: number, polygon: number[][][]) => sum + getPolygonAreaSqMeters(polygon), 0)
-    }
-
-    if (!Number.isFinite(areaSqMeters) || areaSqMeters <= 0) {
-        return null
-    }
-
-    return Number((areaSqMeters / 10_000).toFixed(2))
-}
-
-function resolvePredefinedFieldAreaHa(field: PredefinedField): number | null {
-    if (typeof field.area === 'number' && Number.isFinite(field.area) && field.area > 0) {
-        return Number(field.area.toFixed(2))
-    }
-
-    const fieldGeometryArea = getGeometryAreaHa(field.geom)
-    if (fieldGeometryArea !== null && fieldGeometryArea > 0) {
-        return fieldGeometryArea
-    }
-
-    return null
-}
-
-function getTodayDateOnly(): string {
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = String(today.getMonth() + 1).padStart(2, '0')
-    const day = String(today.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
+interface WeatherReading {
+    observedAt: string | null
+    timezone: string
+    temperatureC: number | null
+    feelsLikeC: number | null
+    humidityPercent: number | null
+    precipitationMm: number | null
+    windSpeedKmh: number | null
+    windDirectionDegrees: number | null
+    weatherCode: number | null
 }
 
 function formatAreaHa(value: number): string {
     return `${value.toFixed(2)} ha`
 }
 
-function getOptionalDateTimestamp(value?: string | null): number {
-    const normalized = (value ?? '').trim()
-
-    if (!normalized) {
-        return 0
-    }
-
-    const parsed = Date.parse(normalized)
-    return Number.isFinite(parsed) ? parsed : 0
+function isValidWeatherCoordinate(latitude: number, longitude: number): boolean {
+    return Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        Math.abs(latitude) <= 90 &&
+        Math.abs(longitude) <= 180 &&
+        !(latitude === 0 && longitude === 0)
 }
 
-function isFieldRecordNewer(candidate: PredefinedField, current: PredefinedField): boolean {
-    const candidateRecordedDate = getDateOnlyTimestamp(normalizeDateOnlyValue(candidate.date_recorded) || '')
-    const currentRecordedDate = getDateOnlyTimestamp(normalizeDateOnlyValue(current.date_recorded) || '')
-
-    if (candidateRecordedDate !== currentRecordedDate) {
-        return candidateRecordedDate > currentRecordedDate
-    }
-
-    const candidateUpdatedAt = getOptionalDateTimestamp(candidate.updated_at)
-    const currentUpdatedAt = getOptionalDateTimestamp(current.updated_at)
-
-    if (candidateUpdatedAt !== currentUpdatedAt) {
-        return candidateUpdatedAt > currentUpdatedAt
-    }
-
-    const candidateCreatedAt = getOptionalDateTimestamp(candidate.created_at)
-    const currentCreatedAt = getOptionalDateTimestamp(current.created_at)
-
-    if (candidateCreatedAt !== currentCreatedAt) {
-        return candidateCreatedAt > currentCreatedAt
-    }
-
-    return String(candidate.id ?? '') > String(current.id ?? '')
+function roundWeatherCoordinate(value: number): number {
+    return Number(value.toFixed(4))
 }
 
-function getDueLabel(daysUntil: number): string {
-    if (daysUntil === 0) return 'Today'
-    if (daysUntil === -1) return '1 day overdue'
-    if (daysUntil < 0) return `${Math.abs(daysUntil)} days overdue`
-    if (daysUntil === 1) return 'Tomorrow'
-    return `In ${daysUntil} days`
+function getDeviceWeatherCoordinates(position: GeolocationPosition): WeatherCoordinates {
+    return {
+        latitude: roundWeatherCoordinate(position.coords.latitude),
+        longitude: roundWeatherCoordinate(position.coords.longitude),
+        label: 'Current device location',
+        source: 'device-location',
+        fieldCount: 0,
+        accuracyMeters: Number.isFinite(position.coords.accuracy)
+            ? Math.round(position.coords.accuracy)
+            : undefined,
+    }
 }
 
-function addDaysToDateOnly(dateIso: string, daysToAdd: number): string | null {
-    const normalized = normalizeDateOnlyValue(dateIso)
-    if (!normalized) {
-        return null
+function getFieldWeatherCoordinates(fields: PredefinedField[]): WeatherCoordinates {
+    const fieldCoordinates = fields
+        .map((field) => ({
+            latitude: Number(field.latitude),
+            longitude: Number(field.longitude),
+        }))
+        .filter(({ latitude, longitude }) => isValidWeatherCoordinate(latitude, longitude))
+
+    if (fieldCoordinates.length === 0) {
+        return DEFAULT_WEATHER_COORDINATES
     }
 
-    const [year, month, day] = normalized.split('-').map(Number)
-    const nextDate = new Date(year, month - 1, day)
-    nextDate.setDate(nextDate.getDate() + daysToAdd)
+    const totals = fieldCoordinates.reduce(
+        (summary, point) => ({
+            latitude: summary.latitude + point.latitude,
+            longitude: summary.longitude + point.longitude,
+        }),
+        { latitude: 0, longitude: 0 }
+    )
 
-    const nextYear = nextDate.getFullYear()
-    const nextMonth = String(nextDate.getMonth() + 1).padStart(2, '0')
-    const nextDay = String(nextDate.getDate()).padStart(2, '0')
-    return `${nextYear}-${nextMonth}-${nextDay}`
+    return {
+        latitude: roundWeatherCoordinate(totals.latitude / fieldCoordinates.length),
+        longitude: roundWeatherCoordinate(totals.longitude / fieldCoordinates.length),
+        label: fieldCoordinates.length === 1
+            ? '1 mapped field centroid'
+            : `${fieldCoordinates.length} mapped fields centroid`,
+        source: 'field-centroid',
+        fieldCount: fieldCoordinates.length,
+    }
 }
 
-function isCalendarRelevantCrop(cropType?: string | null, cropClass?: string | null): boolean {
-    const combined = `${cropType ?? ''} ${cropClass ?? ''}`.trim()
-    return getAreaCropGroup(combined) === 'Sugarcane'
+function toNullableWeatherNumber(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function getTaskSeverity(daysUntil: number): TaskSeverity {
-    if (daysUntil < 0) return 'overdue'
-    if (daysUntil === 0) return 'today'
-    if (daysUntil <= 14) return 'soon'
-    return 'planned'
+function formatWeatherNumber(value: number | null, suffix: string, fractionDigits = 0): string {
+    return value === null ? '--' : `${value.toFixed(fractionDigits)}${suffix}`
 }
 
-function sortUpcomingTasks(left: UpcomingTask, right: UpcomingTask): number {
-    const leftOverdue = left.daysUntil < 0
-    const rightOverdue = right.daysUntil < 0
+function formatTemperature(value: number | null): string {
+    return formatWeatherNumber(value, '°C')
+}
 
-    if (leftOverdue && rightOverdue) {
-        return right.daysUntil - left.daysUntil
+function formatObservedTime(value: string | null): string {
+    if (!value) {
+        return 'Updating'
     }
 
-    if (leftOverdue !== rightOverdue) {
-        return leftOverdue ? -1 : 1
+    const parsed = new Date(value)
+
+    if (Number.isNaN(parsed.getTime())) {
+        return value
     }
 
-    if (left.daysUntil !== right.daysUntil) {
-        return left.daysUntil - right.daysUntil
-    }
-
-    return left.fieldLabel.localeCompare(right.fieldLabel)
+    return new Intl.DateTimeFormat(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(parsed)
 }
 
-function sortCalendarWarnings(left: CalendarScheduleWarning, right: CalendarScheduleWarning): number {
-    return left.fieldLabel.localeCompare(right.fieldLabel)
+function getWeatherConditionLabel(code: number | null): string {
+    if (code === null) return 'Live weather'
+    if (code === 0) return 'Clear'
+    if (code === 1) return 'Mostly clear'
+    if (code === 2) return 'Partly cloudy'
+    if (code === 3) return 'Cloudy'
+    if ([45, 48].includes(code)) return 'Fog'
+    if ([51, 53, 55, 56, 57].includes(code)) return 'Drizzle'
+    if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'Rain'
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return 'Wintry weather'
+    if ([95, 96, 99].includes(code)) return 'Thunderstorm'
+    return 'Current conditions'
+}
+
+function getWindDirectionLabel(degrees: number | null): string {
+    if (degrees === null) {
+        return '--'
+    }
+
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+    const index = Math.round(degrees / 45) % directions.length
+    return directions[index]
+}
+
+async function fetchCurrentWeather(coordinates: WeatherCoordinates): Promise<WeatherReading> {
+    const params = new URLSearchParams({
+        latitude: coordinates.latitude.toFixed(5),
+        longitude: coordinates.longitude.toFixed(5),
+        current: [
+            'temperature_2m',
+            'relative_humidity_2m',
+            'apparent_temperature',
+            'precipitation',
+            'weather_code',
+            'wind_speed_10m',
+            'wind_direction_10m',
+        ].join(','),
+        timezone: 'auto',
+        forecast_days: '1',
+    })
+    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`)
+
+    if (!response.ok) {
+        throw new Error('Live weather service did not respond')
+    }
+
+    const data = await response.json() as OpenMeteoResponse
+    const current = data.current
+
+    if (!current) {
+        throw new Error('Live weather service returned no current conditions')
+    }
+
+    return {
+        observedAt: current.time ?? null,
+        timezone: data.timezone ?? '',
+        temperatureC: toNullableWeatherNumber(current.temperature_2m),
+        feelsLikeC: toNullableWeatherNumber(current.apparent_temperature),
+        humidityPercent: toNullableWeatherNumber(current.relative_humidity_2m),
+        precipitationMm: toNullableWeatherNumber(current.precipitation),
+        windSpeedKmh: toNullableWeatherNumber(current.wind_speed_10m),
+        windDirectionDegrees: toNullableWeatherNumber(current.wind_direction_10m),
+        weatherCode: toNullableWeatherNumber(current.weather_code),
+    }
 }
 
 function OverviewInsightCard({
@@ -481,87 +413,270 @@ function OverviewInsightCard({
     )
 }
 
-function TaskRow({ task }: { task: UpcomingTask }) {
-    const dueTone = task.severity === 'overdue' ? 'peach' : 'mint'
+function WeatherConditionIcon({ code }: { code: number | null }) {
+    const iconSx = { fontSize: 54 }
 
+    if (code !== null && [95, 96, 99].includes(code)) {
+        return <ThunderstormOutlined sx={iconSx} />
+    }
+
+    if (code !== null && [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) {
+        return <GrainOutlined sx={iconSx} />
+    }
+
+    if (code !== null && (code >= 2 || [45, 48].includes(code))) {
+        return <CloudOutlined sx={iconSx} />
+    }
+
+    return <WbSunnyOutlined sx={iconSx} />
+}
+
+function WeatherMetric({
+    icon,
+    label,
+    value,
+    helper,
+}: {
+    icon: React.ReactNode
+    label: string
+    value: string
+    helper?: string
+}) {
     return (
         <Box
             sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: 1.3,
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                p: 1.5,
+                p: 1.45,
                 borderRadius: '18px',
-                border: '1px solid rgba(86,184,112,0.16)',
+                border: '1px solid rgba(86,184,112,0.14)',
                 bgcolor: 'rgba(255,255,255,0.72)',
+                minHeight: 104,
             }}
         >
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mb: 0.8 }}>
-                    <StatusBadge text={task.kind} tone="mint" />
-                    <StatusBadge text={task.weekLabel} tone="mint" />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1 }}>
+                <Box
+                    sx={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: '12px',
+                        bgcolor: MINT_PALE,
+                        border: `1px solid ${MINT_BORDER}`,
+                        color: MINT_DARK,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                    }}
+                >
+                    {icon}
                 </Box>
-                <Typography sx={{ fontSize: '0.86rem', color: TEXT_MID, lineHeight: 1.6, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                    {task.fieldLabel}
-                </Typography>
-                <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.25, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                    {task.activity}
-                </Typography>
-                <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 0.25, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                    Linked to {task.scheduleType} · {task.cropType || 'Sugarcane'}
+                <Typography sx={{ fontSize: '0.68rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                    {label}
                 </Typography>
             </Box>
-            <Box sx={{ textAlign: { xs: 'left', sm: 'right' }, flexShrink: 0 }}>
-                <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: task.severity === 'overdue' ? PEACH_DARK : MINT_DARK, mb: 0.2 }}>
-                    {formatDateOnlyLabel(task.dateIso, { day: '2-digit', month: 'short', year: 'numeric' }) || task.dateIso}
+            <Typography sx={{ fontSize: '1.12rem', fontWeight: 800, color: 'text.primary', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.1 }}>
+                {value}
+            </Typography>
+            {helper ? (
+                <Typography sx={{ fontSize: '0.76rem', color: TEXT_MID, lineHeight: 1.5, mt: 0.45 }}>
+                    {helper}
                 </Typography>
-                <StatusBadge text={getDueLabel(task.daysUntil)} tone={dueTone} />
-            </Box>
+            ) : null}
         </Box>
     )
 }
 
-function CalendarWarningRow({ warning }: { warning: CalendarScheduleWarning }) {
+function WeatherInsightCard({ fallbackCoordinates }: { fallbackCoordinates: WeatherCoordinates }) {
+    const [deviceCoordinates, setDeviceCoordinates] = useState<WeatherCoordinates | null>(null)
+    const [locationStatus, setLocationStatus] = useState<'checking' | 'tracking' | 'fallback'>('checking')
+    const [locationError, setLocationError] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+            setLocationStatus('fallback')
+            setLocationError('Device location is unavailable')
+            return undefined
+        }
+
+        let isMounted = true
+        const applyPosition = (position: GeolocationPosition) => {
+            if (!isMounted) return
+
+            const nextCoordinates = getDeviceWeatherCoordinates(position)
+            setDeviceCoordinates((currentCoordinates) => {
+                if (
+                    currentCoordinates?.latitude === nextCoordinates.latitude &&
+                    currentCoordinates?.longitude === nextCoordinates.longitude &&
+                    currentCoordinates?.accuracyMeters === nextCoordinates.accuracyMeters
+                ) {
+                    return currentCoordinates
+                }
+
+                return nextCoordinates
+            })
+            setLocationStatus('tracking')
+            setLocationError(null)
+        }
+
+        const handleError = (positionError: GeolocationPositionError) => {
+            if (!isMounted) return
+
+            setLocationStatus('fallback')
+            setLocationError(
+                positionError.code === positionError.PERMISSION_DENIED
+                    ? 'Location permission denied'
+                    : 'Device location unavailable'
+            )
+        }
+
+        const watchId = navigator.geolocation.watchPosition(
+            applyPosition,
+            handleError,
+            {
+                enableHighAccuracy: true,
+                maximumAge: 30_000,
+                timeout: 15_000,
+            }
+        )
+
+        return () => {
+            isMounted = false
+            navigator.geolocation.clearWatch(watchId)
+        }
+    }, [])
+
+    const coordinates = deviceCoordinates ?? fallbackCoordinates
+    const {
+        data: weather,
+        isLoading,
+        isFetching,
+        error,
+    } = useQuery<WeatherReading, Error>({
+        queryKey: ['overview-live-weather', coordinates.latitude, coordinates.longitude],
+        queryFn: () => fetchCurrentWeather(coordinates),
+        staleTime: WEATHER_REFRESH_MS,
+        refetchInterval: WEATHER_REFRESH_MS,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
+        retry: 1,
+    })
+
+    const weatherCode = weather?.weatherCode ?? null
+    const conditionLabel = getWeatherConditionLabel(weatherCode)
+    const observedLabel = weather
+        ? `Observed ${formatObservedTime(weather.observedAt)}`
+        : isLoading
+            ? 'Fetching latest reading'
+            : 'Live reading paused'
+    const locationLabel = coordinates.source === 'device-location'
+        ? coordinates.label
+        : coordinates.source === 'field-centroid'
+            ? coordinates.label
+            : 'Default field area'
+    const locationBadge = coordinates.source === 'device-location'
+        ? 'Device location'
+        : locationStatus === 'checking'
+            ? 'Locating'
+            : coordinates.source === 'field-centroid'
+                ? 'Field centroid'
+                : 'ZSAES area'
+    const coordinateLabel = `${Math.abs(coordinates.latitude).toFixed(3)}°${coordinates.latitude >= 0 ? 'N' : 'S'}, ${Math.abs(coordinates.longitude).toFixed(3)}°${coordinates.longitude >= 0 ? 'E' : 'W'}${coordinates.accuracyMeters ? ` · ±${coordinates.accuracyMeters} m` : ''}`
+    const windValue = weather?.windSpeedKmh == null
+        ? '--'
+        : `${formatWeatherNumber(weather.windSpeedKmh, ' km/h')} ${getWindDirectionLabel(weather.windDirectionDegrees)}`
+
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: 1.3,
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                p: 1.5,
-                borderRadius: '18px',
-                border: '1px solid rgba(244,162,140,0.2)',
-                bgcolor: 'rgba(255,248,242,0.82)',
-            }}
-        >
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mb: 0.8 }}>
-                    <StatusBadge text="Expected harvest" tone="peach" />
-                    <StatusBadge text="Action needed" tone="peach" />
+        <OverviewInsightCard eyebrow="Live Weather" title="Field Weather">
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                <StatusBadge text={error ? 'Weather offline' : isFetching ? 'Updating' : 'Live weather'} tone={error ? 'peach' : 'mint'} />
+                <StatusBadge text={locationBadge} tone={coordinates.source === 'device-location' ? 'mint' : 'peach'} />
+            </Box>
+
+            <Box
+                sx={{
+                    p: { xs: 2, sm: 2.2 },
+                    borderRadius: '22px',
+                    border: error ? '1px solid rgba(244,162,140,0.24)' : '1px solid rgba(86,184,112,0.16)',
+                    bgcolor: error ? 'rgba(255,248,242,0.82)' : 'rgba(255,255,255,0.76)',
+                    mb: 1.2,
+                }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                    <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontSize: '0.78rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.12em', textTransform: 'uppercase', mb: 0.65 }}>
+                            {locationLabel}
+                        </Typography>
+                        <Typography sx={{ fontSize: 'clamp(2.2rem, 5vw, 3.35rem)', fontWeight: 800, color: 'text.primary', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1 }}>
+                            {formatTemperature(weather?.temperatureC ?? null)}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.95rem', color: TEXT_MID, lineHeight: 1.5, mt: 0.7 }}>
+                            {error ? 'Live weather unavailable' : `${conditionLabel} · ${observedLabel}`}
+                        </Typography>
+                    </Box>
+                    <Box
+                        sx={{
+                            width: 86,
+                            height: 86,
+                            borderRadius: '26px',
+                            bgcolor: error ? PEACH_PALE : MINT_PALE,
+                            border: `1px solid ${error ? 'rgba(244,162,140,0.26)' : MINT_BORDER}`,
+                            color: error ? PEACH_DARK : MINT_DARK,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                        }}
+                    >
+                        {isLoading && !weather ? <CircularProgress size={34} sx={{ color: error ? PEACH_DARK : MINT_DARK }} /> : <WeatherConditionIcon code={weatherCode} />}
+                    </Box>
                 </Box>
-                <Typography sx={{ fontSize: '0.86rem', color: TEXT_MID, lineHeight: 1.6, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                    {warning.fieldLabel}
+                <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 1.4 }}>
+                    {coordinateLabel}{weather?.timezone ? ` · ${weather.timezone}` : ''}
                 </Typography>
-                <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.25, fontWeight: 700, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                    {warning.title}
-                </Typography>
-                <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 0.25, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                    {warning.detail}
-                </Typography>
+                {error ? (
+                    <Typography sx={{ fontSize: '0.82rem', color: PEACH_DARK, lineHeight: 1.6, mt: 1 }}>
+                        {error.message}
+                    </Typography>
+                ) : null}
+                {!error && locationError && coordinates.source !== 'device-location' ? (
+                    <Typography sx={{ fontSize: '0.82rem', color: PEACH_DARK, lineHeight: 1.6, mt: 1 }}>
+                        {locationError}; using {coordinates.source === 'field-centroid' ? 'field centroid' : 'default field area'}.
+                    </Typography>
+                ) : null}
             </Box>
-            <Box sx={{ textAlign: { xs: 'left', sm: 'right' }, flexShrink: 0 }}>
-                <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: PEACH_DARK, mb: 0.2 }}>
-                    {warning.dateIso
-                        ? formatDateOnlyLabel(warning.dateIso, { day: '2-digit', month: 'short', year: 'numeric' }) || warning.dateIso
-                        : 'Missing date'}
-                </Typography>
-                <StatusBadge text={warning.dateIso ? 'Linked date' : 'No harvest date'} tone="peach" />
+
+            <Box
+                sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+                    gap: 1,
+                }}
+            >
+                <WeatherMetric
+                    icon={<DeviceThermostatOutlined sx={{ fontSize: 18 }} />}
+                    label="Feels Like"
+                    value={formatTemperature(weather?.feelsLikeC ?? null)}
+                    helper="Apparent temperature"
+                />
+                <WeatherMetric
+                    icon={<WaterDropOutlined sx={{ fontSize: 18 }} />}
+                    label="Humidity"
+                    value={formatWeatherNumber(weather?.humidityPercent ?? null, '%')}
+                    helper="Relative humidity"
+                />
+                <WeatherMetric
+                    icon={<GrainOutlined sx={{ fontSize: 18 }} />}
+                    label="Rain"
+                    value={formatWeatherNumber(weather?.precipitationMm ?? null, ' mm', 1)}
+                    helper="Current precipitation"
+                />
+                <WeatherMetric
+                    icon={<AirOutlined sx={{ fontSize: 18 }} />}
+                    label="Wind"
+                    value={windValue}
+                    helper="10 m wind speed"
+                />
             </Box>
-        </Box>
+        </OverviewInsightCard>
     )
 }
 
@@ -1023,247 +1138,37 @@ function ProtocolStep({ step, index, inView }: { step: string; index: number; in
 export function HomePage() {
     const { user } = useAuth()
     const {
-        data: monitoring = [],
-        isLoading: monitoringLoading,
-        error: monitoringError,
-    } = useSugarcaneMonitoring({ includeUndated: true })
-    const {
         data: liveFields = [],
         isLoading: fieldsLoading,
         error: fieldsError,
-    } = useQuery<PredefinedField[], Error>({
-        queryKey: ['overview-live-fields'],
-        queryFn: fetchLivePredefinedFields,
-        staleTime: 60_000,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: true,
-    })
+    } = useLivePredefinedFields()
 
-    const calendarFieldSeeds = useMemo<CalendarFieldSeed[]>(() => {
-        const sortedMonitoring = [...monitoring].sort(
-            (left, right) => getDateOnlyTimestamp(right.date_recorded) - getDateOnlyTimestamp(left.date_recorded)
-        )
-        const byField = new Map<string, CalendarFieldSeed>()
+    const weatherCoordinates = useMemo(
+        () => getFieldWeatherCoordinates(liveFields),
+        [liveFields]
+    )
 
-        sortedMonitoring.forEach((record) => {
-            const fieldKey = buildFieldIdentity(record.field_name, record.section_name, record.block_id)
-            if (!fieldKey || fieldKey === '||') {
-                return
-            }
-
-            const existing = byField.get(fieldKey)
-            const cropType = (record.crop_type ?? '').trim()
-            const cropClass = (record.crop_class ?? record.crop_type ?? '').trim()
-            const expectedHarvestDate = normalizeDateOnlyValue(record.expected_harvest_date) || ''
-
-            if (!existing) {
-                byField.set(fieldKey, {
-                    fieldKey,
-                    fieldLabel: buildFieldLabel(record.field_name, record.section_name, record.block_id),
-                    cropType,
-                    cropClass,
-                    expectedHarvestDate,
-                })
-                return
-            }
-
-            if (!existing.cropType && cropType) existing.cropType = cropType
-            if (!existing.cropClass && cropClass) existing.cropClass = cropClass
-            if (!existing.expectedHarvestDate && expectedHarvestDate) existing.expectedHarvestDate = expectedHarvestDate
-        })
-
-        return Array.from(byField.values())
-            .filter((seed) =>
-                isCalendarRelevantCrop(seed.cropType, seed.cropClass) &&
-                Boolean(normalizeDateOnlyValue(seed.expectedHarvestDate))
-            )
-            .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
-    }, [monitoring])
-
-    const upcomingTaskItems = useMemo<UpcomingTask[]>(() => {
-        const todayIso = getTodayDateOnly()
-        const todayTimestamp = getDateOnlyTimestamp(todayIso)
-        const uniqueTasks = new Map<string, UpcomingTask>()
-
-        calendarFieldSeeds.forEach((seed) => {
-            const harvestDate = normalizeDateOnlyValue(seed.expectedHarvestDate)
-            if (harvestDate) {
-                HARVEST_PROXIMITY_TASKS.forEach((task) => {
-                    const dateIso = addDaysToDateOnly(harvestDate, task.offsetDays)
-
-                    if (!dateIso) {
-                        return
-                    }
-
-                    const taskTimestamp = getDateOnlyTimestamp(dateIso)
-                    const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
-
-                    const taskKey = `${seed.fieldKey}|expected-harvest|${harvestDate}|${task.offsetDays}`
-
-                    if (!uniqueTasks.has(taskKey)) {
-                        uniqueTasks.set(taskKey, {
-                            key: taskKey,
-                            kind: 'Harvest',
-                            activity: task.activity,
-                            dateIso,
-                            fieldLabel: seed.fieldLabel,
-                            cropType: seed.cropType || seed.cropClass || 'Sugarcane',
-                            weekLabel: task.weekLabel,
-                            scheduleType: 'expected harvest date',
-                            severity: getTaskSeverity(daysUntil),
-                            daysUntil,
-                        })
-                    }
-                })
-            }
-        })
-
-        return Array.from(uniqueTasks.values()).sort(sortUpcomingTasks)
-    }, [calendarFieldSeeds])
-    const calendarWarnings = useMemo<CalendarScheduleWarning[]>(() => {
-        const warnings = new Map<string, CalendarScheduleWarning>()
-
-        calendarFieldSeeds.forEach((seed) => {
-            if (normalizeDateOnlyValue(seed.expectedHarvestDate)) {
-                return
-            }
-
-            const warning: CalendarScheduleWarning = {
-                key: `${seed.fieldKey}|missing-expected-harvest-date`,
-                fieldLabel: seed.fieldLabel,
-                title: 'Expected harvest date missing',
-                detail: 'Add an expected harvest date to this sugarcane field so the Overview can calculate harvest checkpoints.',
-                dateIso: null,
-            }
-
-            if (!warnings.has(warning.key)) {
-                warnings.set(warning.key, warning)
-            }
-        })
-
-        return Array.from(warnings.values()).sort(sortCalendarWarnings)
-    }, [calendarFieldSeeds])
-
-    const mappedAreaFields = useMemo<AreaFieldSnapshot[]>(() => {
-        const latestLiveFields = new Map<string, PredefinedField>()
-
-        liveFields.forEach((field) => {
-            const fieldKey = buildFieldIdentity(field.field_name, field.section_name, field.block_id)
-
-            if (!fieldKey || fieldKey === '||') {
-                return
-            }
-
-            const existing = latestLiveFields.get(fieldKey)
-
-            if (!existing || isFieldRecordNewer(field, existing)) {
-                latestLiveFields.set(fieldKey, field)
-            }
-        })
-
-        return Array.from(latestLiveFields.values())
-            .map((field) => ({
-                fieldKey: buildFieldIdentity(field.field_name, field.section_name, field.block_id),
-                fieldLabel: buildFieldLabel(field.field_name, field.section_name, field.block_id),
-                cropType: (field.crop_type ?? '').trim() || 'Unspecified',
-                areaHa: resolvePredefinedFieldAreaHa(field),
-            }))
-            .filter((snapshot) => snapshot.areaHa !== null && snapshot.areaHa > 0)
-            .map((snapshot) => ({
-                ...snapshot,
-                areaHa: snapshot.areaHa as number,
-            }))
-            .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
-    }, [liveFields])
-    const areaSummary = useMemo(
-        () => mappedAreaFields.reduce(
-            (summary, snapshot) => {
-                const areaHa = snapshot.areaHa ?? 0
-
-                summary.totalMeasuredArea += areaHa
-
-                switch (getAreaCropGroup(snapshot.cropType)) {
-                    case 'Sugarcane':
-                        summary.totalSugarcaneArea += areaHa
-                        summary.sugarcaneFieldCount += 1
-                        break
-                    case 'Break Crop':
-                        summary.totalBreakCropArea += areaHa
-                        summary.breakCropFieldCount += 1
-                        break
-                    case 'Fallow Period':
-                        summary.totalFallowArea += areaHa
-                        summary.fallowFieldCount += 1
-                        break
-                    default:
-                        summary.totalUnspecifiedArea += areaHa
-                        summary.unspecifiedFieldCount += 1
-                        break
-                }
-
-                return summary
-            },
-            {
-                totalMeasuredArea: 0,
-                totalSugarcaneArea: 0,
-                totalBreakCropArea: 0,
-                totalFallowArea: 0,
-                totalUnspecifiedArea: 0,
-                sugarcaneFieldCount: 0,
-                breakCropFieldCount: 0,
-                fallowFieldCount: 0,
-                unspecifiedFieldCount: 0,
-            }
-        ),
-        [mappedAreaFields]
+    const landUseSummary = useMemo(
+        () => summarizeLiveFieldLandUse(liveFields),
+        [liveFields]
     )
     const areaOverviewData = useMemo<AreaOverviewDatum[]>(
-        () => [
-            {
-                label: 'Sugarcane',
-                areaHa: Number(areaSummary.totalSugarcaneArea.toFixed(2)),
-                color: MINT,
-                fieldCount: areaSummary.sugarcaneFieldCount,
-            },
-            {
-                label: 'Break Crop',
-                areaHa: Number(areaSummary.totalBreakCropArea.toFixed(2)),
-                color: SKY,
-                fieldCount: areaSummary.breakCropFieldCount,
-            },
-            {
-                label: 'Fallow Period',
-                areaHa: Number(areaSummary.totalFallowArea.toFixed(2)),
-                color: PEACH,
-                fieldCount: areaSummary.fallowFieldCount,
-            },
-            {
-                label: 'Unspecified',
-                areaHa: Number(areaSummary.totalUnspecifiedArea.toFixed(2)),
-                color: SAND,
-                fieldCount: areaSummary.unspecifiedFieldCount,
-            },
-        ],
-        [
-            areaSummary.breakCropFieldCount,
-            areaSummary.fallowFieldCount,
-            areaSummary.sugarcaneFieldCount,
-            areaSummary.totalUnspecifiedArea,
-            areaSummary.totalBreakCropArea,
-            areaSummary.totalFallowArea,
-            areaSummary.totalSugarcaneArea,
-            areaSummary.unspecifiedFieldCount,
-        ]
+        () => landUseSummary.items.map((item) => ({
+            label: item.label,
+            areaHa: item.areaHa,
+            color: item.label === 'Sugarcane'
+                ? MINT
+                : item.label === 'Break Crop'
+                    ? SKY
+                    : item.label === 'Fallow Period'
+                        ? PEACH
+                        : SAND,
+            fieldCount: item.fieldCount,
+        })),
+        [landUseSummary]
     )
-    const nextHarvestTask = upcomingTaskItems[0] ?? null
-    const secondaryHarvestTask = upcomingTaskItems.find((task) => task.key !== nextHarvestTask?.key) ?? null
-    const upcomingTasksPreview = upcomingTaskItems.slice(0, 5)
-    const nextHarvestWarning = calendarWarnings[0] ?? null
-    const secondaryHarvestWarning = calendarWarnings.find((warning) => warning.key !== nextHarvestWarning?.key) ?? null
-    const harvestLinkageWarning = nextHarvestTask ? nextHarvestWarning : secondaryHarvestWarning
-    const calendarWarningsPreview = calendarWarnings.slice(0, 3)
-    const overviewError = monitoringError ?? fieldsError
-    const isOverviewLoading = monitoringLoading || fieldsLoading
+    const overviewError = fieldsError
+    const isOverviewLoading = fieldsLoading
 
     const protocolRef = useRef(null)
     const protocolInView = useInView(protocolRef, { once: true, margin: '-80px' })
@@ -1342,133 +1247,13 @@ export function HomePage() {
                                     </Typography>
                                     <AreaPieChart
                                         data={areaOverviewData}
-                                        totalAreaHa={Number(areaSummary.totalMeasuredArea.toFixed(2))}
+                                        totalAreaHa={landUseSummary.totalMeasuredArea}
                                     />
                                 </OverviewInsightCard>
                             </Grid>
 
                             <Grid size={{ xs: 12, lg: 6 }}>
-                                <OverviewInsightCard>
-                                    <Grid container spacing={1.4} sx={{ mb: 2.2 }}>
-                                        <Grid size={{ xs: 12, sm: 6 }}>
-                                            <Box sx={{ p: 1.6, borderRadius: '18px', border: '1px solid rgba(86,184,112,0.16)', bgcolor: 'rgba(255,255,255,0.74)', height: '100%' }}>
-                                                <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.6 }}>
-                                                    Closest harvest task
-                                                </Typography>
-                                                {nextHarvestTask ? (
-                                                    <>
-                                                        <Typography sx={{ fontSize: '1.02rem', fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
-                                                            {formatDateOnlyLabel(nextHarvestTask.dateIso) || nextHarvestTask.dateIso}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                            {nextHarvestTask.fieldLabel}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.35 }}>
-                                                            {nextHarvestTask.activity}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.76rem', color: PEACH_DARK, mt: 0.6 }}>
-                                                            {getDueLabel(nextHarvestTask.daysUntil)}
-                                                        </Typography>
-                                                    </>
-                                                ) : nextHarvestWarning ? (
-                                                    <>
-                                                        <Typography sx={{ fontSize: '0.96rem', fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
-                                                            {nextHarvestWarning.title}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                            {nextHarvestWarning.fieldLabel}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.35 }}>
-                                                            {nextHarvestWarning.detail}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.76rem', color: PEACH_DARK, mt: 0.6 }}>
-                                                            Save the expected harvest date to generate harvest checkpoints.
-                                                        </Typography>
-                                                    </>
-                                                ) : (
-                                                    <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                        No harvest tasks are available yet. Add expected harvest dates to sugarcane fields to generate them.
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        </Grid>
-                                        <Grid size={{ xs: 12, sm: 6 }}>
-                                            <Box sx={{ p: 1.6, borderRadius: '18px', border: '1px solid rgba(86,184,112,0.16)', bgcolor: 'rgba(255,255,255,0.74)', height: '100%' }}>
-                                                <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.6 }}>
-                                                    Expected harvest linkage
-                                                </Typography>
-                                                {harvestLinkageWarning ? (
-                                                    <>
-                                                        <Typography sx={{ fontSize: '0.96rem', fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
-                                                            {harvestLinkageWarning.title}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                            {harvestLinkageWarning.fieldLabel}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.35 }}>
-                                                            {harvestLinkageWarning.detail}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.76rem', color: PEACH_DARK, mt: 0.6 }}>
-                                                            This field is not linked to a harvest plan until the expected harvest date is saved.
-                                                        </Typography>
-                                                    </>
-                                                ) : secondaryHarvestTask ? (
-                                                    <>
-                                                        <Typography sx={{ fontSize: '1.02rem', fontWeight: 800, color: 'text.primary', mb: 0.35 }}>
-                                                            {formatDateOnlyLabel(secondaryHarvestTask.dateIso) || secondaryHarvestTask.dateIso}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                            {secondaryHarvestTask.fieldLabel}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.6, mt: 0.35 }}>
-                                                            {secondaryHarvestTask.activity}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: '0.76rem', color: PEACH_DARK, mt: 0.6 }}>
-                                                            {getDueLabel(secondaryHarvestTask.daysUntil)}
-                                                        </Typography>
-                                                    </>
-                                                ) : (
-                                                    <Typography sx={{ fontSize: '0.88rem', color: TEXT_MID, lineHeight: 1.6 }}>
-                                                        Expected harvest dates are linked for the current sugarcane harvest tasks.
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        </Grid>
-                                    </Grid>
-
-                                    <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 1 }}>
-                                        Upcoming harvest tasks
-                                    </Typography>
-                                    {upcomingTasksPreview.length > 0 ? (
-                                        <Box sx={{ display: 'grid', gap: 1 }}>
-                                            {upcomingTasksPreview.map((task) => (
-                                                <TaskRow key={task.key} task={task} />
-                                            ))}
-                                        </Box>
-                                    ) : calendarWarningsPreview.length > 0 ? (
-                                        <Box sx={{ display: 'grid', gap: 1 }}>
-                                            {calendarWarningsPreview.map((warning) => (
-                                                <CalendarWarningRow key={warning.key} warning={warning} />
-                                            ))}
-                                        </Box>
-                                    ) : (
-                                        <Typography sx={{ fontSize: '0.9rem', color: TEXT_MID, lineHeight: 1.75 }}>
-                                            No harvest tasks are available yet. Save expected harvest dates for sugarcane fields to build this list.
-                                        </Typography>
-                                    )}
-                                    {upcomingTasksPreview.length > 0 && calendarWarningsPreview.length > 0 ? (
-                                        <>
-                                            <Typography sx={{ fontSize: '0.74rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase', letterSpacing: '0.12em', mt: 1.8, mb: 1 }}>
-                                                Missing expected harvest dates
-                                            </Typography>
-                                            <Box sx={{ display: 'grid', gap: 1 }}>
-                                                {calendarWarningsPreview.map((warning) => (
-                                                    <CalendarWarningRow key={warning.key} warning={warning} />
-                                                ))}
-                                            </Box>
-                                        </>
-                                    ) : null}
-                                </OverviewInsightCard>
+                                <WeatherInsightCard fallbackCoordinates={weatherCoordinates} />
                             </Grid>
                         </Grid>
 

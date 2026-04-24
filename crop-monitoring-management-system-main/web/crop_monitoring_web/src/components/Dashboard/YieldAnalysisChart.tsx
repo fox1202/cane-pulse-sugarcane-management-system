@@ -39,6 +39,7 @@ import {
   getAreaCropGroup,
   normalizeFallowCropClassLabel,
 } from '@/utils/cropGrouping'
+import { summarizeLiveFieldLandUse } from '@/utils/liveFieldLandUse'
 import { isValid, parseISO } from 'date-fns'
 
 interface YieldAnalysisChartProps {
@@ -1847,11 +1848,6 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     [measuredFields]
   )
 
-  const fallowFields = useMemo(
-    () => measuredFields.filter((field) => getAreaCropGroup(field.databaseCropClass) === 'Fallow Period'),
-    [measuredFields]
-  )
-
   const expectedHarvestSugarcaneFields = useMemo<ExpectedHarvestField[]>(() => {
     const byField = new Map<string, ExpectedHarvestField>()
 
@@ -1933,19 +1929,9 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
     [measuredFields]
   )
 
-  const totalSugarcaneArea = useMemo(
-    () => sumBy(sugarcaneFields, (field) => field.areaHa ?? 0),
-    [sugarcaneFields]
-  )
-
-  const totalBreakCropArea = useMemo(
-    () => sumBy(breakCropFields, (field) => field.areaHa ?? 0),
-    [breakCropFields]
-  )
-
-  const totalFallowArea = useMemo(
-    () => sumBy(fallowFields, (field) => field.areaHa ?? 0),
-    [fallowFields]
+  const landUseSummary = useMemo(
+    () => summarizeLiveFieldLandUse(liveFields),
+    [liveFields]
   )
 
   const phValues = useMemo(
@@ -1966,49 +1952,28 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
   const maxTam = useMemo(() => (tamValues.length > 0 ? Math.max(...tamValues) : null), [tamValues])
 
   const areaOverviewData = useMemo<CoverageDatum[]>(
-    () => [
-      {
-        label: 'Sugarcane',
-        value: Number(totalSugarcaneArea.toFixed(2)),
-        fieldCount: sugarcaneFields.length,
-        color: AREA_COLORS.sugarcane,
-        navigation: {
-          searchParams: {
-            cropType: 'Sugarcane',
+    () => landUseSummary.items
+      .filter((item) => item.areaHa > 0)
+      .map((item) => ({
+        label: item.label,
+        value: item.areaHa,
+        fieldCount: item.fieldCount,
+        color: item.label === 'Sugarcane'
+          ? AREA_COLORS.sugarcane
+          : item.label === 'Break Crop'
+            ? AREA_COLORS.breakCrop
+            : item.label === 'Fallow Period'
+              ? AREA_COLORS.fallow
+              : AREA_COLORS.unspecified,
+        navigation: item.label === 'Unspecified'
+          ? undefined
+          : {
+            searchParams: {
+              cropType: item.label,
+            },
           },
-        },
-      },
-      {
-        label: 'Break Crop',
-        value: Number(totalBreakCropArea.toFixed(2)),
-        fieldCount: breakCropFields.length,
-        color: AREA_COLORS.breakCrop,
-        navigation: {
-          searchParams: {
-            cropType: 'Break Crop',
-          },
-        },
-      },
-      {
-        label: 'Fallow Period',
-        value: Number(totalFallowArea.toFixed(2)),
-        fieldCount: fallowFields.length,
-        color: AREA_COLORS.fallow,
-        navigation: {
-          searchParams: {
-            cropType: 'Fallow Period',
-          },
-        },
-      },
-    ].filter((item) => item.value > 0),
-    [
-      breakCropFields.length,
-      fallowFields.length,
-      sugarcaneFields.length,
-      totalBreakCropArea,
-      totalFallowArea,
-      totalSugarcaneArea,
-    ]
+      })),
+    [landUseSummary]
   )
 
   const expectedHarvestMonthData = useMemo<ExpectedHarvestMonthDatum[]>(() => {
@@ -2550,9 +2515,9 @@ export const YieldAnalysisChart: React.FC<YieldAnalysisChartProps> = ({ observat
             height={500}
             accentColor={AREA_COLORS.sugarcane}
           >
-            {totalMeasuredArea > 0 && areaOverviewData.length > 0 ? (
+            {landUseSummary.totalMeasuredArea > 0 && areaOverviewData.length > 0 ? (
               <AreaPieSummary
-                totalArea={totalMeasuredArea}
+                totalArea={landUseSummary.totalMeasuredArea}
                 data={areaOverviewData}
                 onSelectCrop={handleAreaCoverageSelect}
               />

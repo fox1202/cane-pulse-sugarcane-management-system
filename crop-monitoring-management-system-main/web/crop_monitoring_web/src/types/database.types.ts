@@ -40,6 +40,7 @@ export interface CropInformation {
     crop_type: string;
     ratoon_number: number;
     variety: string;
+    ploughing_date?: string;
     planting_date: string;
     expected_harvest_date: string;
     crop_stage: string;
@@ -218,10 +219,12 @@ export interface ObservationEntryForm {
     crop_type?: string;
     crop_class?: string;
     variety?: string;
+    ploughing_date?: string;
     planting_date?: string;
     soil_sampling_date?: string;
     soil_test_pdf_url?: string;
     foliar_analysis_pdf_url?: string;
+    final_eldana_survey_pdf_url?: string;
     previous_cutting_date?: string;
     cutting_date?: string;
     expected_harvest_date?: string;
@@ -273,11 +276,13 @@ export interface SugarcaneMonitoringRecord {
     variety?: string;
     ratoon_number?: number;
     crop_stage?: string;
+    ploughing_date?: string;
     planting_date?: string;
     soil_sampling_date?: string;
     soil_test_pdf_url?: string;
     soil_test_pdf_path?: string;
     foliar_analysis_pdf_url?: string;
+    final_eldana_survey_pdf_url?: string;
     previous_cutting?: string;
     previous_cutting_date?: string;
     expected_harvest_date?: string;

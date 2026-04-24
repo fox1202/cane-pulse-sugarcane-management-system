@@ -1,5 +1,4 @@
-import { useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     Alert,
@@ -23,12 +22,8 @@ import {
     LocalFloristOutlined,
     TimelineOutlined,
 } from '@mui/icons-material'
+import { useLivePredefinedFields } from '@/hooks/useLivePredefinedFields'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
-import { LIVE_DATA_UPDATED_EVENT } from '@/lib/liveData'
-import {
-    fetchLivePredefinedFields,
-    type PredefinedField,
-} from '@/services/database.service'
 import type { SugarcaneMonitoringRecord } from '@/types/database.types'
 import { formatDateOnlyLabel, getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
 import {
@@ -223,23 +218,7 @@ export function SugarcaneMonitoringDashboard() {
     } = useSugarcaneMonitoring({ includeUndated: true })
     const {
         data: predefinedFields = [],
-        refetch: refetchFields,
-    } = useQuery<PredefinedField[], Error>({
-        queryKey: ['monitoring-predefined-fields'],
-        queryFn: fetchLivePredefinedFields,
-        staleTime: 60_000,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: true,
-    })
-
-    useEffect(() => {
-        const handleLiveDataUpdate = () => {
-            void refetchFields()
-        }
-
-        window.addEventListener(LIVE_DATA_UPDATED_EVENT, handleLiveDataUpdate)
-        return () => window.removeEventListener(LIVE_DATA_UPDATED_EVENT, handleLiveDataUpdate)
-    }, [refetchFields])
+    } = useLivePredefinedFields()
 
     const sortedMonitoring = useMemo(
         () => [...monitoring].sort(

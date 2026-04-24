@@ -60,6 +60,7 @@ export function createEmptyObservationDraft(collectorId: string): FullObservatio
             crop_type: '',
             ratoon_number: 0,
             variety: '',
+            ploughing_date: '',
             planting_date: '',
             expected_harvest_date: '',
             crop_stage: '',

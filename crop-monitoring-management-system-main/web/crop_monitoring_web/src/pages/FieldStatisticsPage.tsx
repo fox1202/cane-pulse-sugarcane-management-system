@@ -4,10 +4,9 @@ import {
   CircularProgress,
   Container,
 } from '@mui/material'
-import { useQuery } from '@tanstack/react-query'
 import { YieldAnalysisChart } from '@/components/Dashboard/YieldAnalysisChart'
+import { useLivePredefinedFields } from '@/hooks/useLivePredefinedFields'
 import { useMobileObservationRecords } from '@/hooks/useMobileObservationRecords'
-import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
 
 const CREAM = '#fffaf3'
 
@@ -22,13 +21,7 @@ export function FieldStatisticsPage() {
     data: liveFields = [],
     isLoading: liveFieldsLoading,
     error: liveFieldsError,
-  } = useQuery<PredefinedField[], Error>({
-    queryKey: ['field-statistics-live-fields'],
-    queryFn: fetchLivePredefinedFields,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-  })
+  } = useLivePredefinedFields()
 
   const isLoading = observationsLoading || liveFieldsLoading
   const error = observationsError ?? liveFieldsError

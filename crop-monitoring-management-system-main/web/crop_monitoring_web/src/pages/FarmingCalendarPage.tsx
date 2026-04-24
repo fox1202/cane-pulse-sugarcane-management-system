@@ -1,13 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import {
+    Alert,
     Box,
     Button,
     Chip,
     Container,
+    CircularProgress,
     Grid,
     Paper,
     Stack,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
     Typography,
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
@@ -19,12 +28,11 @@ import {
     TaskAltRounded,
     TimelineRounded,
 } from '@mui/icons-material'
-import { FARMING_CALENDAR_TEMPLATES, type FarmingCalendarTemplate } from '@/data/farmingCalendar'
-import { formatDateOnlyLabel, getDateOnlyTimestamp } from '@/utils/dateOnly'
-import {
-    buildAnchoredCalendarTaskDate,
-    resolveFarmingCalendarRouteContext,
-} from '@/utils/farmingCalendarLinks'
+import type { FarmingCalendarTemplate } from '@/data/farmingCalendar'
+import { fetchFarmingCalendarTemplatesFromDatabase } from '@/services/farmingCalendar.service'
+import { useFieldManagementRecords } from '@/hooks/useFieldManagementRecords'
+import { formatDateOnlyLabel, getDateOnlyTimestamp, normalizeDateOnlyValue } from '@/utils/dateOnly'
+import type { SugarcaneMonitoringRecord } from '@/types/database.types'
 
 const DISPLAY_FONT = '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, "Times New Roman", serif'
 const BODY_FONT = '"Avenir Next", "Trebuchet MS", "Gill Sans", sans-serif'
@@ -33,6 +41,89 @@ type TemplateTask = FarmingCalendarTemplate['tasks'][number]
 type TemplateGrowthStage = FarmingCalendarTemplate['growthStages'][number]
 type ScheduledTemplateTask = TemplateTask & { dueDate: string | null }
 type ActivityKind = 'Nutrient' | 'Herbicide'
+type FieldTaskSeverity = 'overdue' | 'today' | 'soon' | 'planned'
+
+interface FarmingCalendarRouteContext {
+    templateId: FarmingCalendarTemplate['id'] | null
+    trialLabel: string | null
+    fieldLabel: string | null
+    cropClass: string | null
+    anchorDate: string | null
+}
+
+const EMPTY_CALENDAR_TEMPLATE: FarmingCalendarTemplate = {
+    id: 'plant',
+    title: 'Farming Calendar',
+    sourceSheet: '',
+    workbookTitle: '',
+    referenceLabel: 'Reference date',
+    fieldAnchor: 'planting_date',
+    anchorWeekNumber: 1,
+    monthRange: [0, 0],
+    notes: [],
+    growthStages: [],
+    tasks: [],
+}
+
+const FIELD_WORK_WINDOW_DAYS = 45
+const FIELD_WORK_TABLE_LIMIT = 18
+const EXPECTED_HARVEST_FIELD_TASKS = [
+    {
+        offsetDays: -84,
+        weekLabel: '12 wks to harvest',
+        activity: 'Request crushing allocation and confirm harvest scheduling with the mill.',
+    },
+    {
+        offsetDays: -56,
+        weekLabel: '8 wks to harvest',
+        activity: 'Begin dry-off irrigation management and reduce irrigation in the lead-up to harvest.',
+    },
+    {
+        offsetDays: -42,
+        weekLabel: '6 wks to harvest',
+        activity: 'Conduct final eldana, smut, and pest scouting before harvest.',
+    },
+    {
+        offsetDays: -28,
+        weekLabel: '4 wks to harvest',
+        activity: 'Confirm burning program, haulage access, and field readiness for harvest.',
+    },
+    {
+        offsetDays: -14,
+        weekLabel: '2 wks to harvest',
+        activity: 'Complete final dry-off and prepare burning and haulage logistics.',
+    },
+    {
+        offsetDays: 0,
+        weekLabel: 'Harvest',
+        activity: 'Burning, cutting, and haulage operations commence.',
+    },
+] as const
+
+interface FieldWorkRow {
+    key: string
+    fieldLabel: string
+    cropLabel: string
+    dateIso: string
+    dueLabel: string
+    daysUntil: number
+    severity: FieldTaskSeverity
+    kind: string
+    activity: string
+    weekLabel: string
+    sourceLabel: string
+    anchorLabel: string
+}
+
+interface FieldWorkSeed {
+    fieldKey: string
+    fieldLabel: string
+    cropLabel: string
+    cropClass: string
+    plantingDate: string
+    cutDate: string
+    expectedHarvestDate: string
+}
 
 function getTodayDateOnly(): string {
     const today = new Date()
@@ -125,6 +216,618 @@ function formatDueLabel(daysUntil: number): string {
     if (daysUntil === 1) return 'Tomorrow'
     if (daysUntil < 0) return `${Math.abs(daysUntil)} day${Math.abs(daysUntil) === 1 ? '' : 's'} overdue`
     return `In ${daysUntil} days`
+}
+
+function normalizeRouteValue(value?: string | number | null): string {
+    return String(value ?? '').trim().replace(/\s+/g, ' ')
+}
+
+function addDaysToDateOnly(dateIso: string, daysToAdd: number): string | null {
+    const normalized = normalizeDateOnlyValue(dateIso)
+    if (!normalized) {
+        return null
+    }
+
+    const [year, month, day] = normalized.split('-').map(Number)
+    const nextDate = new Date(year, month - 1, day)
+    nextDate.setDate(nextDate.getDate() + daysToAdd)
+
+    const nextYear = nextDate.getFullYear()
+    const nextMonth = String(nextDate.getMonth() + 1).padStart(2, '0')
+    const nextDay = String(nextDate.getDate()).padStart(2, '0')
+    return `${nextYear}-${nextMonth}-${nextDay}`
+}
+
+function resolveFarmingCalendarRouteContext(search: string): FarmingCalendarRouteContext {
+    const params = new URLSearchParams(search)
+    const templateParam = normalizeRouteValue(params.get('template'))
+    const templateId = templateParam === 'plant' || templateParam === 'ratoon' ? templateParam : null
+
+    return {
+        templateId,
+        trialLabel: normalizeRouteValue(params.get('trial')) || null,
+        fieldLabel: normalizeRouteValue(params.get('field')) || null,
+        cropClass: normalizeRouteValue(params.get('cropClass')) || null,
+        anchorDate: normalizeDateOnlyValue(params.get('anchorDate')),
+    }
+}
+
+function buildAnchoredCalendarTaskDate(
+    template: FarmingCalendarTemplate,
+    task: TemplateTask,
+    anchorDate: string
+): string | null {
+    return addDaysToDateOnly(anchorDate, (task.weekNumber - template.anchorWeekNumber) * 7)
+}
+
+function normalizeFieldToken(value?: string | null): string {
+    return (value ?? '').trim().toLowerCase()
+}
+
+function buildFieldIdentity(fieldName?: string | null, sectionName?: string | null, blockId?: string | null): string {
+    const parts = [
+        normalizeFieldToken(sectionName),
+        normalizeFieldToken(blockId),
+        normalizeFieldToken(fieldName),
+    ]
+
+    return parts.some(Boolean) ? parts.join('|') : ''
+}
+
+function buildFieldLabel(fieldName?: string | null, sectionName?: string | null, blockId?: string | null): string {
+    return [fieldName, sectionName, blockId]
+        .map((value) => (value ?? '').trim())
+        .filter(Boolean)
+        .join(' / ') || 'Unknown field'
+}
+
+function buildCropLabel(record: SugarcaneMonitoringRecord): string {
+    const cropType = (record.crop_type ?? '').trim()
+    const cropClass = (record.crop_class ?? '').trim()
+
+    if (cropType && cropClass && cropType.toLowerCase() !== cropClass.toLowerCase()) {
+        return `${cropType} / ${cropClass}`
+    }
+
+    return cropType || cropClass || 'Sugarcane'
+}
+
+function getFieldRecordRecencyTimestamp(record: SugarcaneMonitoringRecord): number {
+    const candidates = [record.date_recorded, record.updated_at, record.created_at]
+
+    for (const value of candidates) {
+        if (!value) {
+            continue
+        }
+
+        const parsed = Date.parse(value)
+        if (!Number.isNaN(parsed)) {
+            return parsed
+        }
+
+        const normalized = normalizeDateOnlyValue(value)
+        if (normalized) {
+            return getDateOnlyTimestamp(normalized)
+        }
+    }
+
+    return 0
+}
+
+function isRatoonLikeField(seed: Pick<FieldWorkSeed, 'cropClass' | 'cropLabel' | 'cutDate'>): boolean {
+    return /\bratoon\b/i.test(`${seed.cropClass} ${seed.cropLabel}`) || Boolean(seed.cutDate)
+}
+
+function resolveFieldTemplate(
+    seed: FieldWorkSeed,
+    templates: FarmingCalendarTemplate[]
+): FarmingCalendarTemplate {
+    const templateId: FarmingCalendarTemplate['id'] = isRatoonLikeField(seed) ? 'ratoon' : 'plant'
+    return templates.find((template) => template.id === templateId) ?? templates[0] ?? EMPTY_CALENDAR_TEMPLATE
+}
+
+function getFieldAnchorDate(seed: FieldWorkSeed, template: FarmingCalendarTemplate): string | null {
+    if (template.fieldAnchor === 'cut_date') {
+        return normalizeDateOnlyValue(seed.cutDate || seed.plantingDate)
+    }
+
+    return normalizeDateOnlyValue(seed.plantingDate || seed.cutDate)
+}
+
+function getFieldTaskKind(activity: string): string {
+    const normalized = activity.trim().toLowerCase()
+
+    if (/harvest|haulage|burning|cutting|maturity/.test(normalized)) return 'Harvest'
+    if (/fertili|ssp|map|npk|foliar|soil analysis|soil sampling|potassium|nitrogen/.test(normalized)) return 'Nutrient'
+    if (/irrigation|dry-off|dry off|tam/.test(normalized)) return 'Irrigation'
+    if (/herbicide|hoeing|weed/.test(normalized)) return 'Weed Control'
+    if (/survey|scouting|smut|eldana|grubs|bmb|ysa|rogue|pest|disease/.test(normalized)) return 'Pest / Disease'
+    if (/plant|seedcane|ridging|land preparation/.test(normalized)) return 'Establishment'
+    return 'Field Activity'
+}
+
+function getFieldTaskSeverity(daysUntil: number): FieldTaskSeverity {
+    if (daysUntil < 0) return 'overdue'
+    if (daysUntil === 0) return 'today'
+    if (daysUntil <= 14) return 'soon'
+    return 'planned'
+}
+
+function sortFieldWorkRows(left: FieldWorkRow, right: FieldWorkRow): number {
+    const leftOverdue = left.daysUntil < 0
+    const rightOverdue = right.daysUntil < 0
+
+    if (leftOverdue && rightOverdue) {
+        return right.daysUntil - left.daysUntil
+    }
+
+    if (leftOverdue !== rightOverdue) {
+        return leftOverdue ? -1 : 1
+    }
+
+    if (left.daysUntil !== right.daysUntil) {
+        return left.daysUntil - right.daysUntil
+    }
+
+    if (left.dateIso !== right.dateIso) {
+        return left.dateIso.localeCompare(right.dateIso)
+    }
+
+    return left.fieldLabel.localeCompare(right.fieldLabel)
+}
+
+function buildFieldWorkSeeds(records: SugarcaneMonitoringRecord[]): FieldWorkSeed[] {
+    const byField = new Map<string, FieldWorkSeed>()
+    const sortedRecords = [...records].sort(
+        (left, right) => getFieldRecordRecencyTimestamp(right) - getFieldRecordRecencyTimestamp(left)
+    )
+
+    sortedRecords.forEach((record) => {
+        const fieldKey = buildFieldIdentity(record.field_name, record.section_name, record.block_id) || `record:${record.id}`
+        const seed = byField.get(fieldKey)
+        const plantingDate = normalizeDateOnlyValue(record.planting_date) || ''
+        const cutDate = normalizeDateOnlyValue(record.previous_cutting_date ?? record.previous_cutting) || ''
+        const expectedHarvestDate = normalizeDateOnlyValue(record.expected_harvest_date) || ''
+        const cropClass = (record.crop_class ?? '').trim()
+        const cropLabel = buildCropLabel(record)
+
+        if (!seed) {
+            byField.set(fieldKey, {
+                fieldKey,
+                fieldLabel: buildFieldLabel(record.field_name, record.section_name, record.block_id),
+                cropLabel,
+                cropClass,
+                plantingDate,
+                cutDate,
+                expectedHarvestDate,
+            })
+            return
+        }
+
+        if (!seed.cropClass && cropClass) seed.cropClass = cropClass
+        if (!seed.cropLabel || seed.cropLabel === 'Sugarcane') seed.cropLabel = cropLabel
+        if (!seed.plantingDate && plantingDate) seed.plantingDate = plantingDate
+        if (!seed.cutDate && cutDate) seed.cutDate = cutDate
+        if (!seed.expectedHarvestDate && expectedHarvestDate) seed.expectedHarvestDate = expectedHarvestDate
+    })
+
+    return Array.from(byField.values())
+        .filter((seed) => seed.plantingDate || seed.cutDate || seed.expectedHarvestDate)
+        .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
+}
+
+function formatShortFieldDate(dateIso: string): string {
+    return formatDateOnlyLabel(dateIso, { day: '2-digit', month: 'short', year: 'numeric' }) || dateIso
+}
+
+function buildFieldWorkRows(
+    records: SugarcaneMonitoringRecord[],
+    templates: FarmingCalendarTemplate[],
+    todayIso: string
+): FieldWorkRow[] {
+    const todayTimestamp = getDateOnlyTimestamp(todayIso)
+    if (!todayTimestamp) {
+        return []
+    }
+
+    const rows = new Map<string, FieldWorkRow>()
+
+    buildFieldWorkSeeds(records).forEach((seed) => {
+        const template = resolveFieldTemplate(seed, templates)
+        const anchorDate = getFieldAnchorDate(seed, template)
+
+        if (anchorDate) {
+            template.tasks.forEach((task) => {
+                const dateIso = buildAnchoredCalendarTaskDate(template, task, anchorDate)
+                const taskTimestamp = getDateOnlyTimestamp(dateIso)
+                if (!dateIso || !taskTimestamp) {
+                    return
+                }
+
+                const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
+                const kind = getFieldTaskKind(task.activity)
+                const key = `${seed.fieldKey}|${template.id}|${task.weekNumber}|${task.activity.toLowerCase()}`
+
+                rows.set(key, {
+                    key,
+                    fieldLabel: seed.fieldLabel,
+                    cropLabel: seed.cropLabel,
+                    dateIso,
+                    dueLabel: formatDueLabel(daysUntil),
+                    daysUntil,
+                    severity: getFieldTaskSeverity(daysUntil),
+                    kind,
+                    activity: task.activity,
+                    weekLabel: task.weekLabel,
+                    sourceLabel: template.title,
+                    anchorLabel: `${template.referenceLabel}: ${formatShortFieldDate(anchorDate)}`,
+                })
+            })
+        }
+
+        if (seed.expectedHarvestDate) {
+            EXPECTED_HARVEST_FIELD_TASKS.forEach((task) => {
+                const dateIso = addDaysToDateOnly(seed.expectedHarvestDate, task.offsetDays)
+                const taskTimestamp = getDateOnlyTimestamp(dateIso)
+                if (!dateIso || !taskTimestamp) {
+                    return
+                }
+
+                const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
+                const kind = getFieldTaskKind(task.activity)
+                const key = `${seed.fieldKey}|expected-harvest|${task.offsetDays}|${task.activity.toLowerCase()}`
+
+                rows.set(key, {
+                    key,
+                    fieldLabel: seed.fieldLabel,
+                    cropLabel: seed.cropLabel,
+                    dateIso,
+                    dueLabel: formatDueLabel(daysUntil),
+                    daysUntil,
+                    severity: getFieldTaskSeverity(daysUntil),
+                    kind,
+                    activity: task.activity,
+                    weekLabel: task.weekLabel,
+                    sourceLabel: 'Expected harvest',
+                    anchorLabel: `Harvest: ${formatShortFieldDate(seed.expectedHarvestDate)}`,
+                })
+            })
+        }
+    })
+
+    return Array.from(rows.values()).sort(sortFieldWorkRows)
+}
+
+function getFieldWorkChipSx(severity: FieldTaskSeverity) {
+    if (severity === 'overdue') {
+        return {
+            bgcolor: 'rgba(210,127,82,0.18)',
+            color: '#a94f2d',
+            borderColor: 'rgba(210,127,82,0.24)',
+        }
+    }
+
+    if (severity === 'today' || severity === 'soon') {
+        return {
+            bgcolor: 'rgba(214,176,44,0.2)',
+            color: '#7b6100',
+            borderColor: 'rgba(214,176,44,0.28)',
+        }
+    }
+
+    return {
+        bgcolor: 'rgba(86,184,112,0.16)',
+        color: '#2f7f4f',
+        borderColor: 'rgba(86,184,112,0.2)',
+    }
+}
+
+function FieldWorkTable({
+    rows,
+    totalRows,
+    isLoading,
+    isFetching,
+    error,
+}: {
+    rows: FieldWorkRow[]
+    totalRows: number
+    isLoading: boolean
+    isFetching: boolean
+    error: Error | null
+}) {
+    return (
+        <Paper
+            sx={{
+                p: { xs: 1.6, md: 2.4 },
+                borderRadius: '28px',
+                border: '1px solid rgba(86,184,112,0.2)',
+                bgcolor: 'rgba(255,255,255,0.9)',
+                boxShadow: '0 24px 52px rgba(35,64,52,0.06)',
+            }}
+        >
+            <Stack spacing={1.8}>
+                <Stack
+                    direction={{ xs: 'column', md: 'row' }}
+                    spacing={1.3}
+                    alignItems={{ xs: 'flex-start', md: 'center' }}
+                    justifyContent="space-between"
+                >
+                    <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                            sx={{
+                                fontSize: '0.74rem',
+                                letterSpacing: '0.16em',
+                                textTransform: 'uppercase',
+                                fontWeight: 900,
+                                color: 'rgba(35,64,52,0.56)',
+                                mb: 0.45,
+                                fontFamily: BODY_FONT,
+                            }}
+                        >
+                            Field Work Table
+                        </Typography>
+                        <Typography
+                            sx={{
+                                fontSize: { xs: '1.55rem', md: '2rem' },
+                                lineHeight: 1.05,
+                                fontWeight: 900,
+                                color: 'var(--calendar-ink)',
+                                fontFamily: DISPLAY_FONT,
+                            }}
+                        >
+                            Work that needs to be done on fields
+                        </Typography>
+                        <Typography
+                            sx={{
+                                mt: 0.55,
+                                maxWidth: 720,
+                                fontSize: '0.94rem',
+                                lineHeight: 1.75,
+                                color: 'rgba(32,56,45,0.66)',
+                                fontFamily: BODY_FONT,
+                            }}
+                        >
+                            Calculated from live field planting dates, previous cutting dates, and expected harvest dates.
+                        </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
+                        <Chip
+                            label={`${totalRows} scheduled`}
+                            size="small"
+                            sx={{
+                                height: 28,
+                                borderRadius: '999px',
+                                bgcolor: 'rgba(86,184,112,0.16)',
+                                color: 'var(--calendar-green)',
+                                fontWeight: 800,
+                                fontFamily: BODY_FONT,
+                            }}
+                        />
+                        {isFetching && !isLoading ? (
+                            <Chip
+                                label="Updating live"
+                                size="small"
+                                sx={{
+                                    height: 28,
+                                    borderRadius: '999px',
+                                    bgcolor: 'rgba(214,176,44,0.18)',
+                                    color: '#806400',
+                                    fontWeight: 800,
+                                    fontFamily: BODY_FONT,
+                                }}
+                            />
+                        ) : null}
+                    </Stack>
+                </Stack>
+
+                {error ? (
+                    <Alert severity="warning" sx={{ borderRadius: '18px' }}>
+                        {error.message || 'Could not load live field records for the field work table.'}
+                    </Alert>
+                ) : null}
+
+                {isLoading ? (
+                    <Stack direction="row" spacing={1.3} alignItems="center" sx={{ py: 1.4 }}>
+                        <CircularProgress size={22} sx={{ color: 'var(--calendar-green)' }} />
+                        <Typography sx={{ fontSize: '0.94rem', color: 'rgba(32,56,45,0.7)', fontWeight: 700, fontFamily: BODY_FONT }}>
+                            Loading field dates from the database.
+                        </Typography>
+                    </Stack>
+                ) : rows.length === 0 ? (
+                    <Box
+                        sx={{
+                            p: 2,
+                            borderRadius: '20px',
+                            border: '1px dashed rgba(86,184,112,0.26)',
+                            bgcolor: 'rgba(247,252,248,0.78)',
+                        }}
+                    >
+                        <Typography
+                            sx={{
+                                fontSize: '0.95rem',
+                                lineHeight: 1.75,
+                                color: 'rgba(32,56,45,0.68)',
+                                fontFamily: BODY_FONT,
+                            }}
+                        >
+                            No field work can be calculated yet. Add planting dates or expected harvest dates to the field records, then this table will populate automatically.
+                        </Typography>
+                    </Box>
+                ) : (
+                    <TableContainer
+                        sx={{
+                            borderRadius: '18px',
+                            border: '1px solid rgba(35,64,52,0.1)',
+                            overflowX: 'auto',
+                        }}
+                    >
+                        <Table size="small" sx={{ minWidth: 920 }}>
+                            <TableHead>
+                                <TableRow
+                                    sx={{
+                                        '& th': {
+                                            bgcolor: 'rgba(35,64,52,0.06)',
+                                            color: 'rgba(35,64,52,0.66)',
+                                            borderBottom: '1px solid rgba(35,64,52,0.1)',
+                                            fontSize: '0.72rem',
+                                            letterSpacing: '0.14em',
+                                            textTransform: 'uppercase',
+                                            fontWeight: 900,
+                                            fontFamily: BODY_FONT,
+                                            py: 1.15,
+                                        },
+                                    }}
+                                >
+                                    <TableCell>Field</TableCell>
+                                    <TableCell>Due</TableCell>
+                                    <TableCell>Task</TableCell>
+                                    <TableCell>Source</TableCell>
+                                    <TableCell>Crop</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {rows.map((row) => {
+                                    const chipSx = getFieldWorkChipSx(row.severity)
+
+                                    return (
+                                        <TableRow
+                                            key={row.key}
+                                            hover
+                                            sx={{
+                                                '& td': {
+                                                    borderBottom: '1px solid rgba(35,64,52,0.08)',
+                                                    py: 1.3,
+                                                    verticalAlign: 'top',
+                                                },
+                                                '&:last-of-type td': {
+                                                    borderBottom: 0,
+                                                },
+                                            }}
+                                        >
+                                            <TableCell sx={{ width: 210 }}>
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: '0.96rem',
+                                                        fontWeight: 900,
+                                                        color: 'var(--calendar-ink)',
+                                                        fontFamily: DISPLAY_FONT,
+                                                        overflowWrap: 'anywhere',
+                                                    }}
+                                                >
+                                                    {row.fieldLabel}
+                                                </Typography>
+                                                <Typography
+                                                    sx={{
+                                                        mt: 0.35,
+                                                        fontSize: '0.78rem',
+                                                        color: 'rgba(32,56,45,0.56)',
+                                                        fontFamily: BODY_FONT,
+                                                        overflowWrap: 'anywhere',
+                                                    }}
+                                                >
+                                                    {row.anchorLabel}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell sx={{ width: 168 }}>
+                                                <Stack spacing={0.65} alignItems="flex-start">
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: '0.9rem',
+                                                            fontWeight: 800,
+                                                            color: 'var(--calendar-ink)',
+                                                            fontFamily: BODY_FONT,
+                                                        }}
+                                                    >
+                                                        {formatShortFieldDate(row.dateIso)}
+                                                    </Typography>
+                                                    <Chip
+                                                        label={row.dueLabel}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        sx={{
+                                                            height: 24,
+                                                            borderRadius: '999px',
+                                                            fontWeight: 800,
+                                                            fontFamily: BODY_FONT,
+                                                            ...chipSx,
+                                                        }}
+                                                    />
+                                                </Stack>
+                                            </TableCell>
+                                            <TableCell sx={{ minWidth: 330 }}>
+                                                <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 0.7 }}>
+                                                    <Chip
+                                                        label={row.kind}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 22,
+                                                            borderRadius: '999px',
+                                                            bgcolor: 'rgba(86,184,112,0.14)',
+                                                            color: 'var(--calendar-green)',
+                                                            fontWeight: 800,
+                                                            fontFamily: BODY_FONT,
+                                                        }}
+                                                    />
+                                                    <Chip
+                                                        label={row.weekLabel}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 22,
+                                                            borderRadius: '999px',
+                                                            bgcolor: 'rgba(35,64,52,0.08)',
+                                                            color: 'rgba(35,64,52,0.78)',
+                                                            fontWeight: 700,
+                                                            fontFamily: BODY_FONT,
+                                                        }}
+                                                    />
+                                                </Stack>
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: '0.92rem',
+                                                        lineHeight: 1.65,
+                                                        color: 'rgba(32,56,45,0.78)',
+                                                        fontFamily: BODY_FONT,
+                                                        overflowWrap: 'anywhere',
+                                                    }}
+                                                >
+                                                    {row.activity}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell sx={{ width: 150 }}>
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: '0.88rem',
+                                                        fontWeight: 800,
+                                                        color: 'rgba(32,56,45,0.72)',
+                                                        fontFamily: BODY_FONT,
+                                                        overflowWrap: 'anywhere',
+                                                    }}
+                                                >
+                                                    {row.sourceLabel}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell sx={{ width: 150 }}>
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: '0.88rem',
+                                                        color: 'rgba(32,56,45,0.68)',
+                                                        fontFamily: BODY_FONT,
+                                                        overflowWrap: 'anywhere',
+                                                    }}
+                                                >
+                                                    {row.cropLabel}
+                                                </Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
+            </Stack>
+        </Paper>
+    )
 }
 
 function SeasonStatCard({
@@ -486,6 +1189,24 @@ export function FarmingCalendarPage() {
         () => resolveFarmingCalendarRouteContext(location.search),
         [location.search]
     )
+    const {
+        data: calendarTemplates = [],
+        isLoading: calendarLoading,
+        isFetching: calendarFetching,
+        error: calendarError,
+    } = useQuery<FarmingCalendarTemplate[], Error>({
+        queryKey: ['farming-calendar-templates'],
+        queryFn: fetchFarmingCalendarTemplatesFromDatabase,
+        staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
+    })
+    const {
+        data: fieldRecords = [],
+        isLoading: fieldRecordsLoading,
+        isFetching: fieldRecordsFetching,
+        error: fieldRecordsError,
+    } = useFieldManagementRecords()
     const [selectedTemplateId, setSelectedTemplateId] = useState<FarmingCalendarTemplate['id']>(
         routeContext.templateId ?? 'plant'
     )
@@ -497,14 +1218,24 @@ export function FarmingCalendarPage() {
     }, [routeContext.templateId])
 
     const selectedTemplate = useMemo(
-        () => FARMING_CALENDAR_TEMPLATES.find((template) => template.id === selectedTemplateId) ?? FARMING_CALENDAR_TEMPLATES[0],
-        [selectedTemplateId]
+        () =>
+            calendarTemplates.find((template) => template.id === selectedTemplateId) ??
+            calendarTemplates[0] ??
+            EMPTY_CALENDAR_TEMPLATE,
+        [calendarTemplates, selectedTemplateId]
     )
 
     const linkedTemplateMatchesSelection = routeContext.templateId === selectedTemplate.id
     const linkedTaskDatesEnabled = linkedTemplateMatchesSelection && Boolean(routeContext.anchorDate)
     const contextLabel = routeContext.trialLabel || routeContext.fieldLabel || ''
     const todayIso = useMemo(() => getTodayDateOnly(), [])
+
+    const fieldMonitoringRecords = useMemo(
+        () => fieldRecords
+            .map((record) => record.monitoring_sheet)
+            .filter((record): record is SugarcaneMonitoringRecord => Boolean(record)),
+        [fieldRecords]
+    )
 
     const allScheduledTasks = useMemo(
         () => selectedTemplate.tasks
@@ -604,6 +1335,21 @@ export function FarmingCalendarPage() {
         [stageTasks]
     )
 
+    const fieldWorkRows = useMemo(
+        () => buildFieldWorkRows(fieldMonitoringRecords, calendarTemplates, todayIso),
+        [calendarTemplates, fieldMonitoringRecords, todayIso]
+    )
+
+    const visibleFieldWorkRows = useMemo(() => {
+        const activeRows = fieldWorkRows.filter((row) => row.daysUntil <= FIELD_WORK_WINDOW_DAYS)
+        const sourceRows = activeRows.length > 0 ? activeRows : fieldWorkRows
+
+        return sourceRows.slice(0, FIELD_WORK_TABLE_LIMIT)
+    }, [fieldWorkRows])
+
+    const fieldWorkTableLoading = fieldRecordsLoading || (calendarLoading && calendarTemplates.length === 0)
+    const fieldWorkTableFetching = fieldRecordsFetching || calendarFetching
+
     return (
         <Box
             sx={{
@@ -623,6 +1369,43 @@ export function FarmingCalendarPage() {
         >
             <Container maxWidth="xl">
                 <Stack spacing={3}>
+                    {calendarError ? (
+                        <Alert severity="error" sx={{ borderRadius: '18px' }}>
+                            {calendarError.message || 'Could not load the farming calendar from the database. Run supabase/import_farming_calendar.sql, then refresh this page.'}
+                        </Alert>
+                    ) : null}
+
+                    {calendarLoading ? (
+                        <Paper
+                            sx={{
+                                p: 2.2,
+                                borderRadius: '22px',
+                                border: '1px solid rgba(86,184,112,0.18)',
+                                bgcolor: 'rgba(255,255,255,0.86)',
+                                boxShadow: '0 18px 38px rgba(35,64,52,0.04)',
+                            }}
+                        >
+                            <Stack direction="row" spacing={1.4} alignItems="center">
+                                <CircularProgress size={24} sx={{ color: 'var(--calendar-green)' }} />
+                                <Typography sx={{ fontSize: '0.95rem', color: 'rgba(32,56,45,0.72)', fontWeight: 700, fontFamily: BODY_FONT }}>
+                                    Loading farming calendar templates from the database.
+                                </Typography>
+                            </Stack>
+                        </Paper>
+                    ) : null}
+
+                    {!calendarLoading && !calendarError && calendarFetching ? (
+                        <Alert severity="info" sx={{ borderRadius: '18px' }}>
+                            Refreshing farming calendar data from the database.
+                        </Alert>
+                    ) : null}
+
+                    {!calendarLoading && !calendarError && calendarTemplates.length === 0 ? (
+                        <Alert severity="warning" sx={{ borderRadius: '18px' }}>
+                            No farming calendar rows were returned from the database. Run supabase/import_farming_calendar.sql to seed the Plant and Ratoon calendars.
+                        </Alert>
+                    ) : null}
+
                     <Paper
                         sx={{
                             position: 'relative',
@@ -698,7 +1481,7 @@ export function FarmingCalendarPage() {
                                     </Typography>
 
                                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1} useFlexGap flexWrap="wrap" sx={{ mb: 1.8 }}>
-                                        {FARMING_CALENDAR_TEMPLATES.map((template) => (
+                                        {calendarTemplates.map((template) => (
                                             <TemplateToggle
                                                 key={template.id}
                                                 template={template}
@@ -763,7 +1546,7 @@ export function FarmingCalendarPage() {
                                             )}
                                             {routeContext.templateId && !linkedTemplateMatchesSelection && (
                                                 <Chip
-                                                    label={`Switch back to ${FARMING_CALENDAR_TEMPLATES.find((template) => template.id === routeContext.templateId)?.title || 'the linked template'} to see dated tasks for this trial.`}
+                                                    label={`Switch back to ${calendarTemplates.find((template) => template.id === routeContext.templateId)?.title || 'the linked template'} to see dated tasks for this trial.`}
                                                     sx={{
                                                         borderRadius: '999px',
                                                         bgcolor: 'rgba(255,255,255,0.78)',
@@ -821,6 +1604,14 @@ export function FarmingCalendarPage() {
                             </Grid>
                         </Box>
                     </Paper>
+
+                    <FieldWorkTable
+                        rows={visibleFieldWorkRows}
+                        totalRows={fieldWorkRows.length}
+                        isLoading={fieldWorkTableLoading}
+                        isFetching={fieldWorkTableFetching}
+                        error={fieldRecordsError}
+                    />
 
                     <Grid container spacing={2.6} alignItems="flex-start">
                         <Grid size={{ xs: 12, lg: 4 }}>

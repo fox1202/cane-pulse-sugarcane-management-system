@@ -60,6 +60,7 @@ export interface MobileObservationEntryFormFields {
     crop_type?: string
     crop_class?: string
     variety?: string
+    ploughing_date?: string
     planting_date?: string
     soil_sampling_date?: string
     previous_cutting_date?: string
@@ -110,10 +111,12 @@ export interface ObservationEntryFormSubmissionInput {
     crop_type?: string
     crop_class?: string
     variety?: string
+    ploughing_date?: string
     planting_date?: string
     soil_sampling_date?: string
     soil_test_pdf_url?: string
     foliar_analysis_pdf_url?: string
+    final_eldana_survey_pdf_url?: string
     previous_cutting_date?: string
     cutting_date?: string
     expected_harvest_date?: string
@@ -979,6 +982,7 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
     ) ?? undefined
     const weedApplicationDate = toNullableDateValue(row.weed_application_date) ?? undefined
     const harvestDate = toNullableDateValue(row.harvest_date ?? row.actual_cutting_date) ?? undefined
+    const ploughingDate = toNullableDateValue(row.ploughing_date) ?? undefined
     const plantingDate = toNullableDateValue(row.planting_date) ?? undefined
     const expectedHarvestDate = toNullableDateValue(row.expected_harvest_date) ?? undefined
     const geometry = row.geom_polygon ?? row.geom ?? row.geometry ?? row.spatial_data ?? undefined
@@ -1022,11 +1026,13 @@ function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): Sugarcan
         variety: toNullableString(row.variety) ?? undefined,
         ratoon_number: toNullableNumber(row.ratoon_number) ?? undefined,
         crop_stage: derivedCropStage ?? undefined,
+        ploughing_date: ploughingDate,
         planting_date: plantingDate,
         soil_sampling_date: toNullableDateValue(row.soil_sampling_date) ?? undefined,
         soil_test_pdf_url: toPublicStorageUrl('soil-test-pdfs', row.soil_test_pdf_url ?? row.soil_test_pdf_path),
         soil_test_pdf_path: toNullableString(row.soil_test_pdf_path) ?? undefined,
         foliar_analysis_pdf_url: toNullableString(row.foliar_analysis_pdf_url) ?? undefined,
+        final_eldana_survey_pdf_url: toPublicStorageUrl('final-eldana-survey-pdfs', row.final_eldana_survey_pdf_url),
         previous_cutting: previousCutting,
         previous_cutting_date: previousCutting,
         expected_harvest_date: expectedHarvestDate,
@@ -1105,6 +1111,7 @@ function mapSugarcaneMonitoringRowToObservation(row: SugarcaneMonitoringRecord):
             crop_type: row.crop_type || 'Sugarcane',
             ratoon_number: row.ratoon_number ?? 0,
             variety: row.variety || '',
+            ploughing_date: row.ploughing_date || '',
             planting_date: row.planting_date || '',
             expected_harvest_date: row.expected_harvest_date || '',
             crop_stage: row.crop_stage || '',
@@ -1241,10 +1248,12 @@ function mapSugarcaneMonitoringRowToEntryForm(
         crop_type: row.crop_type || 'Sugarcane',
         crop_class: row.crop_class || row.crop_type || linkedField?.crop_type || '',
         variety: row.variety || '',
+        ploughing_date: row.ploughing_date || '',
         planting_date: row.planting_date || '',
         soil_sampling_date: row.soil_sampling_date || '',
         soil_test_pdf_url: row.soil_test_pdf_url || '',
         foliar_analysis_pdf_url: row.foliar_analysis_pdf_url || '',
+        final_eldana_survey_pdf_url: row.final_eldana_survey_pdf_url || '',
         previous_cutting_date: row.previous_cutting_date || row.previous_cutting || '',
         cutting_date: row.previous_cutting_date || row.previous_cutting || '',
         expected_harvest_date: row.expected_harvest_date || '',
@@ -1349,10 +1358,12 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
         variety: toNullableString(submission.variety),
         crop_stage: toNullableString(derivedCropStage),
         stress: toNullableString(submission.stress),
+        ploughing_date: toNullableDateValue(submission.ploughing_date),
         planting_date: toNullableDateValue(submission.planting_date),
         soil_sampling_date: toNullableDateValue(submission.soil_sampling_date),
         soil_test_pdf_url: toNullableString(submission.soil_test_pdf_url),
         foliar_analysis_pdf_url: toNullableString(submission.foliar_analysis_pdf_url),
+        final_eldana_survey_pdf_url: toNullableString(submission.final_eldana_survey_pdf_url),
         previous_cutting: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
         previous_cutting_date: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
         cutting_date: toNullableDateValue(submission.previous_cutting_date || submission.cutting_date),
@@ -1481,9 +1492,13 @@ function buildSubmissionDuplicateFingerprint(submission: ObservationEntryFormSub
         crop_type: normalizeComparableText(submission.crop_type),
         crop_class: normalizeComparableText(submission.crop_class),
         variety: normalizeComparableText(submission.variety),
+        ploughing_date: toNullableDateValue(submission.ploughing_date),
         planting_date: toNullableDateValue(submission.planting_date),
         previous_cutting_date: toNullableDateValue(submission.previous_cutting_date ?? submission.cutting_date),
         expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
+        soil_test_pdf_url: normalizeComparableText(submission.soil_test_pdf_url),
+        foliar_analysis_pdf_url: normalizeComparableText(submission.foliar_analysis_pdf_url),
+        final_eldana_survey_pdf_url: normalizeComparableText(submission.final_eldana_survey_pdf_url),
         irrigation_type: normalizeComparableText(submission.irrigation_type),
         water_source: normalizeComparableText(submission.water_source),
         tam: normalizeComparableNumber(submission.tam_mm ?? submission.tamm_area, 4),
@@ -1530,9 +1545,13 @@ function buildMonitoringRowDuplicateFingerprint(row: SugarcaneMonitoringRecord):
         crop_type: normalizeComparableText(row.crop_type),
         crop_class: normalizeComparableText(row.crop_class),
         variety: normalizeComparableText(row.variety),
+        ploughing_date: toNullableDateValue(row.ploughing_date),
         planting_date: toNullableDateValue(row.planting_date),
         previous_cutting_date: toNullableDateValue(row.previous_cutting_date ?? row.previous_cutting),
         expected_harvest_date: toNullableDateValue(row.expected_harvest_date),
+        soil_test_pdf_url: normalizeComparableText(row.soil_test_pdf_url),
+        foliar_analysis_pdf_url: normalizeComparableText(row.foliar_analysis_pdf_url),
+        final_eldana_survey_pdf_url: normalizeComparableText(row.final_eldana_survey_pdf_url),
         irrigation_type: normalizeComparableText(row.irrigation_type),
         water_source: normalizeComparableText(row.water_source),
         tam: normalizeComparableNumber(row.tam_mm, 4),
@@ -1917,7 +1936,15 @@ export async function uploadObservationImage(_file: File, _observationId: string
     throw new Error('Image upload is not connected in this web build.')
 }
 
+function isPdfFile(file: File): boolean {
+    return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+}
+
 async function uploadPdfToStorage(bucket: string, file: File, fieldKey: string): Promise<string> {
+    if (!isPdfFile(file)) {
+        throw new Error('Only PDF files can be uploaded.')
+    }
+
     const timestamp = Date.now()
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const path = `${fieldKey}/${timestamp}_${safeName}`
@@ -1940,6 +1967,10 @@ export async function uploadSoilTestPdf(file: File, fieldKey: string): Promise<s
 
 export async function uploadFoliarAnalysisPdf(file: File, fieldKey: string): Promise<string> {
     return uploadPdfToStorage('foliar-analysis-pdfs', file, fieldKey)
+}
+
+export async function uploadFinalEldanaSurveyPdf(file: File, fieldKey: string): Promise<string> {
+    return uploadPdfToStorage('final-eldana-survey-pdfs', file, fieldKey)
 }
 
 export async function createObservationEntryFormSubmission(

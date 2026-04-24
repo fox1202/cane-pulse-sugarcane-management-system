@@ -57,11 +57,13 @@ interface FlattenedObservationRow {
     contactPerson: string
     cropType: string
     cropClass: string
+    ploughingDate: string
     plantingDate: string
     soilSamplingDate: string
     soilTestPdfUrl: string
     foliarSamplingDate: string
     foliarAnalysisPdfUrl: string
+    finalEldanaSurveyPdfUrl: string
     previousCuttingDate: string
     expectedHarvestDate: string
     stress: string
@@ -106,11 +108,13 @@ const OBSERVATION_COLUMNS: ObservationColumn[] = [
     { key: 'contactPerson', label: 'Contact Person', minWidth: 170, wrap: true },
     { key: 'cropType', label: 'Crop Type', minWidth: 140 },
     { key: 'cropClass', label: 'Crop Class', minWidth: 150 },
+    { key: 'ploughingDate', label: 'Ploughing Date', minWidth: 150 },
     { key: 'plantingDate', label: 'Planting Date', minWidth: 150 },
     { key: 'soilSamplingDate', label: 'Soil Sampling Date', minWidth: 165 },
     { key: 'soilTestPdfUrl', label: 'Soil Sampling Results', minWidth: 170, isLink: true },
     { key: 'foliarSamplingDate', label: 'Foliar Sampling Date', minWidth: 170 },
     { key: 'foliarAnalysisPdfUrl', label: 'Foliar Sampling Results', minWidth: 180, isLink: true },
+    { key: 'finalEldanaSurveyPdfUrl', label: 'Final Eldana Survey', minWidth: 180, isLink: true },
     { key: 'previousCuttingDate', label: 'Previous Cutting Date', minWidth: 180 },
     { key: 'expectedHarvestDate', label: 'Expected Harvest Date', minWidth: 180 },
     { key: 'residueType', label: 'Residue Type', minWidth: 140 },
@@ -269,6 +273,7 @@ function buildFlattenedObservationRow(observation: ObservationTableRecord): Flat
         contactPerson: formatTextValue(pickTextValue(currentSheet?.contact_person, entryForm?.contact_person, rawSheet?.contact_person, rawSheet?.contact_person_scientist)),
         cropType: formatTextValue(pickTextValue(currentSheet?.crop_type, entryForm?.crop_type, rawSheet?.crop_type, observation.crop_information?.crop_type)),
         cropClass: formatTextValue(pickTextValue(currentSheet?.crop_class, entryForm?.crop_class, rawSheet?.crop_class)),
+        ploughingDate: formatDateValue(pickDateValue(currentSheet?.ploughing_date, entryForm?.ploughing_date, rawSheet?.ploughing_date, observation.crop_information?.ploughing_date)),
         plantingDate: formatDateValue(pickDateValue(currentSheet?.planting_date, entryForm?.planting_date, rawSheet?.planting_date, observation.crop_information?.planting_date)),
         soilSamplingDate: formatDateValue(pickDateValue(currentSheet?.soil_sampling_date, entryForm?.soil_sampling_date, rawSheet?.soil_sampling_date)),
         soilTestPdfUrl: pickLinkValue(
@@ -283,6 +288,11 @@ function buildFlattenedObservationRow(observation: ObservationTableRecord): Flat
             currentSheet?.foliar_analysis_pdf_url,
             entryForm?.foliar_analysis_pdf_url,
             rawSheet?.foliar_analysis_pdf_url
+        ) ?? '',
+        finalEldanaSurveyPdfUrl: pickLinkValue(
+            currentSheet?.final_eldana_survey_pdf_url,
+            entryForm?.final_eldana_survey_pdf_url,
+            rawSheet?.final_eldana_survey_pdf_url
         ) ?? '',
         previousCuttingDate: formatDateValue(pickDateValue(currentSheet?.previous_cutting_date, currentSheet?.previous_cutting, entryForm?.previous_cutting_date, entryForm?.cutting_date, rawSheet?.previous_cutting_date, rawSheet?.previous_cutting, rawSheet?.cutting_date)),
         expectedHarvestDate: formatDateValue(pickDateValue(currentSheet?.expected_harvest_date, entryForm?.expected_harvest_date, rawSheet?.expected_harvest_date, observation.crop_information?.expected_harvest_date)),

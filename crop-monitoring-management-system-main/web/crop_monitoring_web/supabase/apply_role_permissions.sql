@@ -272,7 +272,8 @@ begin
     insert into storage.buckets (id, name, public)
     values
       ('soil-test-pdfs', 'soil-test-pdfs', false),
-      ('foliar-analysis-pdfs', 'foliar-analysis-pdfs', false)
+      ('foliar-analysis-pdfs', 'foliar-analysis-pdfs', false),
+      ('final-eldana-survey-pdfs', 'final-eldana-survey-pdfs', false)
     on conflict (id) do nothing;
   end if;
 
@@ -281,7 +282,7 @@ begin
     execute 'create policy "Approved users can read soil result files"
       on storage.objects for select
       using (
-        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'')
+        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'', ''final-eldana-survey-pdfs'')
         and public.current_user_can(''download_soil_results'')
       )';
 
@@ -289,7 +290,7 @@ begin
     execute 'create policy "Admins and supervisors can upload soil result files"
       on storage.objects for insert
       with check (
-        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'')
+        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'', ''final-eldana-survey-pdfs'')
         and public.current_user_can(''upload_files'')
       )';
 
@@ -297,11 +298,11 @@ begin
     execute 'create policy "Admins can update soil result files"
       on storage.objects for update
       using (
-        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'')
+        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'', ''final-eldana-survey-pdfs'')
         and public.current_user_can(''manage_fields'')
       )
       with check (
-        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'')
+        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'', ''final-eldana-survey-pdfs'')
         and public.current_user_can(''manage_fields'')
       )';
 
@@ -309,7 +310,7 @@ begin
     execute 'create policy "Admins can delete soil result files"
       on storage.objects for delete
       using (
-        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'')
+        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'', ''final-eldana-survey-pdfs'')
         and public.current_user_can(''manage_fields'')
       )';
   end if;

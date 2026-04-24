@@ -388,6 +388,16 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                                 <TextField
                                     type="date"
                                     fullWidth
+                                    label="Ploughing Date"
+                                    InputLabelProps={{ shrink: true }}
+                                    value={entryForm?.ploughing_date || formData.crop_information?.ploughing_date || ''}
+                                    onChange={(e) => handleEntryFormChange('ploughing_date', e.target.value)}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    type="date"
+                                    fullWidth
                                     label="Planting Date"
                                     InputLabelProps={{ shrink: true }}
                                     value={entryForm?.planting_date || formData.crop_information?.planting_date || ''}

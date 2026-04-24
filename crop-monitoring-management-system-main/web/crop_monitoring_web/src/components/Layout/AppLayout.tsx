@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import {
   Alert,
   AppBar,
@@ -42,8 +41,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Navigation } from './Navigation'
 import { isOnline } from '@/services/offline.service'
 import { BRAND_DESCRIPTION, BRAND_NAME } from '@/branding/brand'
+import { useLivePredefinedFields } from '@/hooks/useLivePredefinedFields'
 import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
-import { fetchLivePredefinedFields, type PredefinedField } from '@/services/database.service'
 import { formatDateOnlyLabel } from '@/utils/dateOnly'
 import { buildUpcomingTaskNotices, getTaskDueLabel } from '@/utils/upcomingTaskNotices'
 
@@ -164,13 +163,7 @@ export function AppLayout() {
     data: predefinedFields = [],
     isLoading: fieldsLoading,
     error: fieldsError,
-  } = useQuery<PredefinedField[], Error>({
-    queryKey: ['overview-predefined-fields'],
-    queryFn: fetchLivePredefinedFields,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-  })
+  } = useLivePredefinedFields()
 
   useEffect(() => {
     const handleOnline = () => setOffline(false)

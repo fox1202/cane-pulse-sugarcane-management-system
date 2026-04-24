@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     Alert,
     Box,
@@ -22,14 +22,18 @@ import { MapContainer, Polygon, Polyline, TileLayer, useMap, useMapEvents } from
 import {
     createObservationEntryFormSubmission,
     createPredefinedField,
-    fetchLivePredefinedFields,
     getPredefinedFieldByName,
+    uploadFinalEldanaSurveyPdf,
     uploadSoilTestPdf,
     uploadFoliarAnalysisPdf,
     type ObservationEntryFormSubmissionInput,
     type PredefinedField,
 } from '@/services/database.service';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+    LIVE_PREDEFINED_FIELDS_QUERY_KEY,
+    useLivePredefinedFields,
+} from '@/hooks/useLivePredefinedFields';
 import { LIVE_DATA_UPDATED_EVENT } from '@/lib/liveData';
 import {
     SATELLITE_HYBRID_LABELS_SOURCE,
@@ -266,10 +270,12 @@ function createEmptySubmission(collectorId: string): ObservationEntryFormSubmiss
         crop_type: 'Sugarcane',
         crop_class: '',
         variety: '',
+        ploughing_date: '',
         planting_date: '',
         soil_sampling_date: '',
         soil_test_pdf_url: '',
         foliar_analysis_pdf_url: '',
+        final_eldana_survey_pdf_url: '',
         previous_cutting_date: '',
         cutting_date: '',
         expected_harvest_date: '',
@@ -299,6 +305,18 @@ function createEmptySubmission(collectorId: string): ObservationEntryFormSubmiss
         quality_remarks: '',
         remarks: '',
     };
+}
+
+function isPdfFile(file: File): boolean {
+    return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+}
+
+function buildPdfFieldKey(formData: ObservationEntryFormSubmissionInput): string {
+    return [
+        formData.section_name,
+        formData.block_id,
+        formData.field_name,
+    ].filter(Boolean).join('_') || 'unknown';
 }
 
 function parseOptionalNumericInput(value: string): number | undefined {
@@ -847,10 +865,12 @@ function buildLoadedSavedRecordData(
         crop_type: savedEntry.crop_type || loaded.crop_type,
         crop_class: savedEntry.crop_class || '',
         variety: savedEntry.variety || '',
+        ploughing_date: savedEntry.ploughing_date || '',
         planting_date: savedEntry.planting_date || '',
         soil_sampling_date: savedEntry.soil_sampling_date || '',
         soil_test_pdf_url: savedEntry.soil_test_pdf_url || '',
         foliar_analysis_pdf_url: savedEntry.foliar_analysis_pdf_url || '',
+        final_eldana_survey_pdf_url: savedEntry.final_eldana_survey_pdf_url || '',
         previous_cutting_date: previousCuttingDate,
         cutting_date: cuttingDate,
         expected_harvest_date: derivedExpectedHarvestDate,
@@ -1062,6 +1082,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const [pdfError, setPdfError] = useState<string | null>(null);
     const [foliarPdfUploading, setFoliarPdfUploading] = useState(false);
     const [foliarPdfError, setFoliarPdfError] = useState<string | null>(null);
+    const [eldanaPdfUploading, setEldanaPdfUploading] = useState(false);
+    const [eldanaPdfError, setEldanaPdfError] = useState<string | null>(null);
     const [saveMode, setSaveMode] = useState<'close' | 'add_another' | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [parseSummary, setParseSummary] = useState<string | null>(null);
@@ -1080,13 +1102,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const {
         data: livePredefinedFields = [],
         error: livePredefinedFieldsError,
-    } = useQuery<PredefinedField[], Error>({
-        queryKey: ['live-predefined-fields'],
-        queryFn: fetchLivePredefinedFields,
+    } = useLivePredefinedFields({
         enabled: open,
         staleTime: 60_000,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: true,
     });
 
     const predefinedFields = useMemo(
@@ -1100,6 +1118,12 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setFormData(createEmptySubmission(user?.id || ''));
         setError(null);
         setParseSummary(null);
+        setPdfUploading(false);
+        setPdfError(null);
+        setFoliarPdfUploading(false);
+        setFoliarPdfError(null);
+        setEldanaPdfUploading(false);
+        setEldanaPdfError(null);
         setSaveMode(null);
         setIsCreatingCustomField(false);
         setDrawPoints([]);
@@ -1711,6 +1735,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 throw new Error('Please select a field before saving.');
             }
 
+            if (pdfUploading || foliarPdfUploading || eldanaPdfUploading) {
+                throw new Error('Please wait for the PDF uploads to finish before saving.');
+            }
+
+            if (!formData.final_eldana_survey_pdf_url?.trim()) {
+                setEldanaPdfError('Please upload the final eldana survey PDF before saving.');
+                throw new Error('Please upload the final eldana survey as a PDF before saving.');
+            }
+
             let resolvedField = selectedField;
             let registryFields = predefinedFields;
             let allowExistingRowOverwrite = false;
@@ -1755,7 +1788,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 });
 
                 queryClient.setQueryData<PredefinedField[]>(
-                    ['live-predefined-fields'],
+                    LIVE_PREDEFINED_FIELDS_QUERY_KEY,
                     (currentFields) => mergeCreatedFieldIntoRegistry(currentFields, createdField)
                 );
 
@@ -1843,7 +1876,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     };
 
                     queryClient.setQueryData<PredefinedField[]>(
-                        ['live-predefined-fields'],
+                        LIVE_PREDEFINED_FIELDS_QUERY_KEY,
                         (currentFields) => mergeCreatedFieldIntoRegistry(currentFields, overwrittenField)
                     );
 
@@ -1865,7 +1898,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     });
 
                     queryClient.setQueryData<PredefinedField[]>(
-                        ['live-predefined-fields'],
+                        LIVE_PREDEFINED_FIELDS_QUERY_KEY,
                         (currentFields) => mergeCreatedFieldIntoRegistry(currentFields, createdField)
                     );
 
@@ -1932,8 +1965,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 queryClient.invalidateQueries({ queryKey: ['sugarcane-monitoring'] }),
                 queryClient.invalidateQueries({ queryKey: ['mobile-observation-records'] }),
                 queryClient.invalidateQueries({ queryKey: ['dashboard-sugarcane-analytics'] }),
-                queryClient.invalidateQueries({ queryKey: ['live-predefined-fields'] }),
-                queryClient.invalidateQueries({ queryKey: ['overview-predefined-fields'] }),
+                queryClient.invalidateQueries({ queryKey: LIVE_PREDEFINED_FIELDS_QUERY_KEY }),
                 ...(isCreatingCustomField || isUploadingKML ? [queryClient.invalidateQueries({ queryKey: ['observation-entry-forms'] })] : []),
             ]);
 
@@ -2500,6 +2532,16 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             <TextField
                                 type="date"
                                 fullWidth
+                                label="Ploughing Date"
+                                InputLabelProps={{ shrink: true }}
+                                value={formData.ploughing_date || ''}
+                                onChange={(e) => updateField('ploughing_date', e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                type="date"
+                                fullWidth
                                 label="Planting Date"
                                 InputLabelProps={{ shrink: true }}
                                 value={formData.planting_date || ''}
@@ -2564,15 +2606,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                             onChange={async (e) => {
                                                 const file = e.target.files?.[0]
                                                 if (!file) return
+                                                if (!isPdfFile(file)) {
+                                                    setPdfError('Please select a PDF file.')
+                                                    e.target.value = ''
+                                                    return
+                                                }
                                                 setPdfError(null)
                                                 setPdfUploading(true)
                                                 try {
-                                                    const fieldKey = [
-                                                        formData.section_name,
-                                                        formData.block_id,
-                                                        formData.field_name,
-                                                    ].filter(Boolean).join('_') || 'unknown'
-                                                    const url = await uploadSoilTestPdf(file, fieldKey)
+                                                    const url = await uploadSoilTestPdf(file, buildPdfFieldKey(formData))
                                                     updateField('soil_test_pdf_url', url)
                                                 } catch (err) {
                                                     setPdfError(err instanceof Error ? err.message : 'Upload failed')
@@ -2687,15 +2729,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                             onChange={async (e) => {
                                                 const file = e.target.files?.[0]
                                                 if (!file) return
+                                                if (!isPdfFile(file)) {
+                                                    setFoliarPdfError('Please select a PDF file.')
+                                                    e.target.value = ''
+                                                    return
+                                                }
                                                 setFoliarPdfError(null)
                                                 setFoliarPdfUploading(true)
                                                 try {
-                                                    const fieldKey = [
-                                                        formData.section_name,
-                                                        formData.block_id,
-                                                        formData.field_name,
-                                                    ].filter(Boolean).join('_') || 'unknown'
-                                                    const url = await uploadFoliarAnalysisPdf(file, fieldKey)
+                                                    const url = await uploadFoliarAnalysisPdf(file, buildPdfFieldKey(formData))
                                                     updateField('foliar_analysis_pdf_url', url)
                                                 } catch (err) {
                                                     setFoliarPdfError(err instanceof Error ? err.message : 'Upload failed')
@@ -3071,6 +3113,119 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 onChange={(e) => updateField('disease_remarks', e.target.value)}
                             />
                         </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Box
+                                sx={{
+                                    border: '1px solid',
+                                    borderColor: eldanaPdfError ? 'error.main' : 'rgba(0,0,0,0.23)',
+                                    borderRadius: 1,
+                                    p: 1.5,
+                                    position: 'relative',
+                                    '&:hover': { borderColor: 'text.primary' },
+                                }}
+                            >
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        position: 'absolute',
+                                        top: -10,
+                                        left: 10,
+                                        bgcolor: 'background.paper',
+                                        px: 0.5,
+                                        color: eldanaPdfError ? 'error.main' : 'text.secondary',
+                                        fontSize: '0.75rem',
+                                    }}
+                                >
+                                    Final Eldana Survey (PDF) *
+                                </Typography>
+                                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        component="label"
+                                        disabled={eldanaPdfUploading}
+                                        sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                                    >
+                                        {eldanaPdfUploading ? (
+                                            <Stack direction="row" spacing={1} alignItems="center">
+                                                <CircularProgress size={14} />
+                                                <span>Uploading…</span>
+                                            </Stack>
+                                        ) : (
+                                            formData.final_eldana_survey_pdf_url ? 'Replace PDF' : 'Upload PDF'
+                                        )}
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            hidden
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                if (!isPdfFile(file)) {
+                                                    setEldanaPdfError('Please select a PDF file for the final eldana survey.');
+                                                    e.target.value = '';
+                                                    return;
+                                                }
+                                                setEldanaPdfError(null);
+                                                setEldanaPdfUploading(true);
+                                                try {
+                                                    const url = await uploadFinalEldanaSurveyPdf(file, buildPdfFieldKey(formData));
+                                                    updateField('final_eldana_survey_pdf_url', url);
+                                                } catch (err) {
+                                                    setEldanaPdfError(err instanceof Error ? err.message : 'Upload failed');
+                                                } finally {
+                                                    setEldanaPdfUploading(false);
+                                                    e.target.value = '';
+                                                }
+                                            }}
+                                        />
+                                    </Button>
+                                    {formData.final_eldana_survey_pdf_url ? (
+                                        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+                                            <Typography
+                                                component="a"
+                                                href={formData.final_eldana_survey_pdf_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                sx={{
+                                                    fontSize: '0.78rem',
+                                                    color: 'primary.main',
+                                                    textDecoration: 'underline',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                    flex: 1,
+                                                    minWidth: 0,
+                                                }}
+                                            >
+                                                View uploaded PDF
+                                            </Typography>
+                                            <Button
+                                                size="small"
+                                                color="error"
+                                                variant="text"
+                                                sx={{ flexShrink: 0, minWidth: 0, p: 0.5 }}
+                                                onClick={() => {
+                                                    updateField('final_eldana_survey_pdf_url', '');
+                                                    setEldanaPdfError(null);
+                                                }}
+                                            >
+                                                Remove
+                                            </Button>
+                                        </Stack>
+                                    ) : (
+                                        <Typography variant="caption" color="text.secondary">
+                                            Upload required before saving
+                                        </Typography>
+                                    )}
+                                </Stack>
+                                {eldanaPdfError && (
+                                    <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                                        {eldanaPdfError}
+                                    </Typography>
+                                )}
+                            </Box>
+                        </Grid>
                     </Grid>
                     </Box>
 
@@ -3133,7 +3288,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 <Button
                     onClick={() => handleSubmit('close')}
                     variant="contained"
-                    disabled={saving}
+                    disabled={saving || pdfUploading || foliarPdfUploading || eldanaPdfUploading}
                     sx={{
                         borderRadius: '999px',
                         px: 2.5,

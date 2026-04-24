@@ -303,6 +303,7 @@ export const ObservationDetailDialog = ({
         { label: 'Crop Class', value: currentSheet?.crop_class || entryForm?.crop_class },
         { label: 'Variety', value: currentSheet?.variety || entryForm?.variety || observation.crop_information?.variety },
         { label: 'Growth Stage', value: currentSheet?.crop_stage || observation.crop_information?.crop_stage },
+        { label: 'Ploughing Date', value: formatSimpleDate(currentSheet?.ploughing_date || entryForm?.ploughing_date || observation.crop_information?.ploughing_date) },
         { label: 'Planting Date', value: formatSimpleDate(currentSheet?.planting_date || entryForm?.planting_date || observation.crop_information?.planting_date) },
         { label: 'Expected Harvest', value: formatSimpleDate(currentSheet?.expected_harvest_date || entryForm?.expected_harvest_date || observation.crop_information?.expected_harvest_date) },
     ].filter((item) => hasValue(item.value))
@@ -333,6 +334,7 @@ export const ObservationDetailDialog = ({
         { label: 'Soil Type', value: entryForm?.soil_type || observation.soil_characteristics?.soil_type },
         { label: 'pH', value: entryForm?.soil_ph },
         { label: 'Remarks', value: entryForm?.remarks || observation.crop_monitoring?.remarks },
+        { label: 'Ploughing Date', value: formatSimpleDate(entryForm?.ploughing_date || observation.crop_information?.ploughing_date) },
         { label: 'Planting Date', value: formatSimpleDate(entryForm?.planting_date || observation.crop_information?.planting_date) },
         { label: 'Cutting Date', value: formatSimpleDate(entryForm?.cutting_date) },
         { label: 'Expected Harvest Date', value: formatSimpleDate(entryForm?.expected_harvest_date || observation.crop_information?.expected_harvest_date) },
