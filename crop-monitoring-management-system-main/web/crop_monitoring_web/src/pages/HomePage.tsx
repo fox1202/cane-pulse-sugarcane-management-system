@@ -51,6 +51,7 @@ const PANEL_ALT = 'rgba(255,248,242,0.96)'
 const TEXT_DIM = 'rgba(35,64,52,0.52)'
 const TEXT_MID = 'rgba(35,64,52,0.72)'
 const WEATHER_REFRESH_MS = 10 * 60 * 1000
+const WEATHER_LOCATION_REFRESH_MS = 30 * 60 * 1000
 const DEFAULT_WEATHER_COORDINATES = {
     latitude: -21.0365,
     longitude: 31.6146,
@@ -183,8 +184,37 @@ interface OpenMeteoCurrent {
 }
 
 interface OpenMeteoResponse {
+    latitude?: number
+    longitude?: number
     timezone?: string
     current?: OpenMeteoCurrent
+}
+
+interface ReverseGeocodeAddress {
+    road?: string
+    neighbourhood?: string
+    suburb?: string
+    hamlet?: string
+    village?: string
+    town?: string
+    city?: string
+    municipality?: string
+    city_district?: string
+    county?: string
+    state_district?: string
+    state?: string
+    country?: string
+}
+
+interface ReverseGeocodeResponse {
+    name?: string
+    display_name?: string
+    address?: ReverseGeocodeAddress
+}
+
+interface ResolvedPlace {
+    shortLabel: string
+    detailLabel: string | null
 }
 
 interface WeatherReading {
@@ -197,6 +227,8 @@ interface WeatherReading {
     windSpeedKmh: number | null
     windDirectionDegrees: number | null
     weatherCode: number | null
+    weatherPointLatitude: number | null
+    weatherPointLongitude: number | null
 }
 
 function formatAreaHa(value: number): string {
@@ -213,6 +245,59 @@ function isValidWeatherCoordinate(latitude: number, longitude: number): boolean 
 
 function roundWeatherCoordinate(value: number): number {
     return Number(value.toFixed(4))
+}
+
+function toRadians(value: number): number {
+    return (value * Math.PI) / 180
+}
+
+function getDistanceBetweenCoordinatesKm(
+    latitudeA: number,
+    longitudeA: number,
+    latitudeB: number,
+    longitudeB: number
+): number {
+    const earthRadiusKm = 6371
+    const deltaLatitude = toRadians(latitudeB - latitudeA)
+    const deltaLongitude = toRadians(longitudeB - longitudeA)
+    const startLatitude = toRadians(latitudeA)
+    const endLatitude = toRadians(latitudeB)
+    const haversine =
+        Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2) +
+        Math.cos(startLatitude) * Math.cos(endLatitude) *
+        Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2)
+
+    return earthRadiusKm * (2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine)))
+}
+
+function shouldUpdateDeviceCoordinates(
+    currentCoordinates: WeatherCoordinates | null,
+    nextCoordinates: WeatherCoordinates
+): boolean {
+    if (!currentCoordinates) {
+        return true
+    }
+
+    const movementKm = getDistanceBetweenCoordinatesKm(
+        currentCoordinates.latitude,
+        currentCoordinates.longitude,
+        nextCoordinates.latitude,
+        nextCoordinates.longitude
+    )
+
+    if (movementKm >= 0.15) {
+        return true
+    }
+
+    if (
+        currentCoordinates.accuracyMeters != null &&
+        nextCoordinates.accuracyMeters != null &&
+        Math.abs(currentCoordinates.accuracyMeters - nextCoordinates.accuracyMeters) >= 50
+    ) {
+        return true
+    }
+
+    return false
 }
 
 function getDeviceWeatherCoordinates(position: GeolocationPosition): WeatherCoordinates {
@@ -261,6 +346,112 @@ function getFieldWeatherCoordinates(fields: PredefinedField[]): WeatherCoordinat
 
 function toNullableWeatherNumber(value: unknown): number | null {
     return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function firstNonEmptyText(...values: Array<string | undefined | null>): string | null {
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim()) {
+            return value.trim()
+        }
+    }
+
+    return null
+}
+
+function uniqueLocationParts(values: Array<string | null | undefined>): string[] {
+    const normalized = new Set<string>()
+
+    return values.flatMap((value) => {
+        if (typeof value !== 'string') {
+            return []
+        }
+
+        const trimmed = value.trim()
+        if (!trimmed) {
+            return []
+        }
+
+        const key = trimmed.toLowerCase()
+        if (normalized.has(key)) {
+            return []
+        }
+
+        normalized.add(key)
+        return [trimmed]
+    })
+}
+
+function resolvePlaceFallbackLabel(displayName?: string | null): string | null {
+    if (typeof displayName !== 'string' || !displayName.trim()) {
+        return null
+    }
+
+    const parts = displayName
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean)
+
+    return parts.slice(0, 3).join(', ') || null
+}
+
+function buildResolvedPlace(response: ReverseGeocodeResponse): ResolvedPlace | null {
+    const address = response.address ?? {}
+    const locality = firstNonEmptyText(
+        response.name,
+        address.hamlet,
+        address.neighbourhood,
+        address.suburb,
+        address.village,
+        address.town,
+        address.city,
+        address.municipality,
+        address.county,
+        address.road
+    )
+    const district = firstNonEmptyText(
+        address.city,
+        address.town,
+        address.village,
+        address.municipality,
+        address.city_district,
+        address.county
+    )
+    const region = firstNonEmptyText(address.state_district, address.state)
+    const country = firstNonEmptyText(address.country)
+    const shortLabel = uniqueLocationParts([locality, district, region]).slice(0, 2).join(', ')
+    const fallbackLabel = resolvePlaceFallbackLabel(response.display_name)
+    const detailLabel = uniqueLocationParts([region, country]).join(', ')
+    const resolvedShortLabel = shortLabel || fallbackLabel
+
+    if (!resolvedShortLabel) {
+        return null
+    }
+
+    return {
+        shortLabel: resolvedShortLabel,
+        detailLabel: detailLabel && detailLabel !== resolvedShortLabel ? detailLabel : null,
+    }
+}
+
+async function reverseGeocodeCoordinates(latitude: number, longitude: number): Promise<ResolvedPlace | null> {
+    const params = new URLSearchParams({
+        format: 'jsonv2',
+        lat: latitude.toFixed(5),
+        lon: longitude.toFixed(5),
+        zoom: '18',
+        addressdetails: '1',
+        'accept-language': typeof navigator !== 'undefined' && navigator.language
+            ? navigator.language
+            : 'en',
+    })
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`)
+
+    if (!response.ok) {
+        return null
+    }
+
+    const data = await response.json() as ReverseGeocodeResponse
+    return buildResolvedPlace(data)
 }
 
 function formatWeatherNumber(value: number | null, suffix: string, fractionDigits = 0): string {
@@ -326,6 +517,7 @@ async function fetchCurrentWeather(coordinates: WeatherCoordinates): Promise<Wea
             'wind_direction_10m',
         ].join(','),
         timezone: 'auto',
+        cell_selection: 'nearest',
         forecast_days: '1',
     })
     const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`)
@@ -351,6 +543,8 @@ async function fetchCurrentWeather(coordinates: WeatherCoordinates): Promise<Wea
         windSpeedKmh: toNullableWeatherNumber(current.wind_speed_10m),
         windDirectionDegrees: toNullableWeatherNumber(current.wind_direction_10m),
         weatherCode: toNullableWeatherNumber(current.weather_code),
+        weatherPointLatitude: toNullableWeatherNumber(data.latitude),
+        weatherPointLongitude: toNullableWeatherNumber(data.longitude),
     }
 }
 
@@ -503,11 +697,7 @@ function WeatherInsightCard({ fallbackCoordinates }: { fallbackCoordinates: Weat
 
             const nextCoordinates = getDeviceWeatherCoordinates(position)
             setDeviceCoordinates((currentCoordinates) => {
-                if (
-                    currentCoordinates?.latitude === nextCoordinates.latitude &&
-                    currentCoordinates?.longitude === nextCoordinates.longitude &&
-                    currentCoordinates?.accuracyMeters === nextCoordinates.accuracyMeters
-                ) {
+                if (!shouldUpdateDeviceCoordinates(currentCoordinates, nextCoordinates)) {
                     return currentCoordinates
                 }
 
@@ -546,6 +736,16 @@ function WeatherInsightCard({ fallbackCoordinates }: { fallbackCoordinates: Weat
 
     const coordinates = deviceCoordinates ?? fallbackCoordinates
     const {
+        data: exactLocation,
+    } = useQuery<ResolvedPlace | null, Error>({
+        queryKey: ['overview-weather-location', coordinates.latitude, coordinates.longitude],
+        queryFn: () => reverseGeocodeCoordinates(coordinates.latitude, coordinates.longitude),
+        staleTime: WEATHER_LOCATION_REFRESH_MS,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
+        retry: 1,
+    })
+    const {
         data: weather,
         isLoading,
         isFetching,
@@ -559,6 +759,33 @@ function WeatherInsightCard({ fallbackCoordinates }: { fallbackCoordinates: Weat
         refetchOnReconnect: true,
         retry: 1,
     })
+    const weatherSourceCoordinates = useMemo(
+        () => weather?.weatherPointLatitude != null && weather?.weatherPointLongitude != null
+            ? {
+                latitude: weather.weatherPointLatitude,
+                longitude: weather.weatherPointLongitude,
+            }
+            : null,
+        [weather?.weatherPointLatitude, weather?.weatherPointLongitude]
+    )
+    const {
+        data: nearestWeatherSource,
+    } = useQuery<ResolvedPlace | null, Error>({
+        queryKey: [
+            'overview-weather-source-location',
+            weatherSourceCoordinates?.latitude ?? null,
+            weatherSourceCoordinates?.longitude ?? null,
+        ],
+        queryFn: () => reverseGeocodeCoordinates(
+            weatherSourceCoordinates!.latitude,
+            weatherSourceCoordinates!.longitude
+        ),
+        enabled: Boolean(weatherSourceCoordinates),
+        staleTime: WEATHER_LOCATION_REFRESH_MS,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
+        retry: 1,
+    })
 
     const weatherCode = weather?.weatherCode ?? null
     const conditionLabel = getWeatherConditionLabel(weatherCode)
@@ -567,18 +794,37 @@ function WeatherInsightCard({ fallbackCoordinates }: { fallbackCoordinates: Weat
         : isLoading
             ? 'Fetching latest reading'
             : 'Live reading paused'
-    const locationLabel = coordinates.source === 'device-location'
-        ? coordinates.label
-        : coordinates.source === 'field-centroid'
+    const locationLabel = exactLocation?.shortLabel ?? (
+        coordinates.source === 'device-location'
             ? coordinates.label
-            : 'Default field area'
-    const locationBadge = coordinates.source === 'device-location'
-        ? 'Device location'
+            : coordinates.source === 'field-centroid'
+                ? coordinates.label
+                : 'Default field area'
+    )
+    const locationBadge = coordinates.source === 'device-location' && exactLocation
+        ? 'Exact location'
+        : coordinates.source === 'device-location'
+            ? 'Device location'
         : locationStatus === 'checking'
             ? 'Locating'
             : coordinates.source === 'field-centroid'
                 ? 'Field centroid'
                 : 'ZSAES area'
+    const weatherSourceDistanceKm = weatherSourceCoordinates
+        ? getDistanceBetweenCoordinatesKm(
+            coordinates.latitude,
+            coordinates.longitude,
+            weatherSourceCoordinates.latitude,
+            weatherSourceCoordinates.longitude
+        )
+        : null
+    const nearestWeatherSourceLabel = weatherSourceCoordinates
+        ? nearestWeatherSource?.shortLabel ?? (
+            weatherSourceDistanceKm != null && weatherSourceDistanceKm < 0.2
+                ? exactLocation?.shortLabel ?? locationLabel
+                : null
+        )
+        : null
     const coordinateLabel = `${Math.abs(coordinates.latitude).toFixed(3)}°${coordinates.latitude >= 0 ? 'N' : 'S'}, ${Math.abs(coordinates.longitude).toFixed(3)}°${coordinates.longitude >= 0 ? 'E' : 'W'}${coordinates.accuracyMeters ? ` · ±${coordinates.accuracyMeters} m` : ''}`
     const windValue = weather?.windSpeedKmh == null
         ? '--'
@@ -632,6 +878,17 @@ function WeatherInsightCard({ fallbackCoordinates }: { fallbackCoordinates: Weat
                 <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 1.4 }}>
                     {coordinateLabel}{weather?.timezone ? ` · ${weather.timezone}` : ''}
                 </Typography>
+                {exactLocation?.detailLabel ? (
+                    <Typography sx={{ fontSize: '0.76rem', color: TEXT_DIM, lineHeight: 1.6, mt: 0.6 }}>
+                        {exactLocation.detailLabel}
+                    </Typography>
+                ) : null}
+                {nearestWeatherSourceLabel ? (
+                    <Typography sx={{ fontSize: '0.82rem', color: TEXT_MID, lineHeight: 1.6, mt: 0.8 }}>
+                        Nearest weather source: {nearestWeatherSourceLabel}
+                        {weatherSourceDistanceKm != null ? ` · ${weatherSourceDistanceKm < 10 ? weatherSourceDistanceKm.toFixed(1) : weatherSourceDistanceKm.toFixed(0)} km away` : ''}
+                    </Typography>
+                ) : null}
                 {error ? (
                     <Typography sx={{ fontSize: '0.82rem', color: PEACH_DARK, lineHeight: 1.6, mt: 1 }}>
                         {error.message}

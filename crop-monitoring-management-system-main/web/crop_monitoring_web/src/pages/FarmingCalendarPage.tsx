@@ -65,41 +65,6 @@ const EMPTY_CALENDAR_TEMPLATE: FarmingCalendarTemplate = {
     tasks: [],
 }
 
-const FIELD_WORK_WINDOW_DAYS = 45
-const FIELD_WORK_TABLE_LIMIT = 18
-const EXPECTED_HARVEST_FIELD_TASKS = [
-    {
-        offsetDays: -84,
-        weekLabel: '12 wks to harvest',
-        activity: 'Request crushing allocation and confirm harvest scheduling with the mill.',
-    },
-    {
-        offsetDays: -56,
-        weekLabel: '8 wks to harvest',
-        activity: 'Begin dry-off irrigation management and reduce irrigation in the lead-up to harvest.',
-    },
-    {
-        offsetDays: -42,
-        weekLabel: '6 wks to harvest',
-        activity: 'Conduct final eldana, smut, and pest scouting before harvest.',
-    },
-    {
-        offsetDays: -28,
-        weekLabel: '4 wks to harvest',
-        activity: 'Confirm burning program, haulage access, and field readiness for harvest.',
-    },
-    {
-        offsetDays: -14,
-        weekLabel: '2 wks to harvest',
-        activity: 'Complete final dry-off and prepare burning and haulage logistics.',
-    },
-    {
-        offsetDays: 0,
-        weekLabel: 'Harvest',
-        activity: 'Burning, cutting, and haulage operations commence.',
-    },
-] as const
-
 interface FieldWorkRow {
     key: string
     fieldLabel: string
@@ -122,7 +87,6 @@ interface FieldWorkSeed {
     cropClass: string
     plantingDate: string
     cutDate: string
-    expectedHarvestDate: string
 }
 
 function getTodayDateOnly(): string {
@@ -387,7 +351,6 @@ function buildFieldWorkSeeds(records: SugarcaneMonitoringRecord[]): FieldWorkSee
         const seed = byField.get(fieldKey)
         const plantingDate = normalizeDateOnlyValue(record.planting_date) || ''
         const cutDate = normalizeDateOnlyValue(record.previous_cutting_date ?? record.previous_cutting) || ''
-        const expectedHarvestDate = normalizeDateOnlyValue(record.expected_harvest_date) || ''
         const cropClass = (record.crop_class ?? '').trim()
         const cropLabel = buildCropLabel(record)
 
@@ -399,7 +362,6 @@ function buildFieldWorkSeeds(records: SugarcaneMonitoringRecord[]): FieldWorkSee
                 cropClass,
                 plantingDate,
                 cutDate,
-                expectedHarvestDate,
             })
             return
         }
@@ -408,11 +370,10 @@ function buildFieldWorkSeeds(records: SugarcaneMonitoringRecord[]): FieldWorkSee
         if (!seed.cropLabel || seed.cropLabel === 'Sugarcane') seed.cropLabel = cropLabel
         if (!seed.plantingDate && plantingDate) seed.plantingDate = plantingDate
         if (!seed.cutDate && cutDate) seed.cutDate = cutDate
-        if (!seed.expectedHarvestDate && expectedHarvestDate) seed.expectedHarvestDate = expectedHarvestDate
     })
 
     return Array.from(byField.values())
-        .filter((seed) => seed.plantingDate || seed.cutDate || seed.expectedHarvestDate)
+        .filter((seed) => seed.plantingDate || seed.cutDate)
         .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
 }
 
@@ -461,35 +422,6 @@ function buildFieldWorkRows(
                     weekLabel: task.weekLabel,
                     sourceLabel: template.title,
                     anchorLabel: `${template.referenceLabel}: ${formatShortFieldDate(anchorDate)}`,
-                })
-            })
-        }
-
-        if (seed.expectedHarvestDate) {
-            EXPECTED_HARVEST_FIELD_TASKS.forEach((task) => {
-                const dateIso = addDaysToDateOnly(seed.expectedHarvestDate, task.offsetDays)
-                const taskTimestamp = getDateOnlyTimestamp(dateIso)
-                if (!dateIso || !taskTimestamp) {
-                    return
-                }
-
-                const daysUntil = Math.round((taskTimestamp - todayTimestamp) / 86_400_000)
-                const kind = getFieldTaskKind(task.activity)
-                const key = `${seed.fieldKey}|expected-harvest|${task.offsetDays}|${task.activity.toLowerCase()}`
-
-                rows.set(key, {
-                    key,
-                    fieldLabel: seed.fieldLabel,
-                    cropLabel: seed.cropLabel,
-                    dateIso,
-                    dueLabel: formatDueLabel(daysUntil),
-                    daysUntil,
-                    severity: getFieldTaskSeverity(daysUntil),
-                    kind,
-                    activity: task.activity,
-                    weekLabel: task.weekLabel,
-                    sourceLabel: 'Expected harvest',
-                    anchorLabel: `Harvest: ${formatShortFieldDate(seed.expectedHarvestDate)}`,
                 })
             })
         }
@@ -587,7 +519,7 @@ function FieldWorkTable({
                                 fontFamily: BODY_FONT,
                             }}
                         >
-                            Calculated from live field planting dates, previous cutting dates, and expected harvest dates.
+                            Calculated from live field planting dates and previous cutting dates saved in the database.
                         </Typography>
                     </Box>
                     <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
@@ -650,7 +582,7 @@ function FieldWorkTable({
                                 fontFamily: BODY_FONT,
                             }}
                         >
-                            No field work can be calculated yet. Add planting dates or expected harvest dates to the field records, then this table will populate automatically.
+                            No field work can be calculated yet. Add planting dates or previous cutting dates to the field records, then this table will populate automatically.
                         </Typography>
                     </Box>
                 ) : (
@@ -1340,12 +1272,7 @@ export function FarmingCalendarPage() {
         [calendarTemplates, fieldMonitoringRecords, todayIso]
     )
 
-    const visibleFieldWorkRows = useMemo(() => {
-        const activeRows = fieldWorkRows.filter((row) => row.daysUntil <= FIELD_WORK_WINDOW_DAYS)
-        const sourceRows = activeRows.length > 0 ? activeRows : fieldWorkRows
-
-        return sourceRows.slice(0, FIELD_WORK_TABLE_LIMIT)
-    }, [fieldWorkRows])
+    const visibleFieldWorkRows = fieldWorkRows
 
     const fieldWorkTableLoading = fieldRecordsLoading || (calendarLoading && calendarTemplates.length === 0)
     const fieldWorkTableFetching = fieldRecordsFetching || calendarFetching

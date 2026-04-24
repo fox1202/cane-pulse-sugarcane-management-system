@@ -116,10 +116,6 @@ function formatFieldRecordDateValue(value?: string, pattern: string = 'dd MMM yy
     }
 }
 
-function formatFieldRecordDateTimeValue(value?: string) {
-    return formatFieldRecordDateValue(value, 'dd MMM yyyy HH:mm')
-}
-
 function formatFieldRecordNumericValue(value?: number, maximumFractionDigits: number = 2) {
     if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
 
@@ -651,42 +647,6 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.residual_management_remarks, entryForm?.residual_management_remarks, rawSheet?.residual_management_remarks, rawSheet?.residue_remarks))
     } },
-    { header: 'Fertilizer Type', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.fertilizer_type, rawSheet?.fertilizer_type, entryForm?.fertilizer_type, source.observation?.nutrient_management?.fertilizer_type, rawSheet?.fertilizer_type_1))
-    } },
-    { header: 'Nutrient Application Date', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.nutrient_application_date, currentSheet?.fertilizer_application_date, rawSheet?.application_date, rawSheet?.nutrient_application_date, rawSheet?.fertilizer_application_date, entryForm?.nutrient_application_date, source.observation?.nutrient_management?.application_date, typeof rawSheet?.fertilizer_application_date_1 === 'string' ? rawSheet.fertilizer_application_date_1 : undefined))
-    } },
-    { header: 'Application Rate', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.application_rate, rawSheet?.application_rate, entryForm?.application_rate, source.observation?.nutrient_management?.application_rate, rawSheet?.fertilizer_application_rate_1))
-    } },
-    { header: 'Herbicide Name', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.herbicide_name, rawSheet?.herbicide_name, entryForm?.herbicide_name, currentSheet?.weed_control, rawSheet?.weed_control, source.observation?.control_methods?.weed_control, rawSheet?.herbicide_name_1))
-    } },
-    { header: 'Weed Application Date', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordDateValue(pickFieldRecordDateValue(currentSheet?.weed_application_date, rawSheet?.weed_application_date, entryForm?.weed_application_date, rawSheet?.herbicide_application_date, typeof rawSheet?.herbicide_application_date_1 === 'string' ? rawSheet.herbicide_application_date_1 : undefined))
-    } },
-    { header: 'Weed Application Rate', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordNumericValue(pickFieldRecordNumericValue(currentSheet?.weed_application_rate, rawSheet?.weed_application_rate, entryForm?.weed_application_rate, rawSheet?.herbicide_application_rate, rawSheet?.herbicide_application_rate_1))
-    } },
     ...buildFertilizerApplicationCsvColumns(),
     ...buildHerbicideApplicationCsvColumns(),
     { header: 'Pest Remarks', getValue: (source) => {
@@ -724,18 +684,6 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const entryForm = source.entryForm
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.quality_remarks, entryForm?.quality_remarks, rawSheet?.quality_remarks, rawSheet?.cane_quality_remarks))
-    } },
-    { header: 'Created', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordDateTimeValue(pickFieldRecordDateValue(currentSheet?.created_at, entryForm?.created_at, rawSheet?.created_at, source.observation?.created_at))
-    } },
-    { header: 'Updated', getValue: (source) => {
-        const currentSheet = source.monitoringSheet
-        const entryForm = source.entryForm
-        const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordDateTimeValue(pickFieldRecordDateValue(currentSheet?.updated_at, entryForm?.updated_at, rawSheet?.updated_at))
     } },
 ]
 

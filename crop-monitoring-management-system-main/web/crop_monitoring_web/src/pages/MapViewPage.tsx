@@ -2166,7 +2166,16 @@ export function MapViewPage() {
                         ))}
                     </Box>
 
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1 }}>
+                    <Box
+                        sx={{
+                            display: 'grid',
+                            gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+                            gap: 1.1,
+                            '& > *': {
+                                minWidth: 0,
+                            },
+                        }}
+                    >
                         <ControlSelect
                             label="Crop Type"
                             value={selectedCropType}
