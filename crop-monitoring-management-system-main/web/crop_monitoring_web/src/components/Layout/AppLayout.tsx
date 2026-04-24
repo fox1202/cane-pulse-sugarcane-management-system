@@ -3,8 +3,6 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Alert,
   AppBar,
-  Avatar,
-  Badge,
   Box,
   ButtonBase,
   Chip,
@@ -28,7 +26,6 @@ import {
   LogoutRounded,
   MapRounded,
   Menu as MenuIcon,
-  NotificationsRounded,
   RefreshRounded,
   ShieldRounded,
   SpaRounded,
@@ -41,10 +38,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Navigation } from './Navigation'
 import { isOnline } from '@/services/offline.service'
 import { BRAND_DESCRIPTION, BRAND_NAME } from '@/branding/brand'
-import { useLivePredefinedFields } from '@/hooks/useLivePredefinedFields'
-import { useSugarcaneMonitoring } from '@/hooks/useSugarcaneMonitoring'
-import { formatDateOnlyLabel } from '@/utils/dateOnly'
-import { buildUpcomingTaskNotices, getTaskDueLabel } from '@/utils/upcomingTaskNotices'
 
 const DRAWER_WIDTH = 308
 
@@ -151,19 +144,8 @@ export function AppLayout() {
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [offline, setOffline] = useState(!isOnline())
-  const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null)
   const [statusAnchor, setStatusAnchor] = useState<null | HTMLElement>(null)
   const { signOut } = useAuth()
-  const {
-    data: monitoring = [],
-    isLoading: monitoringLoading,
-    error: monitoringError,
-  } = useSugarcaneMonitoring()
-  const {
-    data: predefinedFields = [],
-    isLoading: fieldsLoading,
-    error: fieldsError,
-  } = useLivePredefinedFields()
 
   useEffect(() => {
     const handleOnline = () => setOffline(false)
@@ -185,27 +167,8 @@ export function AppLayout() {
     },
     [location.pathname]
   )
-  const notificationTasks = useMemo(() => {
-    const allTasks = buildUpcomingTaskNotices(monitoring, predefinedFields)
-    const urgentTasks = allTasks.filter((task) => task.daysUntil <= 14)
-
-    if (urgentTasks.length > 0) {
-      return urgentTasks.slice(0, 6)
-    }
-
-    return allTasks.slice(0, 6)
-  }, [monitoring, predefinedFields])
-  const notificationsLoading = monitoringLoading || fieldsLoading
-  const notificationsError = monitoringError ?? fieldsError
-
   const handleDrawerToggle = () => {
     setMobileOpen((prev) => !prev)
-  }
-
-  const handleOpenNotifications = (event: React.MouseEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    setNotificationAnchor(event.currentTarget)
   }
 
   const handleLogoutClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -214,12 +177,10 @@ export function AppLayout() {
     void handleLogout()
   }
 
-  const closeNotificationMenu = () => setNotificationAnchor(null)
   const closeStatusMenu = () => setStatusAnchor(null)
 
   const handleNavigate = (path: string) => {
     navigate(path)
-    closeNotificationMenu()
     closeStatusMenu()
   }
 
@@ -230,7 +191,6 @@ export function AppLayout() {
 
   const handleLogout = async () => {
     try {
-      closeNotificationMenu()
       closeStatusMenu()
       await signOut()
       navigate('/login', { replace: true })
@@ -389,38 +349,6 @@ export function AppLayout() {
             </ButtonBase>
           </Tooltip>
 
-          <Tooltip title="Open task notices">
-            <IconButton
-              onClick={handleOpenNotifications}
-              aria-label="Open task notices"
-              aria-haspopup="menu"
-              aria-expanded={Boolean(notificationAnchor)}
-              sx={{
-                width: 46,
-                height: 46,
-                flexShrink: 0,
-                position: 'relative',
-                zIndex: 2,
-                cursor: 'pointer',
-                border: '1px solid rgba(47,127,79,0.16)',
-                bgcolor: 'rgba(255,255,255,0.82)',
-                color: 'primary.dark',
-                borderRadius: '16px',
-                boxShadow: '0 10px 24px rgba(31,52,43,0.06)',
-                '&:hover': { bgcolor: 'rgba(47,127,79,0.08)' },
-              }}
-            >
-              <Badge
-                badgeContent={notificationTasks.length}
-                color="success"
-                max={9}
-                invisible={!notificationTasks.length}
-              >
-                <NotificationsRounded />
-              </Badge>
-            </IconButton>
-          </Tooltip>
-
           <Tooltip title="Sign out">
             <ButtonBase
               onClick={handleLogoutClick}
@@ -501,136 +429,6 @@ export function AppLayout() {
             </MenuItem>
           </Menu>
 
-          <Menu
-            anchorEl={notificationAnchor}
-            open={Boolean(notificationAnchor)}
-            onClose={() => setNotificationAnchor(null)}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            MenuListProps={{ sx: { p: 0.6 } }}
-            PaperProps={{
-              sx: {
-                width: { xs: 'calc(100vw - 24px)', sm: 384 },
-                maxWidth: 'calc(100vw - 24px)',
-                mt: 1.2,
-                borderRadius: '22px !important',
-                border: '1px solid rgba(47,127,79,0.16)',
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,248,243,0.95) 100%)',
-                overflow: 'hidden',
-                p: 0.6,
-              },
-            }}
-          >
-            <Box sx={{ px: 1.6, pt: 1.1, pb: 0.9 }}>
-              <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontWeight: 800, color: 'text.primary' }}>
-                Upcoming tasks
-              </Typography>
-              <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.35 }}>
-                Notices for activities that need attention from the farming calendar.
-              </Typography>
-            </Box>
-            <Divider sx={{ mb: 0.4 }} />
-            {notificationsLoading && (
-              <Box sx={{ px: 1.6, py: 1.4 }}>
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.5 }}>
-                  Checking the latest field schedules and upcoming activities.
-                </Typography>
-              </Box>
-            )}
-            {!notificationsLoading && notificationsError && (
-              <Box sx={{ px: 1.6, py: 1.4 }}>
-                <Typography sx={{ fontSize: 12.5, color: 'error.main', lineHeight: 1.5 }}>
-                  Task notices could not be loaded right now.
-                </Typography>
-              </Box>
-            )}
-            {!notificationsLoading && !notificationsError && notificationTasks.length === 0 && (
-              <Box sx={{ px: 1.6, py: 1.4 }}>
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.5 }}>
-                  No upcoming task notices yet. Add planting or cut dates to see calendar activities here.
-                </Typography>
-              </Box>
-            )}
-            {!notificationsLoading && !notificationsError && notificationTasks.map((task) => {
-              const avatarTone = task.severity === 'overdue'
-                ? { bg: 'rgba(206,106,123,0.14)', fg: '#a7495a' }
-                : task.severity === 'today'
-                  ? { bg: 'rgba(234,143,115,0.16)', fg: 'secondary.dark' }
-                  : { bg: 'rgba(47,127,79,0.12)', fg: 'primary.dark' }
-
-              return (
-                <MenuItem
-                  key={task.key}
-                  onClick={() => handleNavigate('/calendar')}
-                  sx={{
-                    borderRadius: 3.5,
-                    alignItems: 'flex-start',
-                    gap: 1.2,
-                    py: 1.15,
-                    whiteSpace: 'normal',
-                  }}
-                >
-                  <Avatar
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '10px',
-                      bgcolor: avatarTone.bg,
-                      color: avatarTone.fg,
-                    }}
-                  >
-                      <CalendarMonthRounded sx={{ fontSize: 18 }} />
-                  </Avatar>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography
-                      sx={{
-                        fontWeight: 800,
-                        fontSize: 12.8,
-                        color: 'text.primary',
-                        lineHeight: 1.35,
-                        whiteSpace: 'normal',
-                        overflowWrap: 'anywhere',
-                      }}
-                    >
-                      {task.activity}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontSize: 11.5,
-                        color: 'text.secondary',
-                        lineHeight: 1.45,
-                        mt: 0.25,
-                        whiteSpace: 'normal',
-                        overflowWrap: 'anywhere',
-                      }}
-                    >
-                      {task.fieldLabel} · {task.weekLabel}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontSize: 11.25,
-                        color: 'text.secondary',
-                        lineHeight: 1.45,
-                        mt: 0.35,
-                        whiteSpace: 'normal',
-                        overflowWrap: 'anywhere',
-                      }}
-                    >
-                      {getTaskDueLabel(task.daysUntil)} · {formatDateOnlyLabel(task.dateIso) ?? task.dateIso}
-                    </Typography>
-                  </Box>
-                </MenuItem>
-              )
-            })}
-            <Divider sx={{ mt: 0.4, mb: 0.4 }} />
-            <MenuItem onClick={() => handleNavigate('/calendar')} sx={{ borderRadius: 3.5, py: 1.15 }}>
-              <CalendarMonthRounded fontSize="small" sx={{ mr: 1.2, color: 'primary.dark' }} />
-              <ListItemText
-                primary="Open farming calendar"
-                secondary="See the full schedule of activities that need to be done"
-              />
-            </MenuItem>
-          </Menu>
         </Toolbar>
       </AppBar>
 

@@ -1739,11 +1739,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 throw new Error('Please wait for the PDF uploads to finish before saving.');
             }
 
-            if (!formData.final_eldana_survey_pdf_url?.trim()) {
-                setEldanaPdfError('Please upload the final eldana survey PDF before saving.');
-                throw new Error('Please upload the final eldana survey as a PDF before saving.');
-            }
-
             let resolvedField = selectedField;
             let registryFields = predefinedFields;
             let allowExistingRowOverwrite = false;
@@ -3136,7 +3131,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         fontSize: '0.75rem',
                                     }}
                                 >
-                                    Final Eldana Survey (PDF) *
+                                    Final Eldana Survey (PDF)
                                 </Typography>
                                 <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
                                     <Button
@@ -3215,7 +3210,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         </Stack>
                                     ) : (
                                         <Typography variant="caption" color="text.secondary">
-                                            Upload required before saving
+                                            Optional upload
                                         </Typography>
                                     )}
                                 </Stack>
