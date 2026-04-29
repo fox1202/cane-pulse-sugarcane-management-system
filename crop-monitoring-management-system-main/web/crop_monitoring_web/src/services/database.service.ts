@@ -242,8 +242,8 @@ async function persistFieldManagementMonitoringRowWithSchemaFallback(
             return query.select('*')
         }
 
-        let result = await writeRow()
-        let returnedRows = getReturnedRows(result.data)
+        const result = await writeRow()
+        const returnedRows = getReturnedRows(result.data)
 
         if (!result.error && returnedRows.length > 0) {
             return {
@@ -1403,226 +1403,6 @@ function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSu
     }
 }
 
-function normalizeComparableText(value: unknown): string | null {
-    const normalized = toNullableString(value)
-    return normalized ? normalized.replace(/\s+/g, ' ').trim().toLowerCase() : null
-}
-
-function normalizeComparableNumber(value: unknown, precision: number = 6): number | null {
-    const normalized = toNullableNumber(value)
-    return normalized == null ? null : Number(normalized.toFixed(precision))
-}
-
-function sortSerializableValue(value: unknown): unknown {
-    if (Array.isArray(value)) {
-        return value.map((item) => sortSerializableValue(item))
-    }
-
-    if (value && typeof value === 'object') {
-        return Object.keys(value as Record<string, unknown>)
-            .sort((left, right) => left.localeCompare(right))
-            .reduce<Record<string, unknown>>((acc, key) => {
-                const normalized = sortSerializableValue((value as Record<string, unknown>)[key])
-                if (normalized !== undefined) {
-                    acc[key] = normalized
-                }
-                return acc
-            }, {})
-    }
-
-    return value
-}
-
-function buildComparableFertilizerApplications(
-    value: unknown,
-    fallback?: {
-        fertilizer_type?: unknown
-        nutrient_application_date?: unknown
-        application_rate?: unknown
-        foliar_sampling_date?: unknown
-    }
-) {
-    return normalizeFertilizerApplications(value, fallback)
-        .map((application) => ({
-            loop_number: toLoopNumber(application.loop_number, 1),
-            fertilizer_type: normalizeComparableText(application.fertilizer_type),
-            application_date: toNullableDateValue(application.application_date),
-            application_rate: normalizeComparableNumber(application.application_rate),
-            foliar_sampling_date: toNullableDateValue(application.foliar_sampling_date),
-        }))
-        .sort((left, right) => (
-            left.loop_number - right.loop_number
-            || String(left.application_date ?? '').localeCompare(String(right.application_date ?? ''))
-            || String(left.fertilizer_type ?? '').localeCompare(String(right.fertilizer_type ?? ''))
-        ))
-}
-
-function buildComparableHerbicideApplications(
-    value: unknown,
-    fallback?: {
-        herbicide_name?: unknown
-        weed_application_date?: unknown
-        weed_application_rate?: unknown
-    }
-) {
-    return normalizeHerbicideApplications(value, fallback)
-        .map((application) => ({
-            loop_number: toLoopNumber(application.loop_number, 1),
-            herbicide_name: normalizeComparableText(application.herbicide_name),
-            application_date: toNullableDateValue(application.application_date),
-            application_rate: normalizeComparableNumber(application.application_rate),
-        }))
-        .sort((left, right) => (
-            left.loop_number - right.loop_number
-            || String(left.application_date ?? '').localeCompare(String(right.application_date ?? ''))
-            || String(left.herbicide_name ?? '').localeCompare(String(right.herbicide_name ?? ''))
-        ))
-}
-
-function buildSubmissionDuplicateFingerprint(submission: ObservationEntryFormSubmissionInput): string {
-    const fingerprint = {
-        field_name: normalizeComparableText(firstNonEmptyString(submission.field_name, submission.field_id, submission.selected_field)),
-        section_name: normalizeComparableText(submission.section_name),
-        block_id: normalizeComparableText(submission.block_id),
-        area: normalizeComparableNumber(submission.area ?? submission.block_size, 4),
-        date_recorded: toNullableDateValue(submission.date_recorded),
-        trial_number: normalizeComparableText(submission.trial_number),
-        trial_name: normalizeComparableText(submission.trial_name),
-        contact_person: normalizeComparableText(submission.contact_person),
-        crop_type: normalizeComparableText(submission.crop_type),
-        crop_class: normalizeComparableText(submission.crop_class),
-        variety: normalizeComparableText(submission.variety),
-        ploughing_date: toNullableDateValue(submission.ploughing_date),
-        planting_date: toNullableDateValue(submission.planting_date),
-        previous_cutting_date: toNullableDateValue(submission.previous_cutting_date ?? submission.cutting_date),
-        expected_harvest_date: toNullableDateValue(submission.expected_harvest_date),
-        soil_test_pdf_url: normalizeComparableText(submission.soil_test_pdf_url),
-        foliar_analysis_pdf_url: normalizeComparableText(submission.foliar_analysis_pdf_url),
-        final_eldana_survey_pdf_url: normalizeComparableText(submission.final_eldana_survey_pdf_url),
-        irrigation_type: normalizeComparableText(submission.irrigation_type),
-        water_source: normalizeComparableText(submission.water_source),
-        tam: normalizeComparableNumber(submission.tam_mm ?? submission.tamm_area, 4),
-        soil_type: normalizeComparableText(submission.soil_type),
-        soil_ph: normalizeComparableNumber(submission.soil_ph, 4),
-        field_remarks: normalizeComparableText(firstNonEmptyString(submission.field_remarks, submission.remarks)),
-        stress: normalizeComparableText(submission.stress),
-        residue_type: normalizeComparableText(submission.residue_type),
-        residue_management_method: normalizeComparableText(submission.residue_management_method),
-        residual_management_remarks: normalizeComparableText(submission.residual_management_remarks),
-        fertilizer_applications: buildComparableFertilizerApplications(submission.fertilizer_applications, {
-            fertilizer_type: submission.fertilizer_type,
-            nutrient_application_date: submission.nutrient_application_date,
-            application_rate: submission.application_rate,
-            foliar_sampling_date: submission.foliar_sampling_date,
-        }),
-        herbicide_applications: buildComparableHerbicideApplications(submission.herbicide_applications, {
-            herbicide_name: submission.herbicide_name,
-            weed_application_date: submission.weed_application_date,
-            weed_application_rate: submission.weed_application_rate,
-        }),
-        pest_remarks: normalizeComparableText(submission.pest_remarks),
-        disease_remarks: normalizeComparableText(submission.disease_remarks),
-        harvest_date: toNullableDateValue(submission.harvest_date),
-        yield: normalizeComparableNumber(submission.yield, 4),
-        harvest_method: normalizeComparableText(submission.harvest_method),
-        quality_remarks: normalizeComparableText(submission.quality_remarks),
-        geometry: sortSerializableValue(normalizeFieldGeometry(submission.geom_polygon ?? submission.spatial_data)),
-    }
-
-    return JSON.stringify(fingerprint)
-}
-
-function buildMonitoringRowDuplicateFingerprint(row: SugarcaneMonitoringRecord): string {
-    const fingerprint = {
-        field_name: normalizeComparableText(firstNonEmptyString(row.field_name, row.field_id)),
-        section_name: normalizeComparableText(row.section_name),
-        block_id: normalizeComparableText(row.block_id),
-        area: normalizeComparableNumber(row.area, 4),
-        date_recorded: toNullableDateValue(row.date_recorded),
-        trial_number: normalizeComparableText(row.trial_number),
-        trial_name: normalizeComparableText(row.trial_name),
-        contact_person: normalizeComparableText(row.contact_person),
-        crop_type: normalizeComparableText(row.crop_type),
-        crop_class: normalizeComparableText(row.crop_class),
-        variety: normalizeComparableText(row.variety),
-        ploughing_date: toNullableDateValue(row.ploughing_date),
-        planting_date: toNullableDateValue(row.planting_date),
-        previous_cutting_date: toNullableDateValue(row.previous_cutting_date ?? row.previous_cutting),
-        expected_harvest_date: toNullableDateValue(row.expected_harvest_date),
-        soil_test_pdf_url: normalizeComparableText(row.soil_test_pdf_url),
-        foliar_analysis_pdf_url: normalizeComparableText(row.foliar_analysis_pdf_url),
-        final_eldana_survey_pdf_url: normalizeComparableText(row.final_eldana_survey_pdf_url),
-        irrigation_type: normalizeComparableText(row.irrigation_type),
-        water_source: normalizeComparableText(row.water_source),
-        tam: normalizeComparableNumber(row.tam_mm, 4),
-        soil_type: normalizeComparableText(row.soil_type),
-        soil_ph: normalizeComparableNumber(row.soil_ph, 4),
-        field_remarks: normalizeComparableText(firstNonEmptyString(row.field_remarks, row.remarks)),
-        stress: normalizeComparableText(row.stress),
-        residue_type: normalizeComparableText(row.residue_type),
-        residue_management_method: normalizeComparableText(row.residue_management_method),
-        residual_management_remarks: normalizeComparableText(row.residual_management_remarks),
-        fertilizer_applications: buildComparableFertilizerApplications(row.fertilizer_applications, {
-            fertilizer_type: row.fertilizer_type,
-            nutrient_application_date: row.nutrient_application_date ?? row.fertilizer_application_date,
-            application_rate: row.application_rate,
-            foliar_sampling_date: row.foliar_sampling_date,
-        }),
-        herbicide_applications: buildComparableHerbicideApplications(row.herbicide_applications, {
-            herbicide_name: row.herbicide_name,
-            weed_application_date: row.weed_application_date,
-            weed_application_rate: row.weed_application_rate,
-        }),
-        pest_remarks: normalizeComparableText(row.pest_remarks),
-        disease_remarks: normalizeComparableText(row.disease_remarks),
-        harvest_date: toNullableDateValue(row.harvest_date),
-        yield: normalizeComparableNumber(row.harvest_yield ?? row.yield, 4),
-        harvest_method: normalizeComparableText(row.harvest_method),
-        quality_remarks: normalizeComparableText(row.quality_remarks),
-        geometry: sortSerializableValue(normalizeFieldGeometry(row.geom_polygon)),
-    }
-
-    return JSON.stringify(fingerprint)
-}
-
-async function findDuplicateFieldManagementSubmission(
-    submission: ObservationEntryFormSubmissionInput,
-    currentRowId?: string | number | null
-): Promise<{ kind: 'duplicate' | 'unchanged'; row: SugarcaneMonitoringRecord } | null> {
-    const recordedDate = toNullableDateValue(submission.date_recorded)
-    const query = supabase
-        .from(MONITORING_TABLE_NAME)
-        .select('*')
-    const { data, error } = recordedDate
-        ? await query.eq('date_recorded', recordedDate)
-        : await query.is('date_recorded', null)
-
-    if (error) {
-        if (isMissingRelationError(error)) {
-            return null
-        }
-
-        throw error
-    }
-
-    const fingerprint = buildSubmissionDuplicateFingerprint(submission)
-    const matches = (data ?? [])
-        .map((row) => normalizeSugarcaneMonitoringRow(row as Record<string, unknown>))
-        .filter((row) => buildMonitoringRowDuplicateFingerprint(row) === fingerprint)
-
-    const otherMatch = matches.find((row) => String(row.id) !== String(currentRowId ?? ''))
-    if (otherMatch) {
-        return { kind: 'duplicate', row: otherMatch }
-    }
-
-    const currentMatch = matches.find((row) => String(row.id) === String(currentRowId ?? ''))
-    if (currentMatch) {
-        return { kind: 'unchanged', row: currentMatch }
-    }
-
-    return null
-}
-
 export async function fetchPredefinedFields(): Promise<PredefinedField[]> {
     if (USE_HARDCODED_FIELD_REGISTRY) {
         return getHardcodedPredefinedFields()
@@ -1976,27 +1756,10 @@ export async function uploadFinalEldanaSurveyPdf(file: File, fieldKey: string): 
 export async function createObservationEntryFormSubmission(
     submission: ObservationEntryFormSubmissionInput,
     predefinedFields?: PredefinedField[],
-    _options: CreateObservationEntryFormSubmissionOptions = {}
+    options: CreateObservationEntryFormSubmissionOptions = {}
 ): Promise<ObservationEntryForm> {
     const { submission: resolvedSubmission, linkedField } = await resolveObservationEntrySubmission(submission, predefinedFields)
-    const targetRowId = linkedField?.id ?? null
-    const duplicateMatch = await findDuplicateFieldManagementSubmission(
-        resolvedSubmission,
-        targetRowId
-    )
-
-    if (duplicateMatch?.kind === 'duplicate') {
-        const label = firstNonEmptyString(
-            resolvedSubmission.trial_name,
-            resolvedSubmission.field_name,
-            resolvedSubmission.field_id,
-            resolvedSubmission.block_id
-        ) ?? 'this field'
-        const recordedDate = toNullableDateValue(resolvedSubmission.date_recorded)
-        const recordTiming = recordedDate ? ` on ${recordedDate}` : ' without a recorded date'
-
-        throw new Error(`An identical record for ${label}${recordTiming} already exists in the monitoring records.`)
-    }
+    const targetRowId = options.allowExistingRowOverwrite ? linkedField?.id ?? null : null
 
     const payload = buildSugarcaneFieldManagementPayload(resolvedSubmission)
     const { data, droppedColumns } = await persistFieldManagementMonitoringRowWithSchemaFallback(
