@@ -1526,11 +1526,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
         if (latestRecord) {
             const collectorId = user?.id || latestRecord.collector_id || '';
-            setParseSummary('Current database information was loaded for this field. Enter a new date and update anything that changed, then save.');
-            setFormData(() => ({
-                ...buildLoadedSavedRecordData(latestRecord, collectorId, match),
-                date_recorded: '',
-            }));
+            setParseSummary('Current database information was loaded for this field. Edit the selected field row and save to update it.');
+            setFormData(() => buildLoadedSavedRecordData(latestRecord, collectorId, match));
             return;
         }
 
@@ -1743,6 +1740,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             let registryFields = predefinedFields;
             let allowExistingRowOverwrite = false;
             let overwroteKMLBoundary = false;
+            let createdNewFieldRow = false;
+            let updatedExistingFieldRow = false;
 
             if (isCreatingCustomField) {
                 const normalizedFieldName = formData.field_name.trim();
@@ -1788,6 +1787,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 );
 
                 resolvedField = createdField;
+                allowExistingRowOverwrite = Boolean(createdField.id);
+                createdNewFieldRow = true;
 
                 setIsCreatingCustomField(false);
                 setDrawPoints([]);
@@ -1899,6 +1900,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
                     registryFields = mergeCreatedFieldIntoRegistry(registryFields, createdField);
                     resolvedField = createdField;
+                    allowExistingRowOverwrite = Boolean(createdField.id);
+                    createdNewFieldRow = true;
                 }
 
                 setIsUploadingKML(false);
@@ -1923,6 +1926,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
             if (!resolvedField) {
                 throw new Error('Please choose a field or trial from the field management table.');
+            }
+
+            if (resolvedField.id) {
+                allowExistingRowOverwrite = true;
+                updatedExistingFieldRow = !overwroteKMLBoundary && !createdNewFieldRow;
             }
 
             const submission = {
@@ -1969,6 +1977,10 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             await onSubmitted();
             onSaved?.(overwroteKMLBoundary
                 ? 'KML/KMZ boundary overwritten and saved to the database.'
+                : updatedExistingFieldRow
+                    ? 'Existing field row updated in the database.'
+                    : createdNewFieldRow
+                        ? 'New field row saved to the database.'
                 : 'Successfully saved to the database.');
 
             if (mode === 'add_another') {
