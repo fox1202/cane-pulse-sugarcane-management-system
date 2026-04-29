@@ -8,7 +8,7 @@
 -- Roles:
 --   admin      -> full backend/admin/data/download access
 --   supervisor -> add/upload/view/download access
---   collector  -> view/download access
+--   collector  -> add/upload/view/download access
 -- ============================================================================
 
 begin;
@@ -108,6 +108,8 @@ as $$
       'download_soil_results'
     )
     when 'collector' then permission_name in (
+      'add_data',
+      'upload_files',
       'view_data',
       'download_csv',
       'download_field_data',
@@ -149,7 +151,7 @@ create policy "Admins can insert profiles"
   with check (public.current_user_can('approve_users'));
 
 -- Live field-management records: approved users can view; admins and
--- supervisors can add/update; only admins can delete existing rows.
+-- supervisors and collectors can add/update; only admins can delete existing rows.
 do $$
 begin
   if to_regclass('public.sugarcane_field_management') is not null then
@@ -166,13 +168,15 @@ begin
       using (public.current_user_can(''view_data''))';
 
     execute 'drop policy if exists "Admins and supervisors can add field management" on public.sugarcane_field_management';
-    execute 'create policy "Admins and supervisors can add field management"
+    execute 'drop policy if exists "Approved users can add field management" on public.sugarcane_field_management';
+    execute 'create policy "Approved users can add field management"
       on public.sugarcane_field_management for insert
       with check (public.current_user_can(''add_data''))';
 
     execute 'drop policy if exists "Admins can edit field management" on public.sugarcane_field_management';
     execute 'drop policy if exists "Admins and supervisors can edit field management" on public.sugarcane_field_management';
-    execute 'create policy "Admins and supervisors can edit field management"
+    execute 'drop policy if exists "Approved users can edit field management" on public.sugarcane_field_management';
+    execute 'create policy "Approved users can edit field management"
       on public.sugarcane_field_management for update
       using (public.current_user_can(''add_data'') or public.current_user_can(''manage_fields''))
       with check (public.current_user_can(''add_data'') or public.current_user_can(''manage_fields''))';
@@ -220,7 +224,8 @@ begin
       execute format('create policy "Approved users can read %I" on %s for select using (public.current_user_can(''view_data''))', table_name, qualified_table);
 
       execute format('drop policy if exists "Admins and supervisors can add %I" on %s', table_name, qualified_table);
-      execute format('create policy "Admins and supervisors can add %I" on %s for insert with check (public.current_user_can(''add_data''))', table_name, qualified_table);
+      execute format('drop policy if exists "Approved users can add %I" on %s', table_name, qualified_table);
+      execute format('create policy "Approved users can add %I" on %s for insert with check (public.current_user_can(''add_data''))', table_name, qualified_table);
 
       execute format('drop policy if exists "Admins can edit %I" on %s', table_name, qualified_table);
       execute format('create policy "Admins can edit %I" on %s for update using (public.current_user_can(''manage_fields'')) with check (public.current_user_can(''manage_fields''))', table_name, qualified_table);
@@ -287,7 +292,8 @@ begin
       )';
 
     execute 'drop policy if exists "Admins and supervisors can upload soil result files" on storage.objects';
-    execute 'create policy "Admins and supervisors can upload soil result files"
+    execute 'drop policy if exists "Approved users can upload soil result files" on storage.objects';
+    execute 'create policy "Approved users can upload soil result files"
       on storage.objects for insert
       with check (
         bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'', ''final-eldana-survey-pdfs'')
@@ -330,8 +336,8 @@ select
   role = 'admin' and lower(email) = lower('silentabrahamganda02@gmail.com') as can_manage_fields,
   role = 'admin' and lower(email) = lower('silentabrahamganda02@gmail.com') as can_backup_data,
   role = 'admin' and lower(email) = lower('silentabrahamganda02@gmail.com') as can_view_supervisor_inputs,
-  role in ('admin', 'supervisor') as can_add_data,
-  role in ('admin', 'supervisor') as can_upload_files,
+  role in ('admin', 'supervisor', 'collector') as can_add_data,
+  role in ('admin', 'supervisor', 'collector') as can_upload_files,
   role in ('admin', 'supervisor', 'collector') as can_view_data,
   role in ('admin', 'supervisor', 'collector') as can_download_csv,
   role in ('admin', 'supervisor', 'collector') as can_download_field_data,

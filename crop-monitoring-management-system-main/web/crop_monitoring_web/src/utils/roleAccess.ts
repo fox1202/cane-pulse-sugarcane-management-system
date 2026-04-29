@@ -39,6 +39,8 @@ const SUPERVISOR_PERMISSIONS = [
 ] as const satisfies readonly AppPermission[]
 
 const COLLECTOR_PERMISSIONS = [
+  'addData',
+  'uploadFiles',
   'viewData',
   'downloadCsv',
   'downloadFieldData',

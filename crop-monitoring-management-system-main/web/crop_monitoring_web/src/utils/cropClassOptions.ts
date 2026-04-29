@@ -1,4 +1,4 @@
-export const MAX_SUGARCANE_RATOON = 25;
+export const MAX_SUGARCANE_RATOON = 30;
 
 function toOrdinal(value: number): string {
     const remainder100 = value % 100;

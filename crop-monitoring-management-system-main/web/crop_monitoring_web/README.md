@@ -165,13 +165,19 @@ While the current architecture is optimized for performance at its current scale
 
 ## 👥 User Roles
 
-### Collector (View-Only)
+### Collector / User (Field Data Access)
 - View observation data
+- Access the Entry Forms page
+- Add entry-form records and remarks
+- Upload and view laboratory PDF results
+- See trial progress
 - Access dashboard and map
 - No edit/delete permissions
 
 ### Supervisor / Agronomist (Full Data Access)
 - All Collector permissions
+- Add entry-form records and remarks
+- Upload and view laboratory PDF results
 - Full access to dashboard analytics
 - Advanced filtering and analysis
 

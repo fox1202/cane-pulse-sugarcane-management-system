@@ -33,7 +33,8 @@ begin
       )';
 
     execute 'drop policy if exists "Admins and supervisors can upload eldana survey files" on storage.objects';
-    execute 'create policy "Admins and supervisors can upload eldana survey files"
+    execute 'drop policy if exists "Approved users can upload eldana survey files" on storage.objects';
+    execute 'create policy "Approved users can upload eldana survey files"
       on storage.objects for insert
       with check (
         bucket_id = ''final-eldana-survey-pdfs''
