@@ -504,6 +504,63 @@ function hasActiveFilterValue(value?: string | null): value is string {
     return normalized.length > 0 && normalized !== 'all'
 }
 
+function buildFieldIdentityTokens(row: {
+    field_name?: string | null
+    field_id?: string | null
+    selected_field?: string | null
+    section_name?: string | null
+    block_id?: string | null
+}): string[] {
+    const candidateNames = [
+        row.field_name,
+        row.field_id,
+        row.selected_field,
+    ]
+        .map(normalizeLookupToken)
+        .filter(Boolean)
+
+    const section = normalizeLookupToken(row.section_name)
+    const block = normalizeLookupToken(row.block_id)
+    const tokens = new Set<string>()
+
+    candidateNames.forEach((name) => {
+        tokens.add(`name:${name}`)
+        tokens.add(`name-section-block:${name}|${section}|${block}`)
+        tokens.add(`name-block:${name}|${block}`)
+        tokens.add(`name-section:${name}|${section}`)
+    })
+
+    if (candidateNames.length === 0 && block) {
+        tokens.add(`block:${block}`)
+        if (section) {
+            tokens.add(`section-block:${section}|${block}`)
+        }
+    }
+
+    return Array.from(tokens).filter((token) => !token.endsWith('|') && !token.includes('||'))
+}
+
+function buildPrimaryFieldIdentity(row: {
+    field_name?: string | null
+    field_id?: string | null
+    selected_field?: string | null
+    section_name?: string | null
+    block_id?: string | null
+}): string {
+    const name = normalizeLookupToken(row.field_name || row.field_id || row.selected_field)
+    const section = normalizeLookupToken(row.section_name)
+    const block = normalizeLookupToken(row.block_id)
+
+    if (name && section && block) return `name-section-block:${name}|${section}|${block}`
+    if (name && block) return `name-block:${name}|${block}`
+    if (name && section) return `name-section:${name}|${section}`
+    if (name) return `name:${name}`
+    if (section && block) return `section-block:${section}|${block}`
+    if (block) return `block:${block}`
+
+    return ''
+}
+
 function buildFieldLookupKey(fieldName?: string | null, sectionName?: string | null, blockId?: string | null): string {
     return [normalizeLookupToken(fieldName), normalizeLookupToken(sectionName), normalizeLookupToken(blockId)].join('|')
 }
@@ -971,6 +1028,57 @@ async function resolveObservationEntrySubmission(
     }
 }
 
+async function findExistingFieldManagementRowId(
+    submission: ObservationEntryFormSubmissionInput,
+    preferredFields?: PredefinedField[]
+): Promise<string | null> {
+    const fields = preferredFields ?? await fetchPredefinedFields().catch(() => [] as PredefinedField[])
+    if (fields.length === 0) {
+        return null
+    }
+
+    const tokens = new Set(buildFieldIdentityTokens({
+        field_name: submission.field_name,
+        field_id: submission.field_id,
+        selected_field: submission.selected_field,
+        section_name: submission.section_name,
+        block_id: submission.block_id,
+    }))
+
+    if (tokens.size === 0) {
+        return null
+    }
+
+    const matches = fields.filter((field) =>
+        buildFieldIdentityTokens({
+            field_name: field.field_name,
+            field_id: field.field_name,
+            selected_field: field.field_name,
+            section_name: field.section_name,
+            block_id: field.block_id,
+        }).some((token) => tokens.has(token))
+    )
+
+    if (matches.length === 0) {
+        return null
+    }
+
+    const best = matches.reduce((current, next) => {
+        const currentTime = new Date(String(current.date_recorded ?? current.updated_at ?? current.created_at ?? '')).getTime()
+        const nextTime = new Date(String(next.date_recorded ?? next.updated_at ?? next.created_at ?? '')).getTime()
+        const currentHasDate = hasUsableRecordedDate(current.date_recorded)
+        const nextHasDate = hasUsableRecordedDate(next.date_recorded)
+
+        if (nextHasDate !== currentHasDate) {
+            return nextHasDate ? next : current
+        }
+
+        return Number.isFinite(nextTime) && (!Number.isFinite(currentTime) || nextTime >= currentTime) ? next : current
+    })
+
+    return best.id ? String(best.id) : null
+}
+
 function normalizeSugarcaneMonitoringRow(row: Record<string, unknown>): SugarcaneMonitoringRecord {
     const fieldName = firstNonEmptyString(row.field_name, row.field_id, row.Trial, row.trial) ?? ''
     const recordedDate = normalizeRecordedDateValue(row.date_recorded) || ''
@@ -1290,6 +1398,57 @@ function mapSugarcaneMonitoringRowToEntryForm(
     }
 }
 
+function getRowTimestamp(row: SugarcaneMonitoringRecord): number {
+    const candidates = [row.date_recorded, row.updated_at, row.created_at]
+
+    for (const candidate of candidates) {
+        const time = new Date(String(candidate ?? '')).getTime()
+        if (Number.isFinite(time)) {
+            return time
+        }
+    }
+
+    return 0
+}
+
+function isBetterFieldManagementRow(candidate: SugarcaneMonitoringRecord, current: SugarcaneMonitoringRecord): boolean {
+    const candidateHasDate = hasUsableRecordedDate(candidate.date_recorded)
+    const currentHasDate = hasUsableRecordedDate(current.date_recorded)
+
+    if (candidateHasDate !== currentHasDate) {
+        return candidateHasDate
+    }
+
+    return getRowTimestamp(candidate) >= getRowTimestamp(current)
+}
+
+function dedupeSugarcaneMonitoringRows(rows: SugarcaneMonitoringRecord[]): SugarcaneMonitoringRecord[] {
+    const byIdentity = new Map<string, SugarcaneMonitoringRecord>()
+    const passthrough: SugarcaneMonitoringRecord[] = []
+
+    rows.forEach((row) => {
+        const identity = buildPrimaryFieldIdentity({
+            field_name: row.field_name,
+            field_id: row.field_id,
+            selected_field: row.field_name || row.field_id,
+            section_name: row.section_name,
+            block_id: row.block_id,
+        })
+
+        if (!identity) {
+            passthrough.push(row)
+            return
+        }
+
+        const current = byIdentity.get(identity)
+        if (!current || isBetterFieldManagementRow(row, current)) {
+            byIdentity.set(identity, row)
+        }
+    })
+
+    return [...byIdentity.values(), ...passthrough]
+}
+
 function buildSugarcaneFieldManagementPayload(submission: ObservationEntryFormSubmissionInput) {
     const fertilizerApplications = normalizeFertilizerApplications(submission.fertilizer_applications, {
         fertilizer_type: submission.fertilizer_type,
@@ -1464,8 +1623,9 @@ export async function fetchSugarcaneMonitoringRows(
         throw error
     }
 
-    let normalizedRows = (data ?? [])
+    let normalizedRows = dedupeSugarcaneMonitoringRows((data ?? [])
         .map((row) => normalizeSugarcaneMonitoringRow(row as Record<string, unknown>))
+    )
 
     if (!options?.includeUndated) {
         normalizedRows = normalizedRows.filter((row) => hasUsableRecordedDate(row.date_recorded))
@@ -1759,7 +1919,9 @@ export async function createObservationEntryFormSubmission(
     options: CreateObservationEntryFormSubmissionOptions = {}
 ): Promise<ObservationEntryForm> {
     const { submission: resolvedSubmission, linkedField } = await resolveObservationEntrySubmission(submission, predefinedFields)
-    const targetRowId = options.allowExistingRowOverwrite ? linkedField?.id ?? null : null
+    const targetRowId = options.allowExistingRowOverwrite
+        ? linkedField?.id ?? await findExistingFieldManagementRowId(resolvedSubmission, predefinedFields)
+        : await findExistingFieldManagementRowId(resolvedSubmission, predefinedFields)
 
     const payload = buildSugarcaneFieldManagementPayload(resolvedSubmission)
     const { data, droppedColumns } = await persistFieldManagementMonitoringRowWithSchemaFallback(
