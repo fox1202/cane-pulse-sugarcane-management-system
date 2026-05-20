@@ -283,11 +283,72 @@ function toPublicStorageUrl(bucket: string, value: unknown): string | undefined 
     if (!normalized) return undefined
 
     if (/^https?:\/\//i.test(normalized)) {
+        return getStorageObjectPath(bucket, normalized) ?? normalized
+    }
+
+    return normalized
+}
+
+function getStorageObjectPath(bucket: string, value: string): string | undefined {
+    const normalized = value.trim()
+    if (!normalized) return undefined
+
+    if (!/^https?:\/\//i.test(normalized)) {
         return normalized
     }
 
-    const { data } = supabase.storage.from(bucket).getPublicUrl(normalized)
-    return data.publicUrl || undefined
+    try {
+        const url = new URL(normalized)
+        const marker = `/storage/v1/object/`
+        const markerIndex = url.pathname.indexOf(marker)
+        if (markerIndex === -1) return undefined
+
+        const objectPath = url.pathname.slice(markerIndex + marker.length)
+        const bucketPrefixes = [`public/${bucket}/`, `sign/${bucket}/`]
+        const bucketPrefix = bucketPrefixes.find((prefix) => objectPath.startsWith(prefix))
+        if (!bucketPrefix) return undefined
+
+        return decodeURIComponent(objectPath.slice(bucketPrefix.length))
+    } catch {
+        return undefined
+    }
+}
+
+export async function createSignedPdfUrl(bucket: string, value: string): Promise<string> {
+    if (/^https?:\/\//i.test(value) && !getStorageObjectPath(bucket, value)) {
+        return value
+    }
+
+    const path = getStorageObjectPath(bucket, value)
+    if (!path) {
+        throw new Error('No PDF file path was found for this record.')
+    }
+
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 10)
+    if (error || !data?.signedUrl) {
+        throw new Error(`Could not open PDF: ${error?.message ?? 'signed URL was not returned'}`)
+    }
+
+    return data.signedUrl
+}
+
+export async function openStoredPdf(bucket: string, value: string): Promise<void> {
+    const popup = window.open('about:blank', '_blank')
+    if (popup) {
+        popup.opener = null
+    }
+
+    try {
+        const signedUrl = await createSignedPdfUrl(bucket, value)
+        if (popup) {
+            popup.location.href = signedUrl
+            return
+        }
+        window.open(signedUrl, '_blank', 'noopener,noreferrer')
+    } catch (error) {
+        popup?.close()
+        throw error
+    }
 }
 
 function listOfMaps(value: unknown): Record<string, unknown>[] {
@@ -1897,8 +1958,7 @@ async function uploadPdfToStorage(bucket: string, file: File, fieldKey: string):
         throw new Error(`PDF upload failed: ${error.message}`)
     }
 
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path)
-    return data.publicUrl
+    return path
 }
 
 export async function uploadSoilTestPdf(file: File, fieldKey: string): Promise<string> {

@@ -23,7 +23,7 @@ import {
 } from '@mui/icons-material'
 import { format } from 'date-fns'
 import type { FullObservation } from '@/types/database.types'
-import type { MobileObservationRecord } from '@/services/database.service'
+import { openStoredPdf, type MobileObservationRecord } from '@/services/database.service'
 
 type ObservationTableRecord = FullObservation | MobileObservationRecord
 
@@ -133,6 +133,12 @@ const OBSERVATION_COLUMNS: ObservationColumn[] = [
     { key: 'qualityRemarks', label: 'Quality Remarks', minWidth: 220, wrap: true },
     { key: 'created', label: 'Created', minWidth: 180 },
 ]
+
+const PDF_BUCKET_BY_COLUMN: Partial<Record<keyof FlattenedObservationRow, string>> = {
+    soilTestPdfUrl: 'soil-test-pdfs',
+    foliarAnalysisPdfUrl: 'foliar-analysis-pdfs',
+    finalEldanaSurveyPdfUrl: 'final-eldana-survey-pdfs',
+}
 
 function isMobileObservationRecord(observation: ObservationTableRecord): observation is MobileObservationRecord {
     return 'source_table' in observation
@@ -480,12 +486,21 @@ export const ObservationTable: React.FC<ObservationTableProps> = ({
                                     >
                                         {column.isLink && row[column.key] ? (
                                             <Typography
-                                                component="a"
-                                                href={row[column.key]}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                                component="button"
                                                 variant="body2"
+                                                onClick={() => {
+                                                    const bucket = PDF_BUCKET_BY_COLUMN[column.key]
+                                                    if (!bucket) return
+
+                                                    void openStoredPdf(bucket, row[column.key]).catch((error) => {
+                                                        window.alert(error instanceof Error ? error.message : 'Could not open PDF.')
+                                                    })
+                                                }}
                                                 sx={{
+                                                    border: 0,
+                                                    background: 'transparent',
+                                                    p: 0,
+                                                    font: 'inherit',
                                                     color: 'primary.main',
                                                     textDecoration: 'underline',
                                                     whiteSpace: 'nowrap',

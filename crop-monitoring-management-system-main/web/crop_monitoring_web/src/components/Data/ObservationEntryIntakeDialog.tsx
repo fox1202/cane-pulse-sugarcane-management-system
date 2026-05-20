@@ -23,6 +23,7 @@ import {
     createObservationEntryFormSubmission,
     createPredefinedField,
     getPredefinedFieldByName,
+    openStoredPdf,
     uploadFinalEldanaSurveyPdf,
     uploadSoilTestPdf,
     uploadFoliarAnalysisPdf,
@@ -2635,11 +2636,20 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     {formData.soil_test_pdf_url ? (
                                         <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
                                             <Typography
-                                                component="a"
-                                                href={formData.soil_test_pdf_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                                component="button"
+                                                onClick={() => {
+                                                    const pdfUrl = formData.soil_test_pdf_url
+                                                    if (!pdfUrl) return
+
+                                                    void openStoredPdf('soil-test-pdfs', pdfUrl).catch((error) => {
+                                                        setPdfError(error instanceof Error ? error.message : 'Could not open PDF.')
+                                                    })
+                                                }}
                                                 sx={{
+                                                    border: 0,
+                                                    background: 'transparent',
+                                                    p: 0,
+                                                    textAlign: 'left',
                                                     fontSize: '0.78rem',
                                                     color: 'primary.main',
                                                     textDecoration: 'underline',
@@ -2758,11 +2768,20 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     {formData.foliar_analysis_pdf_url ? (
                                         <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
                                             <Typography
-                                                component="a"
-                                                href={formData.foliar_analysis_pdf_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                                component="button"
+                                                onClick={() => {
+                                                    const pdfUrl = formData.foliar_analysis_pdf_url
+                                                    if (!pdfUrl) return
+
+                                                    void openStoredPdf('foliar-analysis-pdfs', pdfUrl).catch((error) => {
+                                                        setFoliarPdfError(error instanceof Error ? error.message : 'Could not open PDF.')
+                                                    })
+                                                }}
                                                 sx={{
+                                                    border: 0,
+                                                    background: 'transparent',
+                                                    p: 0,
+                                                    textAlign: 'left',
                                                     fontSize: '0.78rem',
                                                     color: 'primary.main',
                                                     textDecoration: 'underline',
@@ -3190,11 +3209,20 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     {formData.final_eldana_survey_pdf_url ? (
                                         <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
                                             <Typography
-                                                component="a"
-                                                href={formData.final_eldana_survey_pdf_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                                component="button"
+                                                onClick={() => {
+                                                    const pdfUrl = formData.final_eldana_survey_pdf_url
+                                                    if (!pdfUrl) return
+
+                                                    void openStoredPdf('final-eldana-survey-pdfs', pdfUrl).catch((error) => {
+                                                        setEldanaPdfError(error instanceof Error ? error.message : 'Could not open PDF.')
+                                                    })
+                                                }}
                                                 sx={{
+                                                    border: 0,
+                                                    background: 'transparent',
+                                                    p: 0,
+                                                    textAlign: 'left',
                                                     fontSize: '0.78rem',
                                                     color: 'primary.main',
                                                     textDecoration: 'underline',

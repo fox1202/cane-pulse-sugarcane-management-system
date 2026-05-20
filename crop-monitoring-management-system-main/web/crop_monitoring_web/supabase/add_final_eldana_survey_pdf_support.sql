@@ -1,8 +1,8 @@
 -- ============================================================================
 -- ADD FINAL ELDANA SURVEY PDF SUPPORT
 -- ============================================================================
--- Adds the final_eldana_survey_pdf_url column and creates the storage bucket
--- plus policies required by the web entry form upload.
+-- Adds the final_eldana_survey_pdf_url column and creates the storage buckets
+-- plus policies required by the web entry form upload and signed PDF viewing.
 --
 -- Run this ENTIRE script in the Supabase SQL Editor.
 -- ============================================================================
@@ -19,11 +19,30 @@ do $$
 begin
   if to_regclass('storage.buckets') is not null then
     insert into storage.buckets (id, name, public)
-    values ('final-eldana-survey-pdfs', 'final-eldana-survey-pdfs', false)
+    values
+      ('soil-test-pdfs', 'soil-test-pdfs', false),
+      ('foliar-analysis-pdfs', 'foliar-analysis-pdfs', false),
+      ('final-eldana-survey-pdfs', 'final-eldana-survey-pdfs', false)
     on conflict (id) do nothing;
   end if;
 
   if to_regclass('storage.objects') is not null then
+    execute 'drop policy if exists "Approved users can read lab PDF files" on storage.objects';
+    execute 'create policy "Approved users can read lab PDF files"
+      on storage.objects for select
+      using (
+        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'', ''final-eldana-survey-pdfs'')
+        and public.current_user_can(''download_soil_results'')
+      )';
+
+    execute 'drop policy if exists "Approved users can upload lab PDF files" on storage.objects';
+    execute 'create policy "Approved users can upload lab PDF files"
+      on storage.objects for insert
+      with check (
+        bucket_id in (''soil-test-pdfs'', ''foliar-analysis-pdfs'', ''final-eldana-survey-pdfs'')
+        and public.current_user_can(''upload_files'')
+      )';
+
     execute 'drop policy if exists "Approved users can read eldana survey files" on storage.objects';
     execute 'create policy "Approved users can read eldana survey files"
       on storage.objects for select
