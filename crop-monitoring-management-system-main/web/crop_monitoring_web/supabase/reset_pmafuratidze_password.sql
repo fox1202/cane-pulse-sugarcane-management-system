@@ -1,53 +1,50 @@
 -- ============================================================================
--- RESET SILENT SUPERUSER PASSWORD
+-- RESET PMAFURATIDZE PASSWORD
 -- ============================================================================
 -- Run this whole file in the Supabase SQL Editor with a privileged role.
 --
 -- Target login:
---   silentabrahamganda02@gmail.com
+--   pmafuratidze@science.uz.ac.zw
 --
--- This script:
---   - sets the Supabase Auth password for the target account
---   - confirms the email if needed
---   - ensures this profile is the only admin/superuser profile
---   - does not touch auth.identities because that table is owner-restricted
+-- New password:
+--   PM_2026
 -- ============================================================================
 
 begin;
 
 create extension if not exists pgcrypto;
 
-create temporary table silent_superuser_reset (
+create temporary table pmafuratidze_password_reset (
   email text primary key,
   first_name text not null,
   last_name text not null,
   clear_password text not null
 ) on commit preserve rows;
 
-insert into silent_superuser_reset (email, first_name, last_name, clear_password)
-values
-  ('silentabrahamganda02@gmail.com', 'Silent', 'Abraham Ganda', 'GANDA@2025');
-
--- Only this email should keep the database admin role that maps to app superuser.
-update public.profiles
-set
-  role = 'supervisor',
-  updated_at = now()
-where lower(email) <> lower('silentabrahamganda02@gmail.com')
-  and role = 'admin';
+insert into pmafuratidze_password_reset (
+  email,
+  first_name,
+  last_name,
+  clear_password
+)
+values (
+  'pmafuratidze@science.uz.ac.zw',
+  'Pmafuratidze',
+  'User',
+  'PM_2026'
+);
 
 do $$
 begin
   if not exists (
     select 1
     from auth.users u
-    where lower(u.email) = lower('silentabrahamganda02@gmail.com')
+    where lower(u.email) = lower('pmafuratidze@science.uz.ac.zw')
   ) then
-    raise exception 'Auth user silentabrahamganda02@gmail.com does not exist. Create the user in Supabase Authentication first, then rerun this password reset.';
+    raise exception 'Auth user pmafuratidze@science.uz.ac.zw does not exist. Create the user in Supabase Authentication first, then rerun this password reset.';
   end if;
 end $$;
 
--- Reset the target password and repair auth metadata.
 update auth.users u
 set
   aud = 'authenticated',
@@ -62,11 +59,11 @@ set
     'first_name', s.first_name,
     'last_name', s.last_name,
     'full_name', trim(s.first_name || ' ' || s.last_name),
-    'role', 'admin',
+    'role', 'supervisor',
     'status', 'approved'
   ),
   updated_at = now()
-from silent_superuser_reset s
+from pmafuratidze_password_reset s
 where lower(u.email) = s.email;
 
 -- GoTrue can reject manually repaired users when token fields are NULL.
@@ -95,7 +92,7 @@ begin
       execute format(
         'update auth.users u
          set %1$I = coalesce(u.%1$I, %2$L)
-         from silent_superuser_reset s
+         from pmafuratidze_password_reset s
          where lower(u.email) = s.email',
         auth_column_name,
         ''
@@ -104,23 +101,7 @@ begin
   end loop;
 end $$;
 
--- Repair the app profile for the superuser.
-update public.profiles p
-set
-  id = u.id,
-  email = s.email,
-  first_name = s.first_name,
-  last_name = s.last_name,
-  full_name = trim(s.first_name || ' ' || s.last_name),
-  role = 'admin',
-  status = 'approved',
-  is_active = true,
-  updated_at = now()
-from silent_superuser_reset s
-join auth.users u on lower(u.email) = s.email
-where p.id = u.id
-   or lower(p.email) = s.email;
-
+-- Ensure the app profile can pass the app's approved-user login gate.
 insert into public.profiles (
   id,
   email,
@@ -137,10 +118,10 @@ select
   s.first_name,
   s.last_name,
   trim(s.first_name || ' ' || s.last_name),
-  'admin',
+  'supervisor',
   'approved',
   true
-from silent_superuser_reset s
+from pmafuratidze_password_reset s
 join auth.users u on lower(u.email) = s.email
 where not exists (
   select 1
@@ -157,6 +138,15 @@ on conflict (email) do update set
   is_active = excluded.is_active,
   updated_at = now();
 
+update public.profiles p
+set
+  role = 'supervisor',
+  status = 'approved',
+  is_active = true,
+  updated_at = now()
+from pmafuratidze_password_reset s
+where lower(p.email) = s.email;
+
 commit;
 
 -- This row must show password_matches = true and profile_ready = true.
@@ -169,10 +159,9 @@ select
   p.status,
   p.is_active,
   p.full_name,
-  p.role = 'admin'
+  p.role = 'supervisor'
     and p.status = 'approved'
-    and nullif(trim(coalesce(p.full_name, '')), '') is not null
     and coalesce(p.is_active, true) = true as profile_ready
-from silent_superuser_reset s
+from pmafuratidze_password_reset s
 left join auth.users u on lower(u.email) = s.email
 left join public.profiles p on p.id = u.id;

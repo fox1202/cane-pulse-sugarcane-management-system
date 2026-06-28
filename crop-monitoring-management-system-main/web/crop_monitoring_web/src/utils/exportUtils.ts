@@ -355,80 +355,6 @@ function getHerbicideApplications(source: EntryFormExportSource): ApplicationRec
         : []
 }
 
-function buildFertilizerApplicationCsvColumns(): FieldRecordTableCsvColumn[] {
-    return Array.from({ length: MAX_APPLICATION_EXPORT_LOOPS }, (_, index) => {
-        const loop = index + 1
-
-        return [
-            {
-                header: `Fertilizer ${loop} Type`,
-                getValue: (source: EntryFormExportSource) => formatFieldRecordTextValue(
-                    pickFieldRecordTextValue(getApplicationAt(getFertilizerApplications(source), index)?.fertilizer_type)
-                ),
-                omitWhenEmpty: true,
-            },
-            {
-                header: `Fertilizer ${loop} Application Date`,
-                getValue: (source: EntryFormExportSource) => formatFieldRecordDateValue(
-                    pickFieldRecordDateValue(getApplicationAt(getFertilizerApplications(source), index)?.application_date)
-                ),
-                omitWhenEmpty: true,
-            },
-            {
-                header: `Fertilizer ${loop} Application Rate`,
-                getValue: (source: EntryFormExportSource) => formatFieldRecordNumericValue(
-                    pickFieldRecordNumericValue(getApplicationAt(getFertilizerApplications(source), index)?.application_rate)
-                ),
-                omitWhenEmpty: true,
-            },
-            {
-                header: `Fertilizer ${loop} Remarks`,
-                getValue: (source: EntryFormExportSource) => formatFieldRecordTextValue(
-                    pickFieldRecordTextValue(getApplicationAt(getFertilizerApplications(source), index)?.remarks)
-                ),
-                omitWhenEmpty: true,
-            },
-        ]
-    }).flat()
-}
-
-function buildHerbicideApplicationCsvColumns(): FieldRecordTableCsvColumn[] {
-    return Array.from({ length: MAX_APPLICATION_EXPORT_LOOPS }, (_, index) => {
-        const loop = index + 1
-
-        return [
-            {
-                header: `Herbicide ${loop} Name`,
-                getValue: (source: EntryFormExportSource) => formatFieldRecordTextValue(
-                    pickFieldRecordTextValue(getApplicationAt(getHerbicideApplications(source), index)?.herbicide_name)
-                ),
-                omitWhenEmpty: true,
-            },
-            {
-                header: `Herbicide ${loop} Application Date`,
-                getValue: (source: EntryFormExportSource) => formatFieldRecordDateValue(
-                    pickFieldRecordDateValue(getApplicationAt(getHerbicideApplications(source), index)?.application_date)
-                ),
-                omitWhenEmpty: true,
-            },
-            {
-                header: `Herbicide ${loop} Application Rate`,
-                getValue: (source: EntryFormExportSource) => formatFieldRecordNumericValue(
-                    pickFieldRecordNumericValue(getApplicationAt(getHerbicideApplications(source), index)?.application_rate)
-                ),
-                omitWhenEmpty: true,
-            },
-            {
-                header: `Herbicide ${loop} Remarks`,
-                getValue: (source: EntryFormExportSource) => formatFieldRecordTextValue(
-                    pickFieldRecordTextValue(getApplicationAt(getHerbicideApplications(source), index)?.remarks)
-                ),
-                omitWhenEmpty: true,
-            },
-        ]
-    }).flat()
-}
-
 function stringifyEntryCsvValue(value: unknown): unknown {
     if (value === null || value === undefined) return ''
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value
@@ -477,6 +403,91 @@ function resolveCsvColumns(sources: EntryFormExportSource[]): FieldRecordTableCs
 
         return sources.some((source) => hasExportCellValue(column.getValue(source)))
     })
+}
+
+function buildDynamicApplicationCsvColumns(sources: EntryFormExportSource[]): FieldRecordTableCsvColumn[] {
+    const fertilizerCount = Math.max(0, ...sources.map((source) => getFertilizerApplications(source).length))
+    const herbicideCount = Math.max(0, ...sources.map((source) => getHerbicideApplications(source).length))
+    const columns: FieldRecordTableCsvColumn[] = []
+
+    for (let index = 0; index < fertilizerCount; index += 1) {
+        const loop = index + 1
+        columns.push(
+            {
+                header: `Fertilizer ${loop} Type`,
+                getValue: (source) => formatFieldRecordTextValue(
+                    pickFieldRecordTextValue(getApplicationAt(getFertilizerApplications(source), index)?.fertilizer_type)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Fertilizer ${loop} Application Date`,
+                getValue: (source) => formatFieldRecordDateValue(
+                    pickFieldRecordDateValue(getApplicationAt(getFertilizerApplications(source), index)?.application_date)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Fertilizer ${loop} Application Rate`,
+                getValue: (source) => formatFieldRecordNumericValue(
+                    pickFieldRecordNumericValue(getApplicationAt(getFertilizerApplications(source), index)?.application_rate)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Fertilizer ${loop} Foliar Sampling Date`,
+                getValue: (source) => formatFieldRecordDateValue(
+                    pickFieldRecordDateValue(getApplicationAt(getFertilizerApplications(source), index)?.foliar_sampling_date)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Fertilizer ${loop} Remarks`,
+                getValue: (source) => formatFieldRecordTextValue(
+                    pickFieldRecordTextValue(getApplicationAt(getFertilizerApplications(source), index)?.remarks)
+                ),
+                omitWhenEmpty: true,
+            },
+        )
+    }
+
+    for (let index = 0; index < herbicideCount; index += 1) {
+        const loop = index + 1
+        columns.push(
+            {
+                header: `Herbicide ${loop} Name`,
+                getValue: (source) => formatFieldRecordTextValue(
+                    pickFieldRecordTextValue(getApplicationAt(getHerbicideApplications(source), index)?.herbicide_name)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Herbicide ${loop} Application Date`,
+                getValue: (source) => formatFieldRecordDateValue(
+                    pickFieldRecordDateValue(getApplicationAt(getHerbicideApplications(source), index)?.application_date)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Herbicide ${loop} Application Rate`,
+                getValue: (source) => formatFieldRecordNumericValue(
+                    pickFieldRecordNumericValue(getApplicationAt(getHerbicideApplications(source), index)?.application_rate)
+                ),
+                omitWhenEmpty: true,
+            },
+            {
+                header: `Herbicide ${loop} Remarks`,
+                getValue: (source) => formatFieldRecordTextValue(
+                    pickFieldRecordTextValue(getApplicationAt(getHerbicideApplications(source), index)?.remarks)
+                ),
+                omitWhenEmpty: true,
+            },
+        )
+    }
+
+    return columns.filter((column) =>
+        !column.omitWhenEmpty || sources.some((source) => hasExportCellValue(column.getValue(source)))
+    )
 }
 
 const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
@@ -639,7 +650,7 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const currentSheet = source.monitoringSheet
         const entryForm = source.entryForm
         const rawSheet = currentSheet?.raw_values
-        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.residue_management_method, entryForm?.residue_management_method, rawSheet?.residue_management_method, rawSheet?.management_method))
+        return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.residue_management_method, entryForm?.residue_management_method, rawSheet?.residue_management_method, rawSheet?.residual_management_method, rawSheet?.management_method))
     } },
     { header: 'Residue Remarks', getValue: (source) => {
         const currentSheet = source.monitoringSheet
@@ -647,8 +658,6 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
         const rawSheet = currentSheet?.raw_values
         return formatFieldRecordTextValue(pickFieldRecordTextValue(currentSheet?.residual_management_remarks, entryForm?.residual_management_remarks, rawSheet?.residual_management_remarks, rawSheet?.residue_remarks))
     } },
-    ...buildFertilizerApplicationCsvColumns(),
-    ...buildHerbicideApplicationCsvColumns(),
     { header: 'Pest Remarks', getValue: (source) => {
         const currentSheet = source.monitoringSheet
         const entryForm = source.entryForm
@@ -688,7 +697,10 @@ const FIELD_RECORD_TABLE_CSV_COLUMNS: FieldRecordTableCsvColumn[] = [
 ]
 
 function buildFieldRecordTableCsvData(sources: EntryFormExportSource[]): Record<string, unknown>[] {
-    const columns = resolveCsvColumns(sources)
+    const columns = [
+        ...resolveCsvColumns(sources),
+        ...buildDynamicApplicationCsvColumns(sources),
+    ]
 
     return sources.map((source) => (
         Object.fromEntries(

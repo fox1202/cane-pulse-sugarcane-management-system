@@ -3,17 +3,18 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Alert,
   AppBar,
+  Avatar,
   Box,
+  Button,
   ButtonBase,
   Chip,
-  Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
   Drawer,
   IconButton,
-  ListItemText,
-  Menu,
-  MenuItem,
+  Popover,
   Toolbar,
-  Tooltip,
   Typography,
 } from '@mui/material'
 import {
@@ -23,21 +24,20 @@ import {
   DescriptionRounded,
   HomeRounded,
   InsightsRounded,
+  LockResetRounded,
   LogoutRounded,
   MapRounded,
   Menu as MenuIcon,
-  RefreshRounded,
   ShieldRounded,
   SpaRounded,
   TableChartRounded,
-  WifiOffRounded,
-  WifiRounded,
 } from '@mui/icons-material'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { Navigation } from './Navigation'
 import { isOnline } from '@/services/offline.service'
 import { BRAND_DESCRIPTION, BRAND_NAME } from '@/branding/brand'
+import { getRoleLabel } from '@/utils/roleAccess'
 
 const DRAWER_WIDTH = 308
 
@@ -81,6 +81,12 @@ const PAGE_META: Record<string, { eyebrow: string; title: string; note?: string;
     title: 'Security Center',
     note: 'Manage protected access, approvals, and system oversight from the admin surface.',
     icon: <ShieldRounded fontSize="small" />,
+  },
+  '/change-password': {
+    eyebrow: 'Account',
+    title: 'Change Password',
+    note: 'Update your account password whenever you need to refresh your sign-in details.',
+    icon: <LockResetRounded fontSize="small" />,
   },
 }
 
@@ -144,8 +150,8 @@ export function AppLayout() {
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [offline, setOffline] = useState(!isOnline())
-  const [statusAnchor, setStatusAnchor] = useState<null | HTMLElement>(null)
-  const { signOut } = useAuth()
+  const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null)
+  const { user, signOut } = useAuth()
 
   useEffect(() => {
     const handleOnline = () => setOffline(false)
@@ -170,34 +176,36 @@ export function AppLayout() {
   const handleDrawerToggle = () => {
     setMobileOpen((prev) => !prev)
   }
+  const rawDisplayName = user?.full_name?.trim() || user?.email?.split('@')[0] || 'System user'
+  const displayName = rawDisplayName.replace(/\s+User$/i, '').trim() || rawDisplayName
+  const roleLabel = getRoleLabel(user?.profile_role ?? user?.role)
+  const profileImageUrl =
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.picture ||
+    user?.user_metadata?.image_url ||
+    user?.user_metadata?.photo_url
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'U'
 
-  const handleLogoutClick = (event: React.MouseEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    void handleLogout()
-  }
-
-  const closeStatusMenu = () => setStatusAnchor(null)
-
-  const handleNavigate = (path: string) => {
-    navigate(path)
-    closeStatusMenu()
-  }
-
-  const handleRefreshPage = () => {
-    closeStatusMenu()
-    window.location.reload()
+  const handleChangePassword = () => {
+    setProfileAnchor(null)
+    navigate('/change-password')
   }
 
   const handleLogout = async () => {
     try {
-      closeStatusMenu()
+      setProfileAnchor(null)
       await signOut()
       navigate('/login', { replace: true })
     } catch (error) {
       console.error('Logout error:', error)
     }
   }
+  const mustChangePassword = user?.must_change_password === true && location.pathname !== '/change-password'
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
@@ -245,9 +253,11 @@ export function AppLayout() {
       >
         <Toolbar
           sx={{
-            minHeight: '92px !important',
+            minHeight: { xs: '92px !important', md: '126px !important' },
             px: { xs: 2, md: 3 },
+            py: { xs: 0, md: 1.4 },
             gap: 1.5,
+            alignItems: 'center',
             borderRadius: '0 0 32px 32px',
             border: '1px solid rgba(47,127,79,0.14)',
             background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,248,243,0.88) 100%)',
@@ -286,7 +296,7 @@ export function AppLayout() {
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.4, minWidth: 0, flex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.4, minWidth: 0, flex: 1, pt: { md: 1 } }}>
             <Box
               sx={{
                 width: 46,
@@ -316,121 +326,206 @@ export function AppLayout() {
             </Box>
           </Box>
 
-          <Tooltip title={offline ? 'Offline mode' : 'Connection status'}>
-            <ButtonBase
-              onClick={(event) => setStatusAnchor(event.currentTarget)}
-              aria-label="Open connection status"
-              sx={{
-                border: 'none',
-                p: 0,
-                borderRadius: '16px',
-                bgcolor: 'transparent',
-                position: 'relative',
-                zIndex: 1,
-                '&:focus-visible': {
-                  outline: '2px solid rgba(47,127,79,0.28)',
-                  outlineOffset: 2,
-                },
-              }}
-            >
-              <Chip
-                clickable
-                icon={offline ? <WifiOffRounded /> : <WifiRounded />}
-                label={offline ? 'Offline' : 'Online'}
-                sx={{
-                  height: 34,
-                  borderRadius: '14px',
-                  fontWeight: 800,
-                  bgcolor: offline ? 'rgba(206,106,123,0.12)' : 'rgba(47,127,79,0.12)',
-                  color: offline ? '#a7495a' : 'primary.dark',
-                  '& .MuiChip-icon': { color: 'inherit' },
-                }}
-              />
-            </ButtonBase>
-          </Tooltip>
-
-          <Tooltip title="Sign out">
-            <ButtonBase
-              onClick={handleLogoutClick}
-              aria-label="Sign out"
-              sx={{
-                border: 'none',
-                p: 0,
-                borderRadius: '16px',
-                bgcolor: 'transparent',
-                position: 'relative',
-                zIndex: 2,
-                cursor: 'pointer',
-                '&:focus-visible': {
-                  outline: '2px solid rgba(234,143,115,0.34)',
-                  outlineOffset: 2,
-                },
-              }}
-            >
-              <Chip
-                clickable
-                icon={<LogoutRounded />}
-                label="Logout"
-                sx={{
-                  height: 34,
-                  borderRadius: '14px',
-                  fontWeight: 800,
-                  bgcolor: 'rgba(234,143,115,0.12)',
-                  color: 'secondary.dark',
-                  '& .MuiChip-icon': { color: 'inherit' },
-                }}
-              />
-            </ButtonBase>
-          </Tooltip>
-
-          <Menu
-            anchorEl={statusAnchor}
-            open={Boolean(statusAnchor)}
-            onClose={closeStatusMenu}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            MenuListProps={{ sx: { p: 0.6 } }}
-            PaperProps={{
-              sx: {
-                width: 300,
-                mt: 1.2,
-                borderRadius: '22px !important',
-                border: '1px solid rgba(47,127,79,0.16)',
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,248,243,0.95) 100%)',
-                overflow: 'hidden',
-                p: 0.6,
+          <ButtonBase
+            onClick={(event) => setProfileAnchor(event.currentTarget)}
+            aria-label="Open profile details"
+            sx={{
+              display: { xs: 'none', md: 'block' },
+              width: 290,
+              flexShrink: 0,
+              p: 1.45,
+              textAlign: 'left',
+              borderRadius: '18px',
+              border: '1px solid rgba(47,127,79,0.12)',
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,248,243,0.86) 100%)',
+              boxShadow: '0 14px 30px rgba(31,52,43,0.06)',
+              position: 'relative',
+              zIndex: 1,
+              '&:focus-visible': {
+                outline: '2px solid rgba(47,127,79,0.28)',
+                outlineOffset: 2,
               },
             }}
           >
-            <Box sx={{ px: 1.6, pt: 1.1, pb: 0.9 }}>
-              <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontWeight: 800, color: 'text.primary' }}>
-                System status
-              </Typography>
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.45, lineHeight: 1.55 }}>
-                {offline
-                  ? 'The browser is offline. New edits are safe, and live sync will continue once your connection returns.'
-                  : 'The browser is online and ready to sync records, calendar updates, and map activity.'}
-              </Typography>
-            </Box>
-            <Divider sx={{ mb: 0.4 }} />
-            <MenuItem onClick={handleRefreshPage} sx={{ borderRadius: 3.5, py: 1.15 }}>
-              <RefreshRounded fontSize="small" sx={{ mr: 1.2, color: 'primary.dark' }} />
-              <ListItemText
-                primary="Refresh current page"
-                secondary="Reload the latest map, records, and web-form data"
-              />
-            </MenuItem>
-            <MenuItem onClick={() => handleNavigate('/map')} sx={{ borderRadius: 3.5, py: 1.15 }}>
-              <MapRounded fontSize="small" sx={{ mr: 1.2, color: 'primary.dark' }} />
-              <ListItemText
-                primary="Open map view"
-                secondary="Jump straight to field boundaries and recorded coverage"
-              />
-            </MenuItem>
-          </Menu>
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: 'text.secondary',
+                fontFamily: '"Times New Roman", Times, serif',
+                mb: 1.1,
+              }}
+            >
+              Profile
+            </Typography>
 
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+              <Avatar src={profileImageUrl} sx={{ width: 42, height: 42, borderRadius: '12px' }}>{initials}</Avatar>
+
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: 14.5,
+                    color: 'text.primary',
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {displayName}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: 11.5,
+                    color: 'text.secondary',
+                    lineHeight: 1.35,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {user?.email || 'No email available'}
+                </Typography>
+              </Box>
+            </Box>
+          </ButtonBase>
+
+          <Popover
+            anchorEl={profileAnchor}
+            open={Boolean(profileAnchor)}
+            onClose={() => setProfileAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            PaperProps={{
+              sx: {
+                width: 290,
+                mt: 1,
+                p: 1.45,
+                borderRadius: '18px',
+                border: '1px solid rgba(47,127,79,0.12)',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,248,243,0.94) 100%)',
+                boxShadow: '0 20px 44px rgba(31,52,43,0.14)',
+              },
+            }}
+          >
+            <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                <Chip
+                  size="small"
+                  label={roleLabel}
+                  sx={{
+                    height: 24,
+                    borderRadius: '10px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    bgcolor: 'rgba(47,127,79,0.12)',
+                    color: 'primary.dark',
+                  }}
+                />
+              </Box>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.8, mt: 1.25 }}>
+                <ButtonBase
+                  onClick={handleChangePassword}
+                  aria-label="Change password"
+                  sx={{
+                    minHeight: 34,
+                    borderRadius: '12px',
+                    border: '1px solid rgba(47,127,79,0.14)',
+                    bgcolor: 'rgba(47,127,79,0.08)',
+                    color: 'primary.dark',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 0.55,
+                    px: 0.8,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    fontFamily: '"Times New Roman", Times, serif',
+                    '& svg': { fontSize: 16 },
+                    '&:hover': { bgcolor: 'rgba(47,127,79,0.14)' },
+                  }}
+                >
+                  <LockResetRounded />
+                  Password
+                </ButtonBase>
+                <ButtonBase
+                  onClick={() => void handleLogout()}
+                  aria-label="Logout"
+                  sx={{
+                    minHeight: 34,
+                    borderRadius: '12px',
+                    border: '1px solid rgba(234,143,115,0.22)',
+                    bgcolor: 'rgba(234,143,115,0.1)',
+                    color: 'secondary.dark',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 0.55,
+                    px: 0.8,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    fontFamily: '"Times New Roman", Times, serif',
+                    '& svg': { fontSize: 16 },
+                    '&:hover': { bgcolor: 'rgba(234,143,115,0.16)' },
+                  }}
+                >
+                  <LogoutRounded />
+                  Logout
+                </ButtonBase>
+              </Box>
+          </Popover>
         </Toolbar>
       </AppBar>
+
+      <Dialog
+        open={mustChangePassword}
+        maxWidth="xs"
+        fullWidth
+        disableEscapeKeyDown
+        aria-labelledby="default-password-title"
+      >
+        <DialogContent
+          sx={{
+            p: 3,
+            borderRadius: '18px',
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,248,243,0.96) 100%)',
+          }}
+        >
+          <Typography
+            id="default-password-title"
+            sx={{
+              fontFamily: '"Times New Roman", Times, serif',
+              fontSize: 22,
+              fontWeight: 800,
+              color: 'text.primary',
+              mb: 1,
+            }}
+          >
+            Change Your Password
+          </Typography>
+          <Typography sx={{ fontSize: 14, color: 'text.secondary', lineHeight: 1.6 }}>
+            Your account is still using the default password. For security, please create your own password before continuing.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 0, bgcolor: 'rgba(255,248,243,0.96)' }}>
+          <Button
+            variant="contained"
+            startIcon={<LockResetRounded />}
+            onClick={handleChangePassword}
+            sx={{
+              borderRadius: '12px',
+              fontWeight: 800,
+              textTransform: 'none',
+            }}
+          >
+            Change Password
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
         <Drawer
@@ -469,7 +564,7 @@ export function AppLayout() {
         sx={{
           flexGrow: 1,
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          mt: '110px',
+          mt: { xs: '110px', md: '146px' },
           px: { xs: 1.6, md: 3.2 },
           pb: 4,
           position: 'relative',

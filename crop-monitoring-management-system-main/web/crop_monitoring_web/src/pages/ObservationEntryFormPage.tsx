@@ -35,8 +35,13 @@ function compareSortText(left?: string | null, right?: string | null) {
     return trialSortCollator.compare(normalizeSortText(left), normalizeSortText(right))
 }
 
+function getTrialSortValue(record: SugarcaneMonitoringRecord) {
+    const rawTrial = record.raw_values?.Trial ?? record.raw_values?.trial
+    return normalizeSortText((rawTrial == null ? '' : String(rawTrial)) || record.field_name || record.field_id)
+}
+
 function compareEntryRows(left: SugarcaneMonitoringRecord, right: SugarcaneMonitoringRecord) {
-    const byTrial = compareSortText(left.field_id || left.field_name, right.field_id || right.field_name)
+    const byTrial = compareSortText(getTrialSortValue(left), getTrialSortValue(right))
     if (byTrial !== 0) return byTrial
 
     const byTrialName = compareSortText(left.trial_name, right.trial_name)

@@ -34,6 +34,10 @@ function getUserStatus(user: User): AuthUser['status'] {
     return 'pending'
 }
 
+function getMustChangePassword(user: User): boolean {
+    return user.user_metadata?.must_change_password === true || user.user_metadata?.default_password === true
+}
+
 function mapSupabaseUser(user: User): AuthUser {
     const email = user.email || ''
 
@@ -44,6 +48,7 @@ function mapSupabaseUser(user: User): AuthUser {
         profile_role: undefined,
         status: getUserStatus(user),
         full_name: user.user_metadata?.full_name,
+        must_change_password: getMustChangePassword(user),
         user_metadata: user.user_metadata,
     }
 }
@@ -80,6 +85,7 @@ function mapProfileUser(user: User, profile: ProfileRecord): AuthUser {
         profile_role: profile.role?.trim() || undefined,
         status,
         full_name: `${firstName} ${lastName}`.trim(),
+        must_change_password: getMustChangePassword(user),
         user_metadata: user.user_metadata,
     }
 }
@@ -279,7 +285,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const updatePassword = async (password: string) => {
-        const { error } = await supabase.auth.updateUser({ password })
+        const { error } = await supabase.auth.updateUser({
+            password,
+            data: {
+                must_change_password: false,
+                default_password: false,
+            },
+        })
         if (error) throw error
     }
 

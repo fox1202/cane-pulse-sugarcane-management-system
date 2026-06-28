@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 520" role="img" aria-labelledby="title desc">
+  <title id="title">ZSA Experiment Station logo</title>
+  <desc id="desc">A green sugarcane frame surrounding the text ZSA, a tree, and the words Experiment Station.</desc>
+  <rect width="240" height="520" rx="10" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#39a25b">
+      <path d="M30 72C16 132 14 210 18 290C22 372 34 434 58 480" stroke-width="16" stroke-dasharray="48 18"/>
+      <path d="M52 38C73 28 88 22 104 18C96 40 80 54 56 62Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M64 62C82 52 96 50 110 48" stroke-width="2.5"/>
+      <path d="M40 78C52 58 58 44 60 26C44 44 34 60 30 78Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M34 154C54 142 68 134 84 126C76 146 64 160 44 168Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M46 170C62 162 74 160 86 158" stroke-width="2.5"/>
+      <path d="M28 238C48 228 62 220 80 212C72 232 58 246 38 252Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M32 330C50 320 64 312 82 304C76 322 62 338 42 346Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M40 422C58 414 74 406 90 396C82 416 68 430 48 438Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M56 448C72 444 86 442 100 442" stroke-width="2.5"/>
+    </g>
+    <g transform="translate(240 0) scale(-1 1)" stroke="#39a25b">
+      <path d="M30 72C16 132 14 210 18 290C22 372 34 434 58 480" stroke-width="16" stroke-dasharray="48 18"/>
+      <path d="M52 38C73 28 88 22 104 18C96 40 80 54 56 62Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M64 62C82 52 96 50 110 48" stroke-width="2.5"/>
+      <path d="M40 78C52 58 58 44 60 26C44 44 34 60 30 78Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M34 154C54 142 68 134 84 126C76 146 64 160 44 168Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M46 170C62 162 74 160 86 158" stroke-width="2.5"/>
+      <path d="M28 238C48 228 62 220 80 212C72 232 58 246 38 252Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M32 330C50 320 64 312 82 304C76 322 62 338 42 346Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M40 422C58 414 74 406 90 396C82 416 68 430 48 438Z" fill="#ffffff" stroke-width="3"/>
+      <path d="M56 448C72 444 86 442 100 442" stroke-width="2.5"/>
+    </g>
+  </g>
+  <text x="120" y="112" fill="#111111" font-family="Arial Black, Arial, sans-serif" font-size="66" font-weight="900" letter-spacing="-2" text-anchor="middle">zsa</text>
+  <g fill="none" stroke="#111111" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 360V248" stroke-width="16"/>
+    <path d="M120 276C102 266 88 252 72 226" stroke-width="13"/>
+    <path d="M108 262C92 248 80 232 68 204" stroke-width="10"/>
+    <path d="M96 228C80 218 70 206 62 190" stroke-width="8"/>
+    <path d="M120 284C138 270 152 254 168 228" stroke-width="13"/>
+    <path d="M132 262C148 248 160 232 172 204" stroke-width="10"/>
+    <path d="M144 228C160 218 170 206 178 190" stroke-width="8"/>
+    <path d="M120 236C106 218 98 198 94 180" stroke-width="9"/>
+    <path d="M120 236C134 218 142 198 146 180" stroke-width="9"/>
+    <path d="M120 314C102 324 86 338 70 356" stroke-width="10"/>
+    <path d="M120 316C138 326 154 340 170 358" stroke-width="10"/>
+    <path d="M118 354C102 368 90 384 84 402" stroke-width="9"/>
+    <path d="M122 354C138 368 150 384 156 402" stroke-width="9"/>
+    <path d="M114 352C102 362 90 370 74 376" stroke-width="8"/>
+    <path d="M126 352C138 362 150 370 166 376" stroke-width="8"/>
+  </g>
+  <path d="M100 364C102 338 108 312 114 286H126C132 312 138 338 140 364L120 382Z" fill="#111111"/>
+  <text x="120" y="468" fill="#111111" font-family="Arial Black, Arial, sans-serif" font-size="22" font-weight="900" letter-spacing="1" text-anchor="middle">EXPERIMENT</text>
+  <text x="120" y="494" fill="#111111" font-family="Arial Black, Arial, sans-serif" font-size="22" font-weight="900" letter-spacing="1" text-anchor="middle">STATION</text>
+</svg>

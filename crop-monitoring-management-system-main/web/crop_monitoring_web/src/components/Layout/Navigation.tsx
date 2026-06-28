@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
 import {
-  Avatar,
   Box,
   Chip,
   Typography,
@@ -24,7 +23,7 @@ import {
   BRAND_NAME,
 } from '@/branding/brand'
 import type { UserRole } from '@/types/auth.types'
-import { canAccessRoles, getRoleLabel, hasPermission, type AppPermission } from '@/utils/roleAccess'
+import { canAccessRoles, hasPermission, type AppPermission } from '@/utils/roleAccess'
 
 interface NavItemDef {
   path: string
@@ -58,15 +57,6 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-
-  const displayName = user?.full_name?.trim() || user?.email?.split('@')[0] || 'System user'
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('') || 'U'
-  const roleLabel = getRoleLabel(user?.profile_role ?? user?.role)
   const navItems = [...PRIMARY_NAV, ...ADMIN_NAV].filter((item) => {
     if (item.allowedRoles && !canAccessRoles(user?.role, item.allowedRoles, user?.email)) {
       return false
@@ -273,86 +263,6 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </Box>
 
-      <Box
-        sx={{
-          px: 2.1,
-          pb: 2.3,
-          pt: 1.3,
-          borderTop: '1px solid rgba(47,127,79,0.12)',
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,248,243,0.52) 100%)',
-        }}
-      >
-        <Box
-          sx={{
-            p: 1.45,
-            borderRadius: '18px',
-            border: '1px solid rgba(47,127,79,0.12)',
-            background: 'linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,248,243,0.84) 100%)',
-            boxShadow: '0 14px 30px rgba(31,52,43,0.06)',
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              color: 'text.secondary',
-              fontFamily: '"Times New Roman", Times, serif',
-              mb: 1.1,
-            }}
-          >
-            Current user
-          </Typography>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-            <Avatar sx={{ width: 42, height: 42, borderRadius: '12px' }}>{initials}</Avatar>
-
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography
-                sx={{
-                  fontWeight: 800,
-                  fontSize: 14.5,
-                  color: 'text.primary',
-                  lineHeight: 1.2,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {displayName}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: 11.5,
-                  color: 'text.secondary',
-                  lineHeight: 1.35,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {user?.email || 'No email available'}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', mt: 1.25 }}>
-            <Chip
-              size="small"
-              label={roleLabel}
-              sx={{
-                height: 24,
-                borderRadius: '10px',
-                fontSize: 10,
-                fontWeight: 800,
-                bgcolor: 'rgba(47,127,79,0.12)',
-                color: 'primary.dark',
-              }}
-            />
-          </Box>
-        </Box>
-      </Box>
     </Box>
   )
 }

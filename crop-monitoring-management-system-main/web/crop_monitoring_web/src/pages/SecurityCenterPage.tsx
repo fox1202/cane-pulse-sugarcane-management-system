@@ -44,7 +44,7 @@ const AMBER_PALE  = 'rgba(67,160,71,0.07)'
 const AMBER_BDR   = 'rgba(67,160,71,0.2)'
 const TEXT_DIM    = 'rgba(0,0,0,0.4)'
 const TEXT_MID    = 'rgba(0,0,0,0.6)'
-const TEXT_ON     = 'rgba(255,255,255,0.88)'
+const TEXT_ON     = 'rgba(31,52,43,0.92)'
 
 const getErrorMessage = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
@@ -170,7 +170,7 @@ function StatCard({ title, count, icon, color, loading }: { title: string; count
                 </Box>
                 <PulseDot color={color} size={6} />
             </Box>
-            <Typography sx={{ fontSize: loading ? '2rem' : '2.8rem', fontWeight: 800, color: 'white', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1, mb: 0.5 }}>
+            <Typography sx={{ fontSize: loading ? '2rem' : '2.8rem', fontWeight: 800, color: TEXT_ON, fontFamily: '"Times New Roman", Times, serif', lineHeight: 1, mb: 0.5 }}>
                 {loading ? '—' : count}
             </Typography>
             <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.08em', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', textTransform: 'uppercase' }}>
@@ -448,7 +448,7 @@ export function SecurityCenterPage() {
                                     Access Control System
                                 </Typography>
                             </Box>
-                            <Typography sx={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', fontWeight: 800, letterSpacing: '-0.03em', fontFamily: '"Times New Roman", Times, serif', color: 'white', lineHeight: 1.05, mb: 0.8 }}>
+                            <Typography sx={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', fontWeight: 800, letterSpacing: 0, fontFamily: '"Times New Roman", Times, serif', color: TEXT_ON, lineHeight: 1.05, mb: 0.8 }}>
                                 Security{' '}
                                 <Box component="span" sx={{ color: VIOLET, textShadow: `0 0 40px ${VIOLET_DIM}` }}>Center</Box>
                             </Typography>

@@ -83,6 +83,7 @@ export interface NutrientManagement {
 }
 
 export interface FertilizerApplication {
+    id?: string;
     loop_number?: number;
     fertilizer_type?: string;
     application_date?: string;
@@ -91,6 +92,7 @@ export interface FertilizerApplication {
 }
 
 export interface HerbicideApplication {
+    id?: string;
     loop_number?: number;
     herbicide_name?: string;
     application_date?: string;
@@ -262,6 +264,7 @@ export interface ObservationEntryForm {
 
 export interface SugarcaneMonitoringRecord {
     id: string;
+    observation_id?: string;
     field_name: string;
     field_id?: string;
     section_name?: string;
@@ -285,6 +288,7 @@ export interface SugarcaneMonitoringRecord {
     final_eldana_survey_pdf_url?: string;
     previous_cutting?: string;
     previous_cutting_date?: string;
+    cutting_date?: string;
     expected_harvest_date?: string;
     stress?: string;
     tam_mm?: string;
@@ -325,6 +329,7 @@ export interface SugarcaneMonitoringRecord {
     pest_control?: string;
     disease_control?: string;
     harvest_date?: string;
+    cane_yield?: number;
     harvest_yield?: number;
     yield?: number;
     harvest_method?: string;

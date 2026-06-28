@@ -8,7 +8,7 @@ import { LIVE_DATA_UPDATED_EVENT } from '@/lib/liveData'
 
 export function useFieldManagementRecords() {
     const query = useQuery<MobileObservationRecord[], Error>({
-        queryKey: ['field-records', 'sugarcane_field_management', 'all-rows'],
+        queryKey: ['field-records', 'sugarcane_three_tables', 'all-rows'],
         queryFn: () => fetchSugarcaneMonitoringObservations(undefined, { includeUndated: true }),
         staleTime: 10 * 1000,
         refetchOnWindowFocus: true,

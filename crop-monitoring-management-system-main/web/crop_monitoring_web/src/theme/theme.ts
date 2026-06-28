@@ -399,10 +399,10 @@ export const theme = createTheme({
                 },
                 head: {
                     fontFamily: '"Times New Roman", Times, serif',
-                    fontSize: '0.72rem',
+                    fontSize: '0.93rem',
                     fontWeight: 700,
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
+                    letterSpacing: 0,
+                    textTransform: 'none',
                     color: mutedInk,
                     backgroundColor: alpha(emerald, 0.07),
                 },

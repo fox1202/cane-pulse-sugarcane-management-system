@@ -14,7 +14,6 @@ import {
 } from '@mui/material'
 import {
     AccessTime,
-    StorageRounded,
     PersonOutlineRounded,
     GrassRounded,
     MyLocationRounded,
@@ -112,12 +111,6 @@ function formatSyncStatus(value?: boolean): string {
     if (value === true) return 'Synced'
     if (value === false) return 'Pending Sync'
     return '-'
-}
-
-function formatSourceLabel(sourceTable?: string): string {
-    if (!sourceTable) return 'observations'
-    if (sourceTable === 'sugarcane_monitoring' || sourceTable === 'sugarcane_field_management') return 'Monitoring record'
-    return sourceTable.replace(/_/g, ' ')
 }
 
 function MapPreviewFitter({
@@ -238,9 +231,6 @@ export const ObservationDetailDialog = ({
     if (!observation) return null
 
     const currentSheet = getCurrentSheet(observation)
-    const sourceTable = isMobileObservationRecord(observation) ? observation.source_table : 'observations'
-    const sourceLabel = formatSourceLabel(sourceTable)
-    const displayId = currentSheet?.id || observation.client_uuid || observation.id
     const hasImages = Boolean(observation.images?.length)
     const entryForm = isMobileObservationRecord(observation) ? observation.entry_form : undefined
     const fieldRegistry = isMobileObservationRecord(observation) ? observation.field_registry : undefined
@@ -293,7 +283,6 @@ export const ObservationDetailDialog = ({
 
     const fieldItems = [
         { label: 'Trials', value: displayFieldName },
-        { label: 'Selected Field', value: entryForm?.selected_field },
         { label: 'Block', value: displayBlockId },
         { label: 'Recorded', value: formatDateTime(displayRecordedAt) },
     ].filter((item) => hasValue(item.value))
@@ -314,7 +303,6 @@ export const ObservationDetailDialog = ({
     ].filter((item) => hasValue(item.value))
 
     const entryFormPrimaryItems = [
-        { label: 'Selected Field', value: entryForm?.selected_field || observation.field_name },
         { label: 'Block Size', value: entryForm?.block_size },
         { label: 'Date Recorded', value: formatSimpleDate(entryForm?.date_recorded || observation.date_recorded) },
         { label: 'Trial Number', value: entryForm?.trial_number },
@@ -398,17 +386,6 @@ export const ObservationDetailDialog = ({
                             )}
                             <Chip size="small" icon={<AccessTime />} label={formatDateTime(displayRecordedAt)} sx={{ bgcolor: 'rgba(0,0,0,0.04)', color: 'text.secondary', fontWeight: 700 }} />
                         </Box>
-                    </Box>
-                    <Box sx={{ textAlign: { xs: 'left', md: 'right' } }}>
-                        <Typography sx={{ fontSize: 13, color: 'text.secondary', fontWeight: 800, mb: 0.8 }}>
-                            ID: {displayId}
-                        </Typography>
-                        <Chip
-                            size="small"
-                            icon={<StorageRounded />}
-                            label={sourceLabel}
-                            sx={{ bgcolor: 'rgba(47,159,90,0.1)', color: 'primary.dark', fontWeight: 800, textTransform: 'capitalize' }}
-                        />
                     </Box>
                 </Box>
 

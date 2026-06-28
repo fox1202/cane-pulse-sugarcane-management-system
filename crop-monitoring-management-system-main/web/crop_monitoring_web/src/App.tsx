@@ -125,6 +125,14 @@ function App() {
                   }
                 />
                 <Route
+                  path="change-password"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <UpdatePasswordPage />
+                    </Suspense>
+                  }
+                />
+                <Route
                   path="data"
                   element={
                     <Suspense fallback={<LoadingFallback />}>

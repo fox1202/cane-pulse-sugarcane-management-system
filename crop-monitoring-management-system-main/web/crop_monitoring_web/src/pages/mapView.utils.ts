@@ -555,7 +555,10 @@ export function getMobileRemarks(record: MobileObservationRecord): string {
 }
 
 export function getMobileSourceLabel(record: MobileObservationRecord): string {
-    if (record.source_table === 'sugarcane_monitoring' || record.source_table === 'sugarcane_field_management') {
+    if (
+        record.source_table === 'sugarcane_monitoring' ||
+        record.source_table === 'sugarcane_field_management'
+    ) {
         return 'Monitoring record'
     }
 

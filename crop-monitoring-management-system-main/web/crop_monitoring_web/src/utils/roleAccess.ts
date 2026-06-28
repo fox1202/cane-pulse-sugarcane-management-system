@@ -1,6 +1,9 @@
 import type { UserRole } from '@/types/auth.types'
 
-export const SUPERUSER_EMAIL = 'silentabrahamganda02@gmail.com'
+export const SUPERUSER_EMAILS = [
+  'silentabrahamganda02@gmail.com',
+  'pmafuratidze@science.uz.ac.zw',
+] as const
 
 export type AppPermission =
   | 'accessBackend'
@@ -64,7 +67,7 @@ export function normalizeEmail(value?: string | null): string {
 }
 
 export function isSuperuserEmail(email?: string | null): boolean {
-  return normalizeEmail(email) === SUPERUSER_EMAIL
+  return SUPERUSER_EMAILS.includes(normalizeEmail(email) as (typeof SUPERUSER_EMAILS)[number])
 }
 
 export function normalizeUserRole(role?: UserRole | string | null): UserRole {

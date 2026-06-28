@@ -80,6 +80,15 @@ interface FieldWorkRow {
     anchorLabel: string
 }
 
+interface FieldWorkGroup {
+    key: string
+    fieldLabel: string
+    cropLabel: string
+    sourceLabel: string
+    anchorLabel: string
+    tasks: FieldWorkRow[]
+}
+
 interface FieldWorkSeed {
     fieldKey: string
     fieldLabel: string
@@ -454,19 +463,49 @@ function getFieldWorkChipSx(severity: FieldTaskSeverity) {
     }
 }
 
+function buildFieldWorkGroups(rows: FieldWorkRow[]): FieldWorkGroup[] {
+    const groups = new Map<string, FieldWorkGroup>()
+
+    rows.forEach((row) => {
+        const groupKey = `${row.fieldLabel}|${row.anchorLabel}|${row.sourceLabel}|${row.cropLabel}`
+        const existingGroup = groups.get(groupKey)
+
+        if (existingGroup) {
+            existingGroup.tasks.push(row)
+            return
+        }
+
+        groups.set(groupKey, {
+            key: groupKey,
+            fieldLabel: row.fieldLabel,
+            cropLabel: row.cropLabel,
+            sourceLabel: row.sourceLabel,
+            anchorLabel: row.anchorLabel,
+            tasks: [row],
+        })
+    })
+
+    return Array.from(groups.values())
+        .map((group) => ({
+            ...group,
+            tasks: [...group.tasks].sort(sortFieldWorkRows).slice(0, 1),
+        }))
+        .sort((left, right) => left.fieldLabel.localeCompare(right.fieldLabel))
+}
+
 function FieldWorkTable({
     rows,
-    totalRows,
     isLoading,
     isFetching,
     error,
 }: {
     rows: FieldWorkRow[]
-    totalRows: number
     isLoading: boolean
     isFetching: boolean
     error: Error | null
 }) {
+    const groupedRows = useMemo(() => buildFieldWorkGroups(rows), [rows])
+
     return (
         <Paper
             sx={{
@@ -524,7 +563,7 @@ function FieldWorkTable({
                     </Box>
                     <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
                         <Chip
-                            label={`${totalRows} scheduled`}
+                            label={`${groupedRows.length} current`}
                             size="small"
                             sx={{
                                 height: 28,
@@ -593,7 +632,7 @@ function FieldWorkTable({
                             overflowX: 'auto',
                         }}
                     >
-                        <Table size="small" sx={{ minWidth: 920 }}>
+                        <Table size="small" sx={{ minWidth: 1180 }}>
                             <TableHead>
                                 <TableRow
                                     sx={{
@@ -618,141 +657,196 @@ function FieldWorkTable({
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {rows.map((row) => {
-                                    const chipSx = getFieldWorkChipSx(row.severity)
+                                {groupedRows.map((group) => (
+                                    <TableRow
+                                        key={group.key}
+                                        hover
+                                        sx={{
+                                            '& td': {
+                                                borderBottom: '1px solid rgba(35,64,52,0.08)',
+                                                py: 1.3,
+                                                verticalAlign: 'middle',
+                                            },
+                                            '&:last-of-type td': {
+                                                borderBottom: 0,
+                                            },
+                                        }}
+                                    >
+                                        <TableCell sx={{ width: 250, minWidth: 250 }}>
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '0.96rem',
+                                                    fontWeight: 900,
+                                                    color: 'var(--calendar-ink)',
+                                                    fontFamily: DISPLAY_FONT,
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {group.fieldLabel}
+                                            </Typography>
+                                            <Typography
+                                                sx={{
+                                                    mt: 0.35,
+                                                    fontSize: '0.78rem',
+                                                    color: 'rgba(32,56,45,0.56)',
+                                                    fontFamily: BODY_FONT,
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {group.anchorLabel}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ width: 230, minWidth: 230 }}>
+                                            <Stack
+                                                direction="row"
+                                                spacing={0.8}
+                                                useFlexGap
+                                                flexWrap="wrap"
+                                                alignItems="center"
+                                            >
+                                                {group.tasks.map((task) => {
+                                                    const chipSx = getFieldWorkChipSx(task.severity)
 
-                                    return (
-                                        <TableRow
-                                            key={row.key}
-                                            hover
-                                            sx={{
-                                                '& td': {
-                                                    borderBottom: '1px solid rgba(35,64,52,0.08)',
-                                                    py: 1.3,
-                                                    verticalAlign: 'top',
-                                                },
-                                                '&:last-of-type td': {
-                                                    borderBottom: 0,
-                                                },
-                                            }}
-                                        >
-                                            <TableCell sx={{ width: 210 }}>
-                                                <Typography
-                                                    sx={{
-                                                        fontSize: '0.96rem',
-                                                        fontWeight: 900,
-                                                        color: 'var(--calendar-ink)',
-                                                        fontFamily: DISPLAY_FONT,
-                                                        overflowWrap: 'anywhere',
-                                                    }}
-                                                >
-                                                    {row.fieldLabel}
-                                                </Typography>
-                                                <Typography
-                                                    sx={{
-                                                        mt: 0.35,
-                                                        fontSize: '0.78rem',
-                                                        color: 'rgba(32,56,45,0.56)',
-                                                        fontFamily: BODY_FONT,
-                                                        overflowWrap: 'anywhere',
-                                                    }}
-                                                >
-                                                    {row.anchorLabel}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell sx={{ width: 168 }}>
-                                                <Stack spacing={0.65} alignItems="flex-start">
-                                                    <Typography
+                                                    return (
+                                                        <Box
+                                                            key={`${task.key}:due`}
+                                                            sx={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: 0.6,
+                                                                minHeight: 32,
+                                                                px: 0.85,
+                                                                py: 0.45,
+                                                                borderRadius: '999px',
+                                                                border: '1px solid rgba(35,64,52,0.08)',
+                                                                bgcolor: 'rgba(35,64,52,0.035)',
+                                                            }}
+                                                        >
+                                                            <Typography
+                                                                sx={{
+                                                                    fontSize: '0.85rem',
+                                                                    fontWeight: 850,
+                                                                    color: 'var(--calendar-ink)',
+                                                                    fontFamily: BODY_FONT,
+                                                                    whiteSpace: 'nowrap',
+                                                                }}
+                                                            >
+                                                                {formatShortFieldDate(task.dateIso)}
+                                                            </Typography>
+                                                            <Chip
+                                                                label={task.dueLabel}
+                                                                size="small"
+                                                                variant="outlined"
+                                                                sx={{
+                                                                    height: 22,
+                                                                    borderRadius: '999px',
+                                                                    fontSize: '0.72rem',
+                                                                    fontWeight: 800,
+                                                                    fontFamily: BODY_FONT,
+                                                                    ...chipSx,
+                                                                }}
+                                                            />
+                                                        </Box>
+                                                    )
+                                                })}
+                                            </Stack>
+                                        </TableCell>
+                                        <TableCell sx={{ minWidth: 500 }}>
+                                            <Stack
+                                                direction="row"
+                                                spacing={0.85}
+                                                useFlexGap
+                                                flexWrap="wrap"
+                                                alignItems="center"
+                                            >
+                                                {group.tasks.map((task) => (
+                                                    <Box
+                                                        key={`${task.key}:task`}
                                                         sx={{
-                                                            fontSize: '0.9rem',
-                                                            fontWeight: 800,
-                                                            color: 'var(--calendar-ink)',
-                                                            fontFamily: BODY_FONT,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 0.75,
+                                                            minHeight: 32,
+                                                            px: 0.9,
+                                                            py: 0.45,
+                                                            borderRadius: '999px',
+                                                            border: '1px solid rgba(35,64,52,0.08)',
+                                                            bgcolor: 'rgba(35,64,52,0.035)',
+                                                            maxWidth: { xs: '100%', md: 430 },
                                                         }}
                                                     >
-                                                        {formatShortFieldDate(row.dateIso)}
-                                                    </Typography>
-                                                    <Chip
-                                                        label={row.dueLabel}
-                                                        size="small"
-                                                        variant="outlined"
-                                                        sx={{
-                                                            height: 24,
-                                                            borderRadius: '999px',
-                                                            fontWeight: 800,
-                                                            fontFamily: BODY_FONT,
-                                                            ...chipSx,
-                                                        }}
-                                                    />
-                                                </Stack>
-                                            </TableCell>
-                                            <TableCell sx={{ minWidth: 330 }}>
-                                                <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 0.7 }}>
-                                                    <Chip
-                                                        label={row.kind}
-                                                        size="small"
-                                                        sx={{
-                                                            height: 22,
-                                                            borderRadius: '999px',
-                                                            bgcolor: 'rgba(86,184,112,0.14)',
-                                                            color: 'var(--calendar-green)',
-                                                            fontWeight: 800,
-                                                            fontFamily: BODY_FONT,
-                                                        }}
-                                                    />
-                                                    <Chip
-                                                        label={row.weekLabel}
-                                                        size="small"
-                                                        sx={{
-                                                            height: 22,
-                                                            borderRadius: '999px',
-                                                            bgcolor: 'rgba(35,64,52,0.08)',
-                                                            color: 'rgba(35,64,52,0.78)',
-                                                            fontWeight: 700,
-                                                            fontFamily: BODY_FONT,
-                                                        }}
-                                                    />
-                                                </Stack>
-                                                <Typography
-                                                    sx={{
-                                                        fontSize: '0.92rem',
-                                                        lineHeight: 1.65,
-                                                        color: 'rgba(32,56,45,0.78)',
-                                                        fontFamily: BODY_FONT,
-                                                        overflowWrap: 'anywhere',
-                                                    }}
-                                                >
-                                                    {row.activity}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell sx={{ width: 150 }}>
-                                                <Typography
-                                                    sx={{
-                                                        fontSize: '0.88rem',
-                                                        fontWeight: 800,
-                                                        color: 'rgba(32,56,45,0.72)',
-                                                        fontFamily: BODY_FONT,
-                                                        overflowWrap: 'anywhere',
-                                                    }}
-                                                >
-                                                    {row.sourceLabel}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell sx={{ width: 150 }}>
-                                                <Typography
-                                                    sx={{
-                                                        fontSize: '0.88rem',
-                                                        color: 'rgba(32,56,45,0.68)',
-                                                        fontFamily: BODY_FONT,
-                                                        overflowWrap: 'anywhere',
-                                                    }}
-                                                >
-                                                    {row.cropLabel}
-                                                </Typography>
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })}
+                                                            <Chip
+                                                                label={task.kind}
+                                                                size="small"
+                                                                sx={{
+                                                                    height: 22,
+                                                                    borderRadius: '999px',
+                                                                    fontSize: '0.72rem',
+                                                                    bgcolor: 'rgba(86,184,112,0.14)',
+                                                                    color: 'var(--calendar-green)',
+                                                                    fontWeight: 800,
+                                                                    fontFamily: BODY_FONT,
+                                                                }}
+                                                            />
+                                                            <Chip
+                                                                label={task.weekLabel}
+                                                                size="small"
+                                                                sx={{
+                                                                    height: 22,
+                                                                    borderRadius: '999px',
+                                                                    fontSize: '0.72rem',
+                                                                    bgcolor: 'rgba(35,64,52,0.08)',
+                                                                    color: 'rgba(35,64,52,0.78)',
+                                                                    fontWeight: 700,
+                                                                    fontFamily: BODY_FONT,
+                                                                }}
+                                                            />
+                                                            <Typography
+                                                                title={task.activity}
+                                                                sx={{
+                                                                    minWidth: 0,
+                                                                    maxWidth: 360,
+                                                                    fontSize: '0.84rem',
+                                                                    color: 'rgba(32,56,45,0.78)',
+                                                                    fontFamily: BODY_FONT,
+                                                                    whiteSpace: 'nowrap',
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                }}
+                                                            >
+                                                                {task.activity}
+                                                            </Typography>
+                                                        </Box>
+                                                ))}
+                                            </Stack>
+                                        </TableCell>
+                                        <TableCell sx={{ width: 170, minWidth: 170 }}>
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '0.88rem',
+                                                    fontWeight: 800,
+                                                    color: 'rgba(32,56,45,0.72)',
+                                                    fontFamily: BODY_FONT,
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {group.sourceLabel}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ width: 180, minWidth: 180 }}>
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '0.88rem',
+                                                    color: 'rgba(32,56,45,0.68)',
+                                                    fontFamily: BODY_FONT,
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {group.cropLabel}
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
                             </TableBody>
                         </Table>
                     </TableContainer>
@@ -1534,7 +1628,6 @@ export function FarmingCalendarPage() {
 
                     <FieldWorkTable
                         rows={visibleFieldWorkRows}
-                        totalRows={fieldWorkRows.length}
                         isLoading={fieldWorkTableLoading}
                         isFetching={fieldWorkTableFetching}
                         error={fieldRecordsError}

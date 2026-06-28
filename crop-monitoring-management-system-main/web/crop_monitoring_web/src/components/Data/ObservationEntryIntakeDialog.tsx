@@ -22,6 +22,8 @@ import { MapContainer, Polygon, Polyline, TileLayer, useMap, useMapEvents } from
 import {
     createObservationEntryFormSubmission,
     createPredefinedField,
+    deleteObservationFertilizerApplication,
+    deleteObservationHerbicideApplication,
     getPredefinedFieldByName,
     openStoredPdf,
     uploadFinalEldanaSurveyPdf,
@@ -43,7 +45,6 @@ import {
 import type {
     FertilizerApplication,
     HerbicideApplication,
-    ObservationEntryForm,
     SugarcaneMonitoringRecord,
 } from '@/types/database.types';
 import { SUGARCANE_CROP_CLASS_OPTIONS } from '@/utils/cropClassOptions';
@@ -122,7 +123,8 @@ const RESIDUE_MANAGEMENT_METHOD_OPTIONS = ['Ploughed in', 'Parting', 'Broadcasti
 const DRAW_NEW_FIELD_VALUE = '__draw_new_field__';
 const UPLOAD_KML_FIELD_VALUE = '__upload_kml_field__';
 const DEFAULT_DRAW_CENTER: [number, number] = [-18.922, 31.134];
-const MAX_APPLICATION_LOOPS = 10;
+const MAX_APPLICATION_LOOPS = 50;
+const DRAFT_APPLICATION_ROW_KEY = '__draft_application_row';
 const WHITE_SELECT_MENU_PROPS = {
     PaperProps: {
         sx: {
@@ -157,6 +159,29 @@ const WHITE_SELECT_MENU_PROPS = {
             },
         },
     },
+};
+const OBSERVATION_FIELD_SX = {
+    '& .MuiOutlinedInput-root': {
+        alignItems: 'flex-start',
+        bgcolor: '#ffffff',
+    },
+    '& .MuiInputLabel-root': {
+        bgcolor: 'background.paper',
+        px: 0.5,
+        lineHeight: 1.2,
+    },
+    '& .MuiInputBase-inputMultiline': {
+        pt: 1.25,
+    },
+};
+const FILE_FIELD_SX = {
+    border: '1px solid',
+    borderColor: 'rgba(47,127,79,0.24)',
+    borderRadius: 3,
+    p: 1.5,
+    position: 'relative',
+    bgcolor: '#ffffff',
+    '&:hover': { borderColor: 'primary.main' },
 };
 
 function normalizeSoilTypeLabel(value?: string | null) {
@@ -270,6 +295,7 @@ function createEmptySubmission(collectorId: string): ObservationEntryFormSubmiss
         phone_number: '',
         crop_type: 'Sugarcane',
         crop_class: '',
+        ratoon_number: undefined,
         variety: '',
         ploughing_date: '',
         planting_date: '',
@@ -476,6 +502,7 @@ function SectionHeading({ title }: { title: string }) {
                 fontWeight: 800,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
+                mb: 1.2,
             }}
         >
             {title}
@@ -539,24 +566,14 @@ function buildFreshFormData(
     };
 }
 
-function buildFollowUpTrialUpdateData(
-    currentSubmission: ObservationEntryFormSubmissionInput,
-    collectorId: string,
-    matchedField?: PredefinedField
-): ObservationEntryFormSubmissionInput {
-    return {
-        ...buildFreshFormData(currentSubmission, collectorId, matchedField),
-        date_recorded: '',
-    };
-}
-
 function buildEmptyFertilizerApplication(): FertilizerApplication {
     return {
         fertilizer_type: '',
         application_date: '',
         application_rate: undefined,
         foliar_sampling_date: '',
-    };
+        [DRAFT_APPLICATION_ROW_KEY]: true,
+    } as FertilizerApplication;
 }
 
 function buildEmptyHerbicideApplication(): HerbicideApplication {
@@ -564,7 +581,12 @@ function buildEmptyHerbicideApplication(): HerbicideApplication {
         herbicide_name: '',
         application_date: '',
         application_rate: undefined,
-    };
+        [DRAFT_APPLICATION_ROW_KEY]: true,
+    } as HerbicideApplication;
+}
+
+function isDraftApplicationRow(value: FertilizerApplication | HerbicideApplication | null | undefined): boolean {
+    return Boolean(value && (value as Record<string, unknown>)[DRAFT_APPLICATION_ROW_KEY]);
 }
 
 function normalizeDateInputValue(value?: string | null): string {
@@ -593,15 +615,17 @@ function normalizeFertilizerApplicationInput(value: FertilizerApplication | null
         : undefined;
     const foliarSamplingDate = normalizeDateInputValue(value.foliar_sampling_date);
 
-    if (!fertilizerType && !applicationDate && applicationRate == null && !foliarSamplingDate) {
+    if (!applicationDate && applicationRate == null) {
         return null;
     }
 
     return {
+        id: value.id,
         fertilizer_type: fertilizerType,
         application_date: applicationDate || undefined,
         application_rate: applicationRate,
         foliar_sampling_date: foliarSamplingDate || undefined,
+        loop_number: value.loop_number,
     };
 }
 
@@ -614,14 +638,16 @@ function normalizeHerbicideApplicationInput(value: HerbicideApplication | null |
         ? value.application_rate
         : undefined;
 
-    if (!herbicideName && !applicationDate && applicationRate == null) {
+    if (!applicationDate && applicationRate == null) {
         return null;
     }
 
     return {
+        id: value.id,
         herbicide_name: herbicideName,
         application_date: applicationDate || undefined,
         application_rate: applicationRate,
+        loop_number: value.loop_number,
     };
 }
 
@@ -724,33 +750,23 @@ function matchesFieldObservation(field: PredefinedField, entry: SugarcaneMonitor
     const fieldName = normalizeLookupValue(field.field_name);
     const blockId = normalizeLookupValue(field.block_id);
     const sectionName = normalizeLookupValue(field.section_name);
-
     const entryFieldNames = [
         entry.field_name,
         entry.field_id,
     ].map((value) => normalizeLookupValue(value));
-
     const hasFieldNameMatch = entryFieldNames.some((value) => value && value === fieldName);
     const entryBlockId = normalizeLookupValue(entry.block_id);
     const entrySectionName = normalizeLookupValue(entry.section_name);
 
     if (blockId && entryBlockId && blockId === entryBlockId) {
-        if (!fieldName) {
-            return true;
-        }
-
-        return hasFieldNameMatch;
+        return !fieldName || hasFieldNameMatch;
     }
 
     if (!hasFieldNameMatch) {
         return false;
     }
 
-    if (sectionName && entrySectionName && sectionName !== entrySectionName) {
-        return false;
-    }
-
-    return true;
+    return !(sectionName && entrySectionName && sectionName !== entrySectionName);
 }
 
 function findLatestRecordForField(
@@ -762,145 +778,83 @@ function findLatestRecordForField(
         .sort((left, right) => getEntryTimestamp(right) - getEntryTimestamp(left))[0] ?? null;
 }
 
-function isObservationEntryFormRecord(
-    entry: ObservationEntryForm | SugarcaneMonitoringRecord
-): entry is ObservationEntryForm {
-    return 'selected_field' in entry || 'spatial_data' in entry || 'gps_accuracy' in entry;
-}
-
 function buildLoadedSavedRecordData(
-    savedEntry: ObservationEntryForm | SugarcaneMonitoringRecord,
+    savedEntry: SugarcaneMonitoringRecord,
     collectorId: string,
     matchedField?: PredefinedField
 ): ObservationEntryFormSubmissionInput {
-    const isEntryForm = isObservationEntryFormRecord(savedEntry);
-    const selectedField = matchedField?.field_name
-        || (isEntryForm ? savedEntry.selected_field : undefined)
-        || savedEntry.field_name
-        || savedEntry.field_id
-        || '';
-    const fieldId = savedEntry.field_id || matchedField?.field_name || savedEntry.field_name || '';
+    const selectedField = matchedField?.field_name || savedEntry.field_name || savedEntry.field_id || '';
     const fieldName = matchedField?.field_name || savedEntry.field_name || savedEntry.field_id || '';
     const sectionName = matchedField?.section_name || savedEntry.section_name || '';
     const blockId = matchedField?.block_id || savedEntry.block_id || '';
-    const area = isEntryForm
-        ? savedEntry.area ?? savedEntry.block_size
-        : savedEntry.area;
-    const blockSize = isEntryForm
-        ? savedEntry.block_size ?? savedEntry.area
-        : savedEntry.area;
-    const spatialData = isEntryForm
-        ? savedEntry.spatial_data ?? savedEntry.geom_polygon
-        : savedEntry.geom_polygon;
-    const geomPolygon = isEntryForm
-        ? savedEntry.geom_polygon ?? savedEntry.spatial_data
-        : savedEntry.geom_polygon;
-    const latitude = savedEntry.latitude;
-    const longitude = savedEntry.longitude;
-    const previousCuttingDate = isEntryForm
-        ? savedEntry.previous_cutting_date || savedEntry.cutting_date || ''
-        : savedEntry.previous_cutting_date || savedEntry.previous_cutting || '';
-    const cuttingDate = isEntryForm
-        ? savedEntry.cutting_date || savedEntry.previous_cutting_date || ''
-        : savedEntry.previous_cutting_date || savedEntry.previous_cutting || '';
-    const nutrientApplicationDate = isEntryForm
-        ? savedEntry.nutrient_application_date || ''
-        : savedEntry.nutrient_application_date || savedEntry.fertilizer_application_date || '';
-    const tamArea = isEntryForm ? savedEntry.tamm_area : undefined;
+    const fieldArea = savedEntry.area ?? matchedField?.area;
     const fertilizerApplications = (savedEntry.fertilizer_applications ?? [])
         .map((item) => normalizeFertilizerApplicationInput(item))
         .filter((item): item is FertilizerApplication => item !== null);
     const herbicideApplications = (savedEntry.herbicide_applications ?? [])
         .map((item) => normalizeHerbicideApplicationInput(item))
         .filter((item): item is HerbicideApplication => item !== null);
-    const remarks = savedEntry.remarks || savedEntry.field_remarks || '';
-    const derivedExpectedHarvestDate = savedEntry.expected_harvest_date || '';
 
-    const loaded = buildFreshFormData(
+    return buildFreshFormData(
         {
             ...savedEntry,
+            collector_id: collectorId || savedEntry.collector_id || '',
             selected_field: selectedField,
-            field_id: fieldId,
+            field_id: selectedField,
             field_name: fieldName,
             section_name: sectionName,
             block_id: blockId,
-            area,
-            block_size: blockSize,
-            spatial_data: spatialData,
-            geom_polygon: geomPolygon,
-            latitude: latitude ?? 0,
-            longitude: longitude ?? 0,
-            gps_accuracy: isEntryForm ? savedEntry.gps_accuracy ?? 0 : 0,
-            previous_cutting_date: previousCuttingDate,
-            cutting_date: cuttingDate,
-            nutrient_application_date: nutrientApplicationDate,
-            tamm_area: tamArea,
-            remarks,
-            collector_id: collectorId || savedEntry.collector_id || '',
+            area: fieldArea,
+            block_size: fieldArea,
+            spatial_data: savedEntry.geom_polygon ?? matchedField?.geom,
+            geom_polygon: savedEntry.geom_polygon ?? matchedField?.geom,
+            latitude: savedEntry.latitude ?? matchedField?.latitude ?? 0,
+            longitude: savedEntry.longitude ?? matchedField?.longitude ?? 0,
+            date_recorded: savedEntry.date_recorded || '',
+            trial_number: savedEntry.trial_number ?? '',
+            trial_name: savedEntry.trial_name || '',
+            contact_person: normalizeContactPersonLabel(savedEntry.contact_person),
+            crop_type: savedEntry.crop_type || 'Sugarcane',
+            crop_class: savedEntry.crop_class || '',
+            ratoon_number: savedEntry.ratoon_number,
+            variety: savedEntry.variety || '',
+            ploughing_date: savedEntry.ploughing_date || '',
+            planting_date: savedEntry.planting_date || '',
+            soil_sampling_date: savedEntry.soil_sampling_date || '',
+            soil_test_pdf_url: savedEntry.soil_test_pdf_url || '',
+            foliar_analysis_pdf_url: savedEntry.foliar_analysis_pdf_url || '',
+            final_eldana_survey_pdf_url: savedEntry.final_eldana_survey_pdf_url || '',
+            previous_cutting_date: savedEntry.previous_cutting_date || savedEntry.previous_cutting || '',
+            cutting_date: savedEntry.previous_cutting_date || savedEntry.previous_cutting || '',
+            expected_harvest_date: savedEntry.expected_harvest_date || '',
+            irrigation_type: savedEntry.irrigation_type || '',
+            water_source: savedEntry.water_source || '',
+            tam_mm: savedEntry.tam_mm || '',
+            soil_type: normalizeSoilTypeLabel(savedEntry.soil_type),
+            soil_ph: savedEntry.soil_ph,
+            field_remarks: savedEntry.field_remarks || savedEntry.remarks || '',
+            residue_type: savedEntry.residue_type || '',
+            residue_management_method: savedEntry.residue_management_method || '',
+            residual_management_remarks: savedEntry.residual_management_remarks || '',
+            fertilizer_type: savedEntry.fertilizer_type || '',
+            nutrient_application_date: savedEntry.nutrient_application_date || savedEntry.fertilizer_application_date || '',
+            application_rate: savedEntry.application_rate,
+            fertilizer_applications: fertilizerApplications,
+            foliar_sampling_date: savedEntry.foliar_sampling_date || '',
+            herbicide_name: savedEntry.herbicide_name || '',
+            weed_application_date: savedEntry.weed_application_date || '',
+            weed_application_rate: savedEntry.weed_application_rate,
+            herbicide_applications: herbicideApplications,
+            pest_remarks: savedEntry.pest_remarks || '',
+            disease_remarks: savedEntry.disease_remarks || '',
+            harvest_date: savedEntry.harvest_date || '',
+            yield: savedEntry.yield ?? savedEntry.harvest_yield,
+            quality_remarks: savedEntry.quality_remarks || '',
+            remarks: savedEntry.remarks || savedEntry.field_remarks || '',
         },
         collectorId,
         matchedField
     );
-
-    return {
-        ...loaded,
-        collector_id: collectorId || savedEntry.collector_id || '',
-        selected_field: selectedField,
-        field_id: fieldId,
-        field_name: fieldName,
-        section_name: sectionName,
-        block_id: blockId,
-        area: area ?? loaded.area,
-        block_size: blockSize ?? loaded.block_size,
-        spatial_data: spatialData ?? loaded.spatial_data,
-        geom_polygon: geomPolygon ?? loaded.geom_polygon,
-        latitude: latitude ?? loaded.latitude,
-        longitude: longitude ?? loaded.longitude,
-        gps_accuracy: isEntryForm ? savedEntry.gps_accuracy ?? loaded.gps_accuracy ?? 0 : 0,
-        date_recorded: savedEntry.date_recorded || '',
-        trial_number: savedEntry.trial_number ?? '',
-        trial_name: savedEntry.trial_name || '',
-        contact_person: normalizeContactPersonLabel(savedEntry.contact_person),
-        phone_country_code: isEntryForm ? savedEntry.phone_country_code || '' : '',
-        phone_number: isEntryForm ? savedEntry.phone_number || '' : '',
-        crop_type: savedEntry.crop_type || loaded.crop_type,
-        crop_class: savedEntry.crop_class || '',
-        variety: savedEntry.variety || '',
-        ploughing_date: savedEntry.ploughing_date || '',
-        planting_date: savedEntry.planting_date || '',
-        soil_sampling_date: savedEntry.soil_sampling_date || '',
-        soil_test_pdf_url: savedEntry.soil_test_pdf_url || '',
-        foliar_analysis_pdf_url: savedEntry.foliar_analysis_pdf_url || '',
-        final_eldana_survey_pdf_url: savedEntry.final_eldana_survey_pdf_url || '',
-        previous_cutting_date: previousCuttingDate,
-        cutting_date: cuttingDate,
-        expected_harvest_date: derivedExpectedHarvestDate,
-        irrigation_type: savedEntry.irrigation_type || loaded.irrigation_type || '',
-        water_source: savedEntry.water_source || loaded.water_source || '',
-        tam_mm: savedEntry.tam_mm || loaded.tam_mm || '',
-        tamm_area: tamArea ?? loaded.tamm_area,
-        soil_type: normalizeSoilTypeLabel(savedEntry.soil_type || loaded.soil_type),
-        soil_ph: savedEntry.soil_ph ?? loaded.soil_ph,
-        field_remarks: savedEntry.field_remarks || savedEntry.remarks || '',
-        residue_type: savedEntry.residue_type || '',
-        residue_management_method: savedEntry.residue_management_method || '',
-        residual_management_remarks: savedEntry.residual_management_remarks || '',
-        fertilizer_type: savedEntry.fertilizer_type || '',
-        nutrient_application_date: nutrientApplicationDate,
-        application_rate: savedEntry.application_rate,
-        fertilizer_applications: fertilizerApplications,
-        foliar_sampling_date: savedEntry.foliar_sampling_date || '',
-        herbicide_name: savedEntry.herbicide_name || '',
-        weed_application_date: savedEntry.weed_application_date || '',
-        weed_application_rate: savedEntry.weed_application_rate,
-        herbicide_applications: herbicideApplications,
-        pest_remarks: savedEntry.pest_remarks || '',
-        disease_remarks: savedEntry.disease_remarks || '',
-        harvest_date: savedEntry.harvest_date || '',
-        yield: savedEntry.yield ?? (!isEntryForm ? savedEntry.harvest_yield : undefined),
-        quality_remarks: savedEntry.quality_remarks || '',
-        remarks,
-    };
 }
 
 function buildMonitoringFieldRegistry(records: SugarcaneMonitoringRecord[]): PredefinedField[] {
@@ -1088,6 +1042,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const [saveMode, setSaveMode] = useState<'close' | 'add_another' | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [parseSummary, setParseSummary] = useState<string | null>(null);
+    const [isAddingNewRecord, setIsAddingNewRecord] = useState(false);
     const [isCreatingCustomField, setIsCreatingCustomField] = useState(false);
     const [drawPoints, setDrawPoints] = useState<DrawPoint[]>([]);
     const [isUploadingKML, setIsUploadingKML] = useState(false);
@@ -1126,6 +1081,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setEldanaPdfUploading(false);
         setEldanaPdfError(null);
         setSaveMode(null);
+        setIsAddingNewRecord(false);
         setIsCreatingCustomField(false);
         setDrawPoints([]);
         setIsUploadingKML(false);
@@ -1147,9 +1103,12 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         const rows = Array.isArray(formData.fertilizer_applications)
             ? formData.fertilizer_applications.slice(0, MAX_APPLICATION_LOOPS)
             : [];
+        const displayRows = rows.filter((row) =>
+            isDraftApplicationRow(row) || normalizeFertilizerApplicationInput(row) !== null
+        );
 
-        if (rows.length > 0) {
-            return rows;
+        if (displayRows.length > 0) {
+            return displayRows;
         }
 
         if (
@@ -1166,7 +1125,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             }];
         }
 
-        return [buildEmptyFertilizerApplication()];
+        return [];
     }, [
         formData.application_rate,
         formData.fertilizer_applications,
@@ -1179,9 +1138,12 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         const rows = Array.isArray(formData.herbicide_applications)
             ? formData.herbicide_applications.slice(0, MAX_APPLICATION_LOOPS)
             : [];
+        const displayRows = rows.filter((row) =>
+            isDraftApplicationRow(row) || normalizeHerbicideApplicationInput(row) !== null
+        );
 
-        if (rows.length > 0) {
-            return rows;
+        if (displayRows.length > 0) {
+            return displayRows;
         }
 
         if (
@@ -1196,31 +1158,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             }];
         }
 
-        return [buildEmptyHerbicideApplication()];
+        return [];
     }, [
         formData.herbicide_applications,
         formData.herbicide_name,
         formData.weed_application_date,
         formData.weed_application_rate,
     ]);
-
-    const currentFertilizerApplication = useMemo(
-        () => getCurrentFertilizerApplication(
-            fertilizerApplicationRows
-                .map((item) => normalizeFertilizerApplicationInput(item))
-                .filter((item): item is FertilizerApplication => item !== null)
-        ),
-        [fertilizerApplicationRows]
-    );
-
-    const currentHerbicideApplication = useMemo(
-        () => getCurrentHerbicideApplication(
-            herbicideApplicationRows
-                .map((item) => normalizeHerbicideApplicationInput(item))
-                .filter((item): item is HerbicideApplication => item !== null)
-        ),
-        [herbicideApplicationRows]
-    );
 
     const drawingMapCenter = useMemo<[number, number]>(() => {
         const coordinateFields = predefinedFields.filter((field) =>
@@ -1454,15 +1398,43 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     };
 
     const handleRemoveFertilizerApplication = (index: number) => {
+        const removedApplication = normalizeFertilizerApplicationInput(fertilizerApplicationRows[index]);
+
         applyFertilizerApplicationRows(
             fertilizerApplicationRows.filter((_, currentIndex) => currentIndex !== index)
         );
+
+        if (removedApplication) {
+            void deleteObservationFertilizerApplication({
+                ...formData,
+                Trial: formData.field_name,
+                trial: formData.field_name,
+                field_name: formData.field_name,
+                block_id: formData.block_id,
+            }, removedApplication).catch((err) => {
+                setError(err.message || 'Failed to remove the fertilizer application from the database.');
+            });
+        }
     };
 
     const handleRemoveHerbicideApplication = (index: number) => {
+        const removedApplication = normalizeHerbicideApplicationInput(herbicideApplicationRows[index]);
+
         applyHerbicideApplicationRows(
             herbicideApplicationRows.filter((_, currentIndex) => currentIndex !== index)
         );
+
+        if (removedApplication) {
+            void deleteObservationHerbicideApplication({
+                ...formData,
+                Trial: formData.field_name,
+                trial: formData.field_name,
+                field_name: formData.field_name,
+                block_id: formData.block_id,
+            }, removedApplication).catch((err) => {
+                setError(err.message || 'Failed to remove the herbicide application from the database.');
+            });
+        }
     };
 
     useEffect(() => {
@@ -1523,11 +1495,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         }
 
         setParseSummary(null);
-        const latestRecord = findLatestRecordForField(match, existingRecords);
+        const latestRecord = isAddingNewRecord ? null : findLatestRecordForField(match, existingRecords);
 
         if (latestRecord) {
             const collectorId = user?.id || latestRecord.collector_id || '';
-            setParseSummary('Current database information was loaded for this field. Edit the selected field row and save to update it.');
+            setParseSummary(null);
             setFormData(() => buildLoadedSavedRecordData(latestRecord, collectorId, match));
             return;
         }
@@ -1720,6 +1692,26 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
     const handleClearPointSelection = () => {
         setSelectedPointIndices(new Set());
+    };
+
+    const handleStartAddNewRecord = () => {
+        const collectorId = user?.id || formData.collector_id || '';
+
+        setError(null);
+        setParseSummary(null);
+        setFormData(createEmptySubmission(collectorId));
+        setIsAddingNewRecord(true);
+        setIsCreatingCustomField(false);
+        setDrawPoints([]);
+        setIsUploadingKML(false);
+        setKmlFile(null);
+        setKmlFeatures([]);
+        setSelectedKMLFeatureIndex(0);
+        setKmlError(null);
+        setKmlPoints([]);
+        setSelectedPointIndices(new Set());
+        setKmlMode('geometry');
+        dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleSubmit = async (mode: 'close' | 'add_another' = 'close') => {
@@ -1929,27 +1921,74 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 throw new Error('Please choose a field or trial from the field management table.');
             }
 
-            if (resolvedField.id) {
+            if (resolvedField.id && !isAddingNewRecord) {
                 allowExistingRowOverwrite = true;
                 updatedExistingFieldRow = !overwroteKMLBoundary && !createdNewFieldRow;
             }
 
-            const submission = {
+            const normalizedFormData = {
                 ...formData,
+            };
+            const normalizedFertilizerApplications = fertilizerApplicationRows
+                .reduce<FertilizerApplication[]>((applications, item, index) => {
+                    const normalized = normalizeFertilizerApplicationInput(item);
+                    if (normalized) {
+                        applications.push({ ...normalized, loop_number: index + 1 });
+                    }
+                    return applications;
+                }, []);
+            const normalizedHerbicideApplications = herbicideApplicationRows
+                .reduce<HerbicideApplication[]>((applications, item, index) => {
+                    const normalized = normalizeHerbicideApplicationInput(item);
+                    if (normalized) {
+                        applications.push({ ...normalized, loop_number: index + 1 });
+                    }
+                    return applications;
+                }, []);
+            const currentSubmitFertilizerApplication = getCurrentFertilizerApplication(normalizedFertilizerApplications);
+            const currentSubmitHerbicideApplication = getCurrentHerbicideApplication(normalizedHerbicideApplications);
+            const fieldRemarks = formData.field_remarks ?? formData.remarks ?? normalizedFormData.field_remarks ?? normalizedFormData.remarks ?? '';
+            const pestRemarks = formData.pest_remarks ?? normalizedFormData.pest_remarks ?? '';
+            const diseaseRemarks = formData.disease_remarks ?? normalizedFormData.disease_remarks ?? '';
+
+            const submission = {
+                ...normalizedFormData,
                 collector_id: user?.id || formData.collector_id,
                 selected_field: resolvedField.field_name || formData.selected_field,
-                field_id: resolvedField.field_name || formData.field_id,
+                field_id: formData.field_id || '',
                 field_name: resolvedField.field_name || formData.field_name,
                 section_name: resolvedField.section_name || formData.section_name,
                 block_id: resolvedField.block_id || formData.block_id,
-                area: formData.area ?? formData.block_size ?? resolvedField.area,
-                block_size: formData.block_size ?? formData.area ?? resolvedField.area,
-                spatial_data: formData.spatial_data ?? resolvedField.geom ?? undefined,
-                geom_polygon: formData.geom_polygon ?? resolvedField.geom ?? undefined,
-                latitude: formData.latitude ?? resolvedField.latitude ?? 0,
-                longitude: formData.longitude ?? resolvedField.longitude ?? 0,
+                area: normalizedFormData.area ?? normalizedFormData.block_size ?? resolvedField.area,
+                block_size: normalizedFormData.block_size ?? normalizedFormData.area ?? resolvedField.area,
+                spatial_data: normalizedFormData.spatial_data ?? resolvedField.geom ?? undefined,
+                geom_polygon: normalizedFormData.geom_polygon ?? resolvedField.geom ?? undefined,
+                latitude: normalizedFormData.latitude ?? resolvedField.latitude ?? 0,
+                longitude: normalizedFormData.longitude ?? resolvedField.longitude ?? 0,
                 contact_person: normalizeContactPersonLabel(formData.contact_person),
                 soil_type: normalizeSoilTypeLabel(formData.soil_type),
+                field_remarks: fieldRemarks,
+                remarks: fieldRemarks,
+                'Field Remarks': fieldRemarks,
+                fertilizer_applications: normalizedFertilizerApplications,
+                fertilizer_type: currentSubmitFertilizerApplication?.fertilizer_type ?? '',
+                nutrient_application_date: currentSubmitFertilizerApplication?.application_date ?? '',
+                application_rate: currentSubmitFertilizerApplication?.application_rate,
+                foliar_sampling_date: currentSubmitFertilizerApplication?.foliar_sampling_date ?? '',
+                herbicide_applications: normalizedHerbicideApplications,
+                herbicide_name: currentSubmitHerbicideApplication?.herbicide_name ?? '',
+                weed_application_date: currentSubmitHerbicideApplication?.application_date ?? '',
+                weed_application_rate: currentSubmitHerbicideApplication?.application_rate,
+                pest_remarks: pestRemarks,
+                pest_control: pestRemarks,
+                crop_pest_remarks: pestRemarks,
+                'Pest remarks': pestRemarks,
+                'pest remarks': pestRemarks,
+                disease_remarks: diseaseRemarks,
+                disease_control: diseaseRemarks,
+                crop_disease_remarks: diseaseRemarks,
+                'Disease remarks': diseaseRemarks,
+                'disease remarks': diseaseRemarks,
             };
 
             const submissionFields = registryFields.some((field) =>
@@ -1958,10 +1997,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 ? registryFields
                 : [resolvedField, ...registryFields];
 
-            const savedEntry = await createObservationEntryFormSubmission(
+            await createObservationEntryFormSubmission(
                 submission,
                 submissionFields,
-                { allowExistingRowOverwrite }
+                {
+                    allowExistingRowOverwrite,
+                    forceNewFieldRow: isAddingNewRecord,
+                }
             );
 
             await Promise.all([
@@ -1987,10 +2029,19 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             if (mode === 'add_another') {
                 const collectorId = user?.id || submission.collector_id || '';
 
-                setParseSummary('Successfully saved to the database. Current values stay visible for the next entry. Enter the next record date and adjust anything that changed, then save again.');
-                setFormData(buildFollowUpTrialUpdateData(savedEntry, collectorId, resolvedField));
+                setParseSummary('Successfully saved to the database. Start a blank new record.');
+                setFormData(createEmptySubmission(collectorId));
+                setIsAddingNewRecord(true);
                 setIsCreatingCustomField(false);
                 setDrawPoints([]);
+                setIsUploadingKML(false);
+                setKmlFile(null);
+                setKmlFeatures([]);
+                setSelectedKMLFeatureIndex(0);
+                setKmlError(null);
+                setKmlPoints([]);
+                setSelectedPointIndices(new Set());
+                setKmlMode('geometry');
                 dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                 return;
             }
@@ -2309,7 +2360,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 onChange={handleKMLFileSelect}
                             />
                         </Grid>
-                        {isCreatingCustomField || isUploadingKML ? (
+                        {(isCreatingCustomField || isUploadingKML) && (
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <TextField
                                     fullWidth
@@ -2321,11 +2372,12 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         : "Enter a name for this field imported from KML/KMZ."}
                                 />
                             </Grid>
-                        ) : (
+                        )}
+                        {!isCreatingCustomField && !isUploadingKML && (
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <TextField
                                     fullWidth
-                                    label="Field ID"
+                                    label="Block ID"
                                     value={selectedField?.block_id || formData.block_id || ''}
                                     InputProps={{ readOnly: true }}
                                     disabled
@@ -2336,7 +2388,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <TextField
                                     fullWidth
-                                    label="Field ID"
+                                    label="Block ID"
                                     value={formData.block_id || ''}
                                     onChange={(e) => updateField('block_id', e.target.value)}
                                     helperText={isCreatingCustomField
@@ -2357,7 +2409,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     ? 'Area is estimated from the drawn boundary first, but you can edit it before saving.'
                                     : isUploadingKML
                                     ? 'Area can be calculated from the KML/KMZ geometry or edited before saving.'
-                                    : 'Auto-filled from the selected field, but editable before saving.'}
+                                    : undefined}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -2436,11 +2488,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 }))}
                             />
                         </Grid>
-                    </Grid>
-                    </Box>
+	                    </Grid>
+	                    </Box>
 
-                    <Box>
-                    <SectionHeading title="2. Trial Information" />
+		                    <Box>
+		                    <SectionHeading title="2. Trial Information" />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 3 }}>
                             <TextField
@@ -2501,11 +2553,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 onChange={(e) => {
                                     const nextCropType = e.target.value;
                                     const nextOptions = getCropClassOptionsForCropType(nextCropType);
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        crop_type: nextCropType,
-                                        crop_class: nextOptions.includes(prev.crop_class || '') ? prev.crop_class : '',
-                                    }));
+                                    setFormData((prev) => {
+                                        return {
+                                            ...prev,
+                                            crop_type: nextCropType,
+                                            crop_class: nextOptions.includes(prev.crop_class || '') ? prev.crop_class : '',
+                                        };
+                                    });
                                 }}
                                 SelectProps={{
                                     MenuProps: WHITE_SELECT_MENU_PROPS,
@@ -2524,7 +2578,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 fullWidth
                                 label="Crop Class"
                                 value={formData.crop_class || ''}
-                                onChange={(e) => updateField('crop_class', e.target.value)}
+                                onChange={(e) => {
+                                    const nextCropClass = e.target.value;
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        crop_class: nextCropClass,
+                                    }));
+                                }}
                                 SelectProps={{
                                     MenuProps: WHITE_SELECT_MENU_PROPS,
                                 }}
@@ -2924,30 +2984,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     <Box>
                     <SectionHeading title="5. Nutrient Management" />
                     <Stack spacing={2}>
-                        <Paper
-                            variant="outlined"
-                            sx={{
-                                borderRadius: 3,
-                                p: 2,
-                                borderColor: 'rgba(86,184,112,0.2)',
-                                bgcolor: 'rgba(255,255,255,0.78)',
-                            }}
-                        >
-                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', mb: 0.5 }}>
-                                Current Fertilizer Application
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                {currentFertilizerApplication
-                                    ? [
-                                        currentFertilizerApplication.fertilizer_type || '',
-                                        currentFertilizerApplication.application_rate != null
-                                            ? `Rate ${currentFertilizerApplication.application_rate}`
-                                            : '',
-                                    ].filter(Boolean).join(' | ')
-                                    : 'No fertilizer application added yet.'}
-                            </Typography>
-                        </Paper>
-
                         {fertilizerApplicationRows.map((application, index) => (
                             <Paper
                                 key={`fertilizer-application-${index}`}
@@ -2964,16 +3000,14 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary' }}>
                                             Fertilizer Application
                                         </Typography>
-                                        {index > 0 && (
-                                            <Button
-                                                size="small"
-                                                variant="text"
-                                                color="inherit"
-                                                onClick={() => handleRemoveFertilizerApplication(index)}
-                                            >
-                                                Remove
-                                            </Button>
-                                        )}
+                                        <Button
+                                            size="small"
+                                            variant="text"
+                                            color="inherit"
+                                            onClick={() => handleRemoveFertilizerApplication(index)}
+                                        >
+                                            Remove
+                                        </Button>
                                     </Stack>
                                     <Grid container spacing={2}>
                                         <Grid size={{ xs: 12, md: 4 }}>
@@ -3012,7 +3046,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             <Button
                                 variant="outlined"
                                 onClick={handleAddFertilizerApplication}
-                                disabled={fertilizerApplicationRows.length >= MAX_APPLICATION_LOOPS}
                             >
                                 Add Fertilizer Application
                             </Button>
@@ -3023,30 +3056,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     <Box>
                     <SectionHeading title="6. Weed Management" />
                     <Stack spacing={2}>
-                        <Paper
-                            variant="outlined"
-                            sx={{
-                                borderRadius: 3,
-                                p: 2,
-                                borderColor: 'rgba(86,184,112,0.2)',
-                                bgcolor: 'rgba(255,255,255,0.78)',
-                            }}
-                        >
-                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', mb: 0.5 }}>
-                                Current Herbicide Application
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                {currentHerbicideApplication
-                                    ? [
-                                        currentHerbicideApplication.herbicide_name || '',
-                                        currentHerbicideApplication.application_rate != null
-                                            ? `Rate ${currentHerbicideApplication.application_rate}`
-                                            : '',
-                                    ].filter(Boolean).join(' | ')
-                                    : 'No herbicide application added yet.'}
-                            </Typography>
-                        </Paper>
-
                         {herbicideApplicationRows.map((application, index) => (
                             <Paper
                                 key={`herbicide-application-${index}`}
@@ -3059,18 +3068,16 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 }}
                             >
                                 <Stack spacing={2}>
-                                    {index > 0 && (
-                                        <Stack direction="row" justifyContent="flex-end">
-                                            <Button
-                                                size="small"
-                                                variant="text"
-                                                color="inherit"
-                                                onClick={() => handleRemoveHerbicideApplication(index)}
-                                            >
-                                                Remove
-                                            </Button>
-                                        </Stack>
-                                    )}
+                                    <Stack direction="row" justifyContent="flex-end">
+                                        <Button
+                                            size="small"
+                                            variant="text"
+                                            color="inherit"
+                                            onClick={() => handleRemoveHerbicideApplication(index)}
+                                        >
+                                            Remove
+                                        </Button>
+                                    </Stack>
                                     <Grid container spacing={2}>
                                         <Grid size={{ xs: 12, md: 4 }}>
                                             <TextField
@@ -3108,7 +3115,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             <Button
                                 variant="outlined"
                                 onClick={handleAddHerbicideApplication}
-                                disabled={herbicideApplicationRows.length >= MAX_APPLICATION_LOOPS}
                             >
                                 Add Herbicide Application
                             </Button>
@@ -3127,6 +3133,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Pest Remarks"
                                 value={formData.pest_remarks || ''}
                                 onChange={(e) => updateField('pest_remarks', e.target.value)}
+                                sx={OBSERVATION_FIELD_SX}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
@@ -3137,17 +3144,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Disease Remarks"
                                 value={formData.disease_remarks || ''}
                                 onChange={(e) => updateField('disease_remarks', e.target.value)}
+                                sx={OBSERVATION_FIELD_SX}
                             />
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                             <Box
                                 sx={{
-                                    border: '1px solid',
+                                    ...FILE_FIELD_SX,
                                     borderColor: eldanaPdfError ? 'error.main' : 'rgba(0,0,0,0.23)',
-                                    borderRadius: 1,
-                                    p: 1.5,
-                                    position: 'relative',
-                                    '&:hover': { borderColor: 'text.primary' },
+                                    '&:hover': { borderColor: eldanaPdfError ? 'error.main' : 'primary.main' },
                                 }}
                             >
                                 <Typography
@@ -3275,6 +3280,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 InputLabelProps={{ shrink: true }}
                                 value={formData.harvest_date || ''}
                                 onChange={(e) => handleHarvestDateChange(e.target.value)}
+                                sx={OBSERVATION_FIELD_SX}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -3284,6 +3290,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Yield"
                                 value={formData.yield ?? ''}
                                 onChange={(e) => updateField('yield', parseOptionalNumericInput(e.target.value))}
+                                sx={OBSERVATION_FIELD_SX}
                             />
                         </Grid>
                         <Grid size={{ xs: 12 }}>
@@ -3294,11 +3301,12 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Quality Remarks"
                                 value={formData.quality_remarks || ''}
                                 onChange={(e) => updateField('quality_remarks', e.target.value)}
+                                sx={OBSERVATION_FIELD_SX}
                             />
                         </Grid>
-                    </Grid>
-                    </Box>
-                </Stack>
+		                    </Grid>
+		                    </Box>
+		                </Stack>
             </DialogContent>
             <DialogActions
                 sx={{
@@ -3319,7 +3327,21 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     }}
                 >
                     Cancel
-                </Button>
+	                </Button>
+	                <Button
+	                    onClick={handleStartAddNewRecord}
+	                    variant="outlined"
+	                    disabled={saving || pdfUploading || foliarPdfUploading || eldanaPdfUploading}
+                    sx={{
+                        borderRadius: '999px',
+                        px: 2.4,
+                        py: 0.9,
+                        fontWeight: 800,
+                        textTransform: 'none',
+	                    }}
+	                >
+	                    Add New Record
+	                </Button>
                 <Button
                     onClick={() => handleSubmit('close')}
                     variant="contained"

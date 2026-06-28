@@ -27,7 +27,7 @@ import { ObservationEditDialog } from '@/components/Data/ObservationEditDialog'
 import { exportEntryFormRecordsToCSV, generatePDFReport } from '@/utils/exportUtils'
 import type { MobileObservationRecord } from '@/services/database.service'
 import { updateMobileObservationRecord, deleteMobileObservationRecord } from '@/services/database.service'
-import { hasPermission } from '@/utils/roleAccess'
+import { hasAdminLevelAccess, hasPermission } from '@/utils/roleAccess'
 
 interface ErrorBoundaryProps {
     children: ReactNode;
@@ -216,7 +216,7 @@ function DataManagementPageContent() {
     const canManageFields = hasPermission(user?.role, 'manageFields')
     const canDownloadCsv = hasPermission(user?.role, 'downloadCsv')
     const supportsEditing = canManageFields
-    const canDeleteRecords = canManageFields
+    const canDeleteRecords = hasAdminLevelAccess(user?.role, user?.email)
 
     const filteredObservations = useMemo(() => {
         return observations.filter((observation) =>
@@ -263,11 +263,6 @@ function DataManagementPageContent() {
         const targetRecord = observations.find((observation) => observation.id === id)
         if (!targetRecord) {
             alert('Unable to find the selected record to delete.')
-            return
-        }
-
-        if (isMobileObservationRecord(targetRecord) && targetRecord.source_table !== 'observations') {
-            alert('Deleting is not yet available for records loaded from the live monitoring feed.')
             return
         }
 
