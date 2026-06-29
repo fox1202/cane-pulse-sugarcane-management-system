@@ -12,6 +12,10 @@ import {
     Alert,
     CircularProgress
 } from '@mui/material';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import type { PickersActionBarAction } from '@mui/x-date-pickers/PickersActionBar';
 import { FullObservation } from '@/types/database.types';
 import {
     fetchPredefinedFields,
@@ -35,6 +39,48 @@ interface ObservationEditDialogProps {
 function isMobileObservationRecord(observation: ObservationEditRecord): observation is MobileObservationRecord {
     return 'source_table' in observation
 }
+
+function normalizeDateInputValue(value?: string | null): string {
+    if (!value) return '';
+
+    const directDate = value.trim().slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(directDate)) {
+        return directDate;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return '';
+    }
+
+    return parsed.toISOString().slice(0, 10);
+}
+
+function parseDatePickerValue(value?: string | null): Date | null {
+    const normalized = normalizeDateInputValue(value);
+    const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!match) return null;
+
+    const [, year, month, day] = match;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDatePickerValue(value: Date | null): string {
+    if (!value || Number.isNaN(value.getTime())) return '';
+
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+const CLEARABLE_DATE_PICKER_SLOT_PROPS = {
+    actionBar: { actions: ['clear', 'today', 'cancel', 'accept'] as PickersActionBarAction[] },
+};
 
 export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
     open,
@@ -205,6 +251,7 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
     if (!formData) return null;
 
     return (
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>
                 {mode === 'create' ? '➕ Create New Observation Record' : '✏️ Edit Observation Record'}
@@ -253,13 +300,11 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                         <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 700 }}>OBSERVATION DETAILS</Typography>
                         <Grid container spacing={2} sx={{ mb: 4 }}>
                             <Grid size={{ xs: 12, md: 3 }}>
-                                <TextField
-                                    type="date"
-                                    fullWidth
+                                <DatePicker
                                     label="Date Recorded"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={String(formData.date_recorded || '').split('T')[0]}
-                                    onChange={(e) => handleTopLevelChange('date_recorded', e.target.value)}
+                                    value={parseDatePickerValue(formData.date_recorded)}
+                                    onChange={(date) => handleTopLevelChange('date_recorded', formatDatePickerValue(date))}
+                                    slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, md: 3 }}>
@@ -289,13 +334,11 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                         <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 700 }}>MOBILE FORM DETAILS</Typography>
                         <Grid container spacing={2} sx={{ mb: 4 }}>
                             <Grid size={{ xs: 12, md: 4 }}>
-                                <TextField
-                                    type="date"
-                                    fullWidth
+                                <DatePicker
                                     label="Date Recorded"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={entryForm?.date_recorded || formData.date_recorded || ''}
-                                    onChange={(e) => handleEntryFormChange('date_recorded', e.target.value)}
+                                    value={parseDatePickerValue(entryForm?.date_recorded || formData.date_recorded)}
+                                    onChange={(date) => handleEntryFormChange('date_recorded', formatDatePickerValue(date))}
+                                    slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, md: 4 }}>
@@ -340,13 +383,11 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, md: 4 }}>
-                                <TextField
-                                    type="date"
-                                    fullWidth
+                                <DatePicker
                                     label="Cutting Date"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={entryForm?.cutting_date || ''}
-                                    onChange={(e) => handleEntryFormChange('cutting_date', e.target.value)}
+                                    value={parseDatePickerValue(entryForm?.cutting_date)}
+                                    onChange={(date) => handleEntryFormChange('cutting_date', formatDatePickerValue(date))}
+                                    slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, md: 4 }}>
@@ -385,33 +426,27 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                     {isObservationEntryFormRecord ? (
                         <>
                             <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    type="date"
-                                    fullWidth
+                                <DatePicker
                                     label="Ploughing Date"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={entryForm?.ploughing_date || formData.crop_information?.ploughing_date || ''}
-                                    onChange={(e) => handleEntryFormChange('ploughing_date', e.target.value)}
+                                    value={parseDatePickerValue(entryForm?.ploughing_date || formData.crop_information?.ploughing_date)}
+                                    onChange={(date) => handleEntryFormChange('ploughing_date', formatDatePickerValue(date))}
+                                    slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    type="date"
-                                    fullWidth
+                                <DatePicker
                                     label="Planting Date"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={entryForm?.planting_date || formData.crop_information?.planting_date || ''}
-                                    onChange={(e) => handleEntryFormChange('planting_date', e.target.value)}
+                                    value={parseDatePickerValue(entryForm?.planting_date || formData.crop_information?.planting_date)}
+                                    onChange={(date) => handleEntryFormChange('planting_date', formatDatePickerValue(date))}
+                                    slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    type="date"
-                                    fullWidth
+                                <DatePicker
                                     label="Expected Harvest Date"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={entryForm?.expected_harvest_date || formData.crop_information?.expected_harvest_date || ''}
-                                    onChange={(e) => handleEntryFormChange('expected_harvest_date', e.target.value)}
+                                    value={parseDatePickerValue(entryForm?.expected_harvest_date || formData.crop_information?.expected_harvest_date)}
+                                    onChange={(date) => handleEntryFormChange('expected_harvest_date', formatDatePickerValue(date))}
+                                    slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                 />
                             </Grid>
                         </>
@@ -525,13 +560,11 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                     ) : (
                         <>
                             <Grid size={{ xs: 12, md: 4 }}>
-                                <TextField
-                                    type="date"
-                                    fullWidth
+                                <DatePicker
                                     label="Date"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={formData.irrigation_management?.irrigation_date || ''}
-                                    onChange={(e) => handleChange('irrigation_management', 'irrigation_date', e.target.value)}
+                                    value={parseDatePickerValue(formData.irrigation_management?.irrigation_date)}
+                                    onChange={(date) => handleChange('irrigation_management', 'irrigation_date', formatDatePickerValue(date))}
+                                    slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, md: 6 }}>
@@ -560,13 +593,11 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                         <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 700 }}>NUTRIENT MANAGEMENT</Typography>
                         <Grid container spacing={2} sx={{ mb: 4 }}>
                             <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    type="date"
-                                    fullWidth
+                                <DatePicker
                                     label="Application Date"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={formData.nutrient_management?.application_date || ''}
-                                    onChange={(e) => handleChange('nutrient_management', 'application_date', e.target.value)}
+                                    value={parseDatePickerValue(formData.nutrient_management?.application_date)}
+                                    onChange={(date) => handleChange('nutrient_management', 'application_date', formatDatePickerValue(date))}
+                                    slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, md: 6 }}>
@@ -699,13 +730,11 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                         <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 700 }}>HARVEST & RESIDUALS</Typography>
                         <Grid container spacing={2}>
                             <Grid size={{ xs: 12, md: 4 }}>
-                                <TextField
-                                    type="date"
-                                    fullWidth
+                                <DatePicker
                                     label="Harvest Date"
-                                    InputLabelProps={{ shrink: true }}
-                                    value={formData.harvest?.harvest_date || ''}
-                                    onChange={(e) => handleChange('harvest', 'harvest_date', e.target.value)}
+                                    value={parseDatePickerValue(formData.harvest?.harvest_date)}
+                                    onChange={(date) => handleChange('harvest', 'harvest_date', formatDatePickerValue(date))}
+                                    slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, md: 4 }}>
@@ -753,5 +782,6 @@ export const ObservationEditDialog: React.FC<ObservationEditDialogProps> = ({
                 </Button>
             </DialogActions>
         </Dialog>
+        </LocalizationProvider>
     );
 };

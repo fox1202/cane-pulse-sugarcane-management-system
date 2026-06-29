@@ -2198,14 +2198,22 @@ async function findExistingDatedApplicationRows(
     const blockId = firstNonEmptyString(payload.block_id)
     const lookups: Array<Array<{ column: string; value: string | number }>> = []
 
-    dateColumns.forEach((dateColumn) => {
-        if (observationId) {
-            lookups.push([
+    if (observationId) {
+        for (const dateColumn of dateColumns) {
+            const rows = await runTargetedLookup(tableName, [
                 { column: 'observation_id', value: observationId },
                 { column: dateColumn, value: applicationDate },
-            ])
+            ], 1)
+
+            if (rows && rows.length > 0) {
+                return rows
+            }
         }
 
+        return []
+    }
+
+    dateColumns.forEach((dateColumn) => {
         if (blockId && fieldName) {
             lookups.push([
                 { column: 'block_id', value: blockId },
@@ -2740,6 +2748,15 @@ async function fetchTargetedExistingRows(
     if (observationId) {
         lookups.push([{ column: 'observation_id', value: observationId }, ...loopFilter])
         lookups.push([{ column: 'observation_id', value: observationId }, ...withoutLoopFilter])
+
+        for (const filters of lookups) {
+            const rows = await runTargetedLookup(tableName, filters)
+            if (rows && rows.length > 0) {
+                return rows
+            }
+        }
+
+        return []
     }
     if (blockId && fieldName) {
         lookups.push([{ column: 'block_id', value: blockId }, { column: 'field_name', value: fieldName }, ...loopFilter])
@@ -4265,10 +4282,13 @@ export async function createObservationEntryFormSubmission(
 
     const payload: Record<string, unknown> = buildSugarcaneFieldManagementPayload(resolvedSubmission)
     const fieldPayload = buildSugarcaneFieldPayload(payload)
-    const observationId = firstNonEmptyString(payload.observation_id) ?? buildStableObservationId(payload)
+    const observationId = options.forceNewFieldRow
+        ? createClientUuid()
+        : firstNonEmptyString(payload.observation_id) ?? buildStableObservationId(payload)
     const threeTablePayload = {
         ...payload,
         observation_id: observationId,
+        client_uuid: observationId,
     }
 
     const data: Record<string, unknown> = {

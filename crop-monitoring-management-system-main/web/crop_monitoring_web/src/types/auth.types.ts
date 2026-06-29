@@ -6,6 +6,10 @@ export interface AuthUser {
     role: UserRole;
     profile_role?: string;
     full_name?: string;
+    avatar_url?: string;
+    picture?: string;
+    image_url?: string;
+    photo_url?: string;
     must_change_password?: boolean;
     status: 'pending' | 'approved' | 'rejected';
     user_metadata?: {

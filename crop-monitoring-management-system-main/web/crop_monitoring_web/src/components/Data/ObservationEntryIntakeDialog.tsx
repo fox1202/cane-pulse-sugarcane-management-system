@@ -10,13 +10,35 @@ import {
     DialogContent,
     DialogTitle,
     Grid,
+    InputAdornment,
     MenuItem,
     Paper,
     Stack,
     TextField,
     Typography,
 } from '@mui/material';
-import { CloudUpload } from '@mui/icons-material';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import type { PickersActionBarAction } from '@mui/x-date-pickers/PickersActionBar';
+import {
+    AgricultureRounded,
+    CalendarMonthRounded,
+    CloudUpload,
+    EmojiEventsRounded,
+    GrassRounded,
+    Inventory2Rounded,
+    LocalDrinkRounded,
+    MapRounded,
+    NotesRounded,
+    NumbersRounded,
+    PersonRounded,
+    ScienceRounded,
+    SpaRounded,
+    StraightenRounded,
+    TerrainRounded,
+    WaterDropRounded,
+} from '@mui/icons-material';
 import L from 'leaflet';
 import { MapContainer, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import {
@@ -68,6 +90,7 @@ const IRRIGATION_TYPE_OPTIONS = [
 ];
 
 const WATER_SOURCE_OPTIONS = ['Dam 1', 'Dam 2', 'Dam 3'];
+const CONTACT_PERSON_CLEAR_VALUE = '__clear_contact_person__';
 const CONTACT_PERSON_OPTIONS = [
     'DR L.T. MPOFU',
     'DR T.P. CHIBARABADA',
@@ -78,6 +101,9 @@ const CONTACT_PERSON_OPTIONS = [
     'MR SHAYANOWAKO',
 ];
 const CONTACT_PERSON_ALIAS_LOOKUP = new Map<string, string>([
+    ['clear', ''],
+    ['none', ''],
+    ['na', ''],
     ['drltmpofu', 'DR L.T. MPOFU'],
     ['drmpofu', 'DR L.T. MPOFU'],
     ['drtpchibarabada', 'DR T.P. CHIBARABADA'],
@@ -493,20 +519,67 @@ function inferFieldIdFromKMLFeatureName(value?: string | null): string {
     return cleaned || raw;
 }
 
-function SectionHeading({ title }: { title: string }) {
+function FieldIconAdornment({ icon }: { icon: React.ReactNode }) {
     return (
-        <Typography
-            variant="subtitle2"
+        <InputAdornment position="start">
+            <Box
+                sx={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: '9px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: 'primary.dark',
+                    bgcolor: 'rgba(47,127,79,0.1)',
+                    '& svg': { fontSize: 16 },
+                }}
+            >
+                {icon}
+            </Box>
+        </InputAdornment>
+    );
+}
+
+function SectionHeading({ title, icon }: { title: string; icon?: React.ReactNode }) {
+    return (
+        <Box
             sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.9,
                 color: 'text.secondary',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
                 mb: 1.2,
             }}
         >
-            {title}
-        </Typography>
+            {icon ? (
+                <Box
+                    sx={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: '10px',
+                        display: 'grid',
+                        placeItems: 'center',
+                        color: 'primary.dark',
+                        bgcolor: 'rgba(47,127,79,0.12)',
+                        border: '1px solid rgba(47,127,79,0.16)',
+                        '& svg': { fontSize: 17 },
+                    }}
+                >
+                    {icon}
+                </Box>
+            ) : null}
+            <Typography
+                variant="subtitle2"
+                sx={{
+                    color: 'text.secondary',
+                    fontWeight: 800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                }}
+            >
+                {title}
+            </Typography>
+        </Box>
     );
 }
 
@@ -605,6 +678,62 @@ function normalizeDateInputValue(value?: string | null): string {
     return parsed.toISOString().slice(0, 10);
 }
 
+function parseDatePickerValue(value?: string | null): Date | null {
+    const normalized = normalizeDateInputValue(value);
+    const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!match) return null;
+
+    const [, year, month, day] = match;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getDateOnlyTime(value?: string | null): number | null {
+    const normalized = normalizeDateInputValue(value);
+    const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!match) return null;
+
+    const [, year, month, day] = match;
+    const timestamp = new Date(Number(year), Number(month) - 1, Number(day)).getTime();
+
+    return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function isApplicationWithinCropWindow(
+    applicationDate: string | undefined,
+    plantingDate: string | undefined,
+    harvestDate: string | undefined
+): boolean {
+    const applicationTime = getDateOnlyTime(applicationDate);
+
+    if (applicationTime == null) return true;
+
+    const plantingTime = getDateOnlyTime(plantingDate);
+    const harvestTime = getDateOnlyTime(harvestDate);
+
+    if (plantingTime != null && applicationTime <= plantingTime) return false;
+    if (harvestTime != null && applicationTime >= harvestTime) return false;
+
+    return true;
+}
+
+function formatDatePickerValue(value: Date | null): string {
+    if (!value || Number.isNaN(value.getTime())) return '';
+
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+const CLEARABLE_DATE_PICKER_SLOT_PROPS = {
+    actionBar: { actions: ['clear', 'today', 'cancel', 'accept'] as PickersActionBarAction[] },
+};
+
 function normalizeFertilizerApplicationInput(value: FertilizerApplication | null | undefined): FertilizerApplication | null {
     if (!value) return null;
 
@@ -615,7 +744,7 @@ function normalizeFertilizerApplicationInput(value: FertilizerApplication | null
         : undefined;
     const foliarSamplingDate = normalizeDateInputValue(value.foliar_sampling_date);
 
-    if (!applicationDate && applicationRate == null) {
+    if (!applicationDate && applicationRate == null && !foliarSamplingDate) {
         return null;
     }
 
@@ -746,115 +875,96 @@ function getEntryTimestamp(entry: SugarcaneMonitoringRecord): number {
     return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
-function matchesFieldObservation(field: PredefinedField, entry: SugarcaneMonitoringRecord): boolean {
+function isRecordForField(record: SugarcaneMonitoringRecord, field: PredefinedField): boolean {
+    const recordName = normalizeLookupValue(record.field_name || record.field_id);
     const fieldName = normalizeLookupValue(field.field_name);
-    const blockId = normalizeLookupValue(field.block_id);
-    const sectionName = normalizeLookupValue(field.section_name);
-    const entryFieldNames = [
-        entry.field_name,
-        entry.field_id,
-    ].map((value) => normalizeLookupValue(value));
-    const hasFieldNameMatch = entryFieldNames.some((value) => value && value === fieldName);
-    const entryBlockId = normalizeLookupValue(entry.block_id);
-    const entrySectionName = normalizeLookupValue(entry.section_name);
+    const recordBlock = normalizeLookupValue(record.block_id);
+    const fieldBlock = normalizeLookupValue(field.block_id);
+    const recordSection = normalizeLookupValue(record.section_name);
+    const fieldSection = normalizeLookupValue(field.section_name);
 
-    if (blockId && entryBlockId && blockId === entryBlockId) {
-        return !fieldName || hasFieldNameMatch;
-    }
-
-    if (!hasFieldNameMatch) {
+    if (!recordName || recordName !== fieldName) {
         return false;
     }
 
-    return !(sectionName && entrySectionName && sectionName !== entrySectionName);
+    if (recordBlock && fieldBlock && recordBlock !== fieldBlock) {
+        return false;
+    }
+
+    return !(recordSection && fieldSection && recordSection !== fieldSection);
 }
 
 function findLatestRecordForField(
-    field: PredefinedField,
-    records: SugarcaneMonitoringRecord[]
+    records: SugarcaneMonitoringRecord[],
+    field: PredefinedField
 ): SugarcaneMonitoringRecord | null {
     return records
-        .filter((entry) => matchesFieldObservation(field, entry))
+        .filter((record) => isRecordForField(record, field))
         .sort((left, right) => getEntryTimestamp(right) - getEntryTimestamp(left))[0] ?? null;
 }
 
-function buildLoadedSavedRecordData(
-    savedEntry: SugarcaneMonitoringRecord,
-    collectorId: string,
-    matchedField?: PredefinedField
-): ObservationEntryFormSubmissionInput {
-    const selectedField = matchedField?.field_name || savedEntry.field_name || savedEntry.field_id || '';
-    const fieldName = matchedField?.field_name || savedEntry.field_name || savedEntry.field_id || '';
-    const sectionName = matchedField?.section_name || savedEntry.section_name || '';
-    const blockId = matchedField?.block_id || savedEntry.block_id || '';
-    const fieldArea = savedEntry.area ?? matchedField?.area;
-    const fertilizerApplications = (savedEntry.fertilizer_applications ?? [])
-        .map((item) => normalizeFertilizerApplicationInput(item))
-        .filter((item): item is FertilizerApplication => item !== null);
-    const herbicideApplications = (savedEntry.herbicide_applications ?? [])
-        .map((item) => normalizeHerbicideApplicationInput(item))
-        .filter((item): item is HerbicideApplication => item !== null);
+function buildSavedRecordFormData(record: SugarcaneMonitoringRecord): Partial<ObservationEntryFormSubmissionInput> {
+    const fieldRemarks = record.field_remarks ?? record.remarks ?? '';
+    const yieldValue = record.yield ?? record.cane_yield ?? record.harvest_yield;
 
-    return buildFreshFormData(
-        {
-            ...savedEntry,
-            collector_id: collectorId || savedEntry.collector_id || '',
-            selected_field: selectedField,
-            field_id: selectedField,
-            field_name: fieldName,
-            section_name: sectionName,
-            block_id: blockId,
-            area: fieldArea,
-            block_size: fieldArea,
-            spatial_data: savedEntry.geom_polygon ?? matchedField?.geom,
-            geom_polygon: savedEntry.geom_polygon ?? matchedField?.geom,
-            latitude: savedEntry.latitude ?? matchedField?.latitude ?? 0,
-            longitude: savedEntry.longitude ?? matchedField?.longitude ?? 0,
-            date_recorded: savedEntry.date_recorded || '',
-            trial_number: savedEntry.trial_number ?? '',
-            trial_name: savedEntry.trial_name || '',
-            contact_person: normalizeContactPersonLabel(savedEntry.contact_person),
-            crop_type: savedEntry.crop_type || 'Sugarcane',
-            crop_class: savedEntry.crop_class || '',
-            ratoon_number: savedEntry.ratoon_number,
-            variety: savedEntry.variety || '',
-            ploughing_date: savedEntry.ploughing_date || '',
-            planting_date: savedEntry.planting_date || '',
-            soil_sampling_date: savedEntry.soil_sampling_date || '',
-            soil_test_pdf_url: savedEntry.soil_test_pdf_url || '',
-            foliar_analysis_pdf_url: savedEntry.foliar_analysis_pdf_url || '',
-            final_eldana_survey_pdf_url: savedEntry.final_eldana_survey_pdf_url || '',
-            previous_cutting_date: savedEntry.previous_cutting_date || savedEntry.previous_cutting || '',
-            cutting_date: savedEntry.previous_cutting_date || savedEntry.previous_cutting || '',
-            expected_harvest_date: savedEntry.expected_harvest_date || '',
-            irrigation_type: savedEntry.irrigation_type || '',
-            water_source: savedEntry.water_source || '',
-            tam_mm: savedEntry.tam_mm || '',
-            soil_type: normalizeSoilTypeLabel(savedEntry.soil_type),
-            soil_ph: savedEntry.soil_ph,
-            field_remarks: savedEntry.field_remarks || savedEntry.remarks || '',
-            residue_type: savedEntry.residue_type || '',
-            residue_management_method: savedEntry.residue_management_method || '',
-            residual_management_remarks: savedEntry.residual_management_remarks || '',
-            fertilizer_type: savedEntry.fertilizer_type || '',
-            nutrient_application_date: savedEntry.nutrient_application_date || savedEntry.fertilizer_application_date || '',
-            application_rate: savedEntry.application_rate,
-            fertilizer_applications: fertilizerApplications,
-            foliar_sampling_date: savedEntry.foliar_sampling_date || '',
-            herbicide_name: savedEntry.herbicide_name || '',
-            weed_application_date: savedEntry.weed_application_date || '',
-            weed_application_rate: savedEntry.weed_application_rate,
-            herbicide_applications: herbicideApplications,
-            pest_remarks: savedEntry.pest_remarks || '',
-            disease_remarks: savedEntry.disease_remarks || '',
-            harvest_date: savedEntry.harvest_date || '',
-            yield: savedEntry.yield ?? savedEntry.harvest_yield,
-            quality_remarks: savedEntry.quality_remarks || '',
-            remarks: savedEntry.remarks || savedEntry.field_remarks || '',
-        },
-        collectorId,
-        matchedField
-    );
+    return {
+        client_uuid: record.observation_id,
+        collector_id: record.collector_id,
+        selected_field: record.field_name,
+        field_id: record.field_id || record.field_name,
+        section_name: record.section_name || '',
+        field_name: record.field_name,
+        block_id: record.block_id || '',
+        area: record.area,
+        block_size: record.area,
+        spatial_data: record.geom_polygon,
+        geom_polygon: record.geom_polygon,
+        latitude: record.latitude,
+        longitude: record.longitude,
+        date_recorded: normalizeDateInputValue(record.date_recorded),
+        trial_number: record.trial_number,
+        trial_name: record.trial_name,
+        contact_person: record.contact_person,
+        crop_type: record.crop_type,
+        crop_class: record.crop_class,
+        ratoon_number: record.ratoon_number,
+        variety: record.variety,
+        ploughing_date: normalizeDateInputValue(record.ploughing_date),
+        planting_date: normalizeDateInputValue(record.planting_date),
+        soil_sampling_date: normalizeDateInputValue(record.soil_sampling_date),
+        soil_test_pdf_url: record.soil_test_pdf_url,
+        foliar_analysis_pdf_url: record.foliar_analysis_pdf_url,
+        final_eldana_survey_pdf_url: record.final_eldana_survey_pdf_url,
+        previous_cutting_date: normalizeDateInputValue(record.previous_cutting_date || record.previous_cutting || record.cutting_date),
+        cutting_date: normalizeDateInputValue(record.cutting_date || record.previous_cutting_date || record.previous_cutting),
+        expected_harvest_date: normalizeDateInputValue(record.expected_harvest_date),
+        irrigation_type: record.irrigation_type,
+        water_source: record.water_source,
+        tam_mm: record.tam_mm,
+        soil_type: record.soil_type,
+        soil_ph: record.soil_ph,
+        field_remarks: fieldRemarks,
+        remarks: fieldRemarks,
+        stress: record.stress,
+        residue_type: record.residue_type,
+        residue_management_method: record.residue_management_method,
+        residual_management_remarks: record.residual_management_remarks,
+        fertilizer_type: record.fertilizer_type,
+        nutrient_application_date: normalizeDateInputValue(record.nutrient_application_date || record.fertilizer_application_date),
+        application_rate: record.application_rate,
+        fertilizer_applications: record.fertilizer_applications,
+        foliar_sampling_date: normalizeDateInputValue(record.foliar_sampling_date),
+        herbicide_name: record.herbicide_name,
+        weed_application_date: normalizeDateInputValue(record.weed_application_date),
+        weed_application_rate: record.weed_application_rate,
+        herbicide_applications: record.herbicide_applications,
+        pest_remarks: record.pest_remarks || record.pest_control,
+        disease_remarks: record.disease_remarks || record.disease_control,
+        harvest_date: normalizeDateInputValue(record.harvest_date),
+        yield: yieldValue,
+        harvest_method: record.harvest_method,
+        quality_remarks: record.quality_remarks,
+    };
 }
 
 function buildMonitoringFieldRegistry(records: SugarcaneMonitoringRecord[]): PredefinedField[] {
@@ -942,10 +1052,15 @@ function buildSelectableFieldRegistry(
     liveFields: PredefinedField[],
     records: SugarcaneMonitoringRecord[]
 ): PredefinedField[] {
+    if (liveFields.length > 0) {
+        return [...liveFields]
+            .sort((left, right) => left.field_name.localeCompare(right.field_name, undefined, { sensitivity: 'base' }));
+    }
+
     const merged = new Map<string, PredefinedField>();
     const monitoringFields = buildMonitoringFieldRegistry(records);
 
-    [...liveFields, ...monitoringFields].forEach((field, index) => {
+    monitoringFields.forEach((field, index) => {
         const key = buildFieldRegistryKey(field) || `field-${index}`;
         if (!merged.has(key)) {
             merged.set(key, field);
@@ -1043,6 +1158,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const [error, setError] = useState<string | null>(null);
     const [parseSummary, setParseSummary] = useState<string | null>(null);
     const [isAddingNewRecord, setIsAddingNewRecord] = useState(false);
+    const [selectedFieldKey, setSelectedFieldKey] = useState('');
+    const isAddingNewRecordRef = useRef(false);
     const [isCreatingCustomField, setIsCreatingCustomField] = useState(false);
     const [drawPoints, setDrawPoints] = useState<DrawPoint[]>([]);
     const [isUploadingKML, setIsUploadingKML] = useState(false);
@@ -1081,7 +1198,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setEldanaPdfUploading(false);
         setEldanaPdfError(null);
         setSaveMode(null);
+        isAddingNewRecordRef.current = false;
         setIsAddingNewRecord(false);
+        setSelectedFieldKey('');
         setIsCreatingCustomField(false);
         setDrawPoints([]);
         setIsUploadingKML(false);
@@ -1094,17 +1213,25 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         setKmlMode('geometry');
     }, [open, user?.id]);
 
-    const selectedField = useMemo(
-        () => getPredefinedFieldByName(predefinedFields, formData.field_name),
-        [predefinedFields, formData.field_name]
-    );
+    const selectedField = useMemo(() => {
+        if (selectedFieldKey) {
+            const keyedField = predefinedFields.find((field) => buildFieldRegistryKey(field) === selectedFieldKey);
+            if (keyedField) return keyedField;
+        }
+
+        return getPredefinedFieldByName(predefinedFields, formData.field_name);
+    }, [predefinedFields, selectedFieldKey, formData.field_name]);
 
     const fertilizerApplicationRows = useMemo(() => {
         const rows = Array.isArray(formData.fertilizer_applications)
             ? formData.fertilizer_applications.slice(0, MAX_APPLICATION_LOOPS)
             : [];
         const displayRows = rows.filter((row) =>
-            isDraftApplicationRow(row) || normalizeFertilizerApplicationInput(row) !== null
+            isDraftApplicationRow(row) ||
+            (
+                normalizeFertilizerApplicationInput(row) !== null &&
+                isApplicationWithinCropWindow(row.application_date, formData.planting_date, formData.harvest_date)
+            )
         );
 
         if (displayRows.length > 0) {
@@ -1117,9 +1244,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             formData.application_rate != null ||
             formData.foliar_sampling_date
         ) {
+            const applicationDate = normalizeDateInputValue(formData.nutrient_application_date);
+
+            if (!isApplicationWithinCropWindow(applicationDate, formData.planting_date, formData.harvest_date)) {
+                return [];
+            }
+
             return [{
                 fertilizer_type: formData.fertilizer_type || '',
-                application_date: normalizeDateInputValue(formData.nutrient_application_date),
+                application_date: applicationDate,
                 application_rate: formData.application_rate,
                 foliar_sampling_date: normalizeDateInputValue(formData.foliar_sampling_date),
             }];
@@ -1131,7 +1264,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         formData.fertilizer_applications,
         formData.fertilizer_type,
         formData.foliar_sampling_date,
+        formData.harvest_date,
         formData.nutrient_application_date,
+        formData.planting_date,
     ]);
 
     const herbicideApplicationRows = useMemo(() => {
@@ -1139,7 +1274,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             ? formData.herbicide_applications.slice(0, MAX_APPLICATION_LOOPS)
             : [];
         const displayRows = rows.filter((row) =>
-            isDraftApplicationRow(row) || normalizeHerbicideApplicationInput(row) !== null
+            isDraftApplicationRow(row) ||
+            (
+                normalizeHerbicideApplicationInput(row) !== null &&
+                isApplicationWithinCropWindow(row.application_date, formData.planting_date, formData.harvest_date)
+            )
         );
 
         if (displayRows.length > 0) {
@@ -1151,9 +1290,15 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             formData.weed_application_date ||
             formData.weed_application_rate != null
         ) {
+            const applicationDate = normalizeDateInputValue(formData.weed_application_date);
+
+            if (!isApplicationWithinCropWindow(applicationDate, formData.planting_date, formData.harvest_date)) {
+                return [];
+            }
+
             return [{
                 herbicide_name: formData.herbicide_name || '',
-                application_date: normalizeDateInputValue(formData.weed_application_date),
+                application_date: applicationDate,
                 application_rate: formData.weed_application_rate,
             }];
         }
@@ -1162,6 +1307,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     }, [
         formData.herbicide_applications,
         formData.herbicide_name,
+        formData.harvest_date,
+        formData.planting_date,
         formData.weed_application_date,
         formData.weed_application_rate,
     ]);
@@ -1204,12 +1351,13 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     const selectableFieldOptions = useMemo(() => {
         return predefinedFields
             .map((field) => ({
-                value: field.field_name,
+                value: buildFieldRegistryKey(field),
+                label: field.field_name,
                 sectionName: field.section_name || '',
                 blockId: field.block_id || '',
             }))
             .sort((left, right) =>
-                left.value.localeCompare(right.value, undefined, { sensitivity: 'base' })
+                left.label.localeCompare(right.label, undefined, { sensitivity: 'base' })
             );
     }, [predefinedFields]);
 
@@ -1453,11 +1601,12 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
         }));
     }, [drawnArea, drawnCentroid, drawnGeometry, isCreatingCustomField]);
 
-    const handleFieldSelection = (fieldName: string) => {
+    const handleFieldSelection = (fieldKey: string) => {
         setError(null);
 
-        if (fieldName === DRAW_NEW_FIELD_VALUE) {
+        if (fieldKey === DRAW_NEW_FIELD_VALUE) {
             setIsCreatingCustomField(true);
+            setSelectedFieldKey('');
             setDrawPoints([]);
             setIsUploadingKML(false);
             setParseSummary(null);
@@ -1468,9 +1617,10 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             return;
         }
 
-        if (fieldName === UPLOAD_KML_FIELD_VALUE) {
+        if (fieldKey === UPLOAD_KML_FIELD_VALUE) {
             setIsUploadingKML(true);
             setIsCreatingCustomField(false);
+            setSelectedFieldKey('');
             setDrawPoints([]);
             setParseSummary(null);
             setKmlFile(null);
@@ -1485,30 +1635,33 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             return;
         }
 
-        const match = getPredefinedFieldByName(predefinedFields, fieldName);
+        const match = predefinedFields.find((field) => buildFieldRegistryKey(field) === fieldKey)
+            ?? getPredefinedFieldByName(predefinedFields, fieldKey);
         setIsCreatingCustomField(false);
         setIsUploadingKML(false);
         setDrawPoints([]);
 
         if (!match) {
+            setSelectedFieldKey('');
             return;
         }
 
+        setSelectedFieldKey(buildFieldRegistryKey(match));
         setParseSummary(null);
-        const latestRecord = isAddingNewRecord ? null : findLatestRecordForField(match, existingRecords);
+        setFormData(() => {
+            const emptySubmission = createEmptySubmission(user?.id || '');
+            const latestSavedRecord = isAddingNewRecordRef.current ? null : findLatestRecordForField(existingRecords, match);
+            const savedRecordData = latestSavedRecord ? buildSavedRecordFormData(latestSavedRecord) : {};
 
-        if (latestRecord) {
-            const collectorId = user?.id || latestRecord.collector_id || '';
-            setParseSummary(null);
-            setFormData(() => buildLoadedSavedRecordData(latestRecord, collectorId, match));
-            return;
-        }
-
-        setFormData(() => buildFreshFormData(
-            createEmptySubmission(user?.id || ''),
-            user?.id || '',
-            match,
-        ));
+            return buildFreshFormData(
+                {
+                    ...emptySubmission,
+                    ...savedRecordData,
+                },
+                user?.id || savedRecordData.collector_id || '',
+                match,
+            );
+        });
     };
 
     const handleAddDrawPoint = (point: DrawPoint) => {
@@ -1699,8 +1852,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
         setError(null);
         setParseSummary(null);
+        setSaveMode(null);
         setFormData(createEmptySubmission(collectorId));
+        isAddingNewRecordRef.current = true;
         setIsAddingNewRecord(true);
+        setSelectedFieldKey('');
         setIsCreatingCustomField(false);
         setDrawPoints([]);
         setIsUploadingKML(false);
@@ -1738,8 +1894,14 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
             if (isCreatingCustomField) {
                 const normalizedFieldName = formData.field_name.trim();
+                const normalizedBlockId = formData.block_id?.trim() ?? '';
+                const normalizedSectionName = formData.section_name?.trim() ?? '';
                 const hasExistingField = predefinedFields.some((field) =>
-                    field.field_name.trim().toLowerCase() === normalizedFieldName.toLowerCase()
+                    isSameRegistryField(field, {
+                        field_name: normalizedFieldName,
+                        block_id: normalizedBlockId,
+                        section_name: normalizedSectionName,
+                    } as PredefinedField)
                 );
 
                 if (!normalizedFieldName) {
@@ -1750,7 +1912,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     throw new Error('That field name already exists in the field management table. Please select it from the list instead.');
                 }
 
-                if (!formData.block_id?.trim()) {
+                if (!normalizedBlockId) {
                     throw new Error('Please enter a block ID for the new field or trial.');
                 }
 
@@ -1764,8 +1926,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
                 const createdField = await createPredefinedField({
                     field_name: normalizedFieldName,
-                    section_name: formData.section_name || '',
-                    block_id: formData.block_id,
+                    section_name: normalizedSectionName,
+                    block_id: normalizedBlockId,
                     latitude: drawnCentroid.latitude,
                     longitude: drawnCentroid.longitude,
                     geom: drawnGeometry,
@@ -1780,7 +1942,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 );
 
                 resolvedField = createdField;
-                allowExistingRowOverwrite = Boolean(createdField.id);
                 createdNewFieldRow = true;
 
                 setIsCreatingCustomField(false);
@@ -1893,7 +2054,6 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
                     registryFields = mergeCreatedFieldIntoRegistry(registryFields, createdField);
                     resolvedField = createdField;
-                    allowExistingRowOverwrite = Boolean(createdField.id);
                     createdNewFieldRow = true;
                 }
 
@@ -1921,7 +2081,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 throw new Error('Please choose a field or trial from the field management table.');
             }
 
-            if (resolvedField.id && !isAddingNewRecord) {
+            const shouldCreateFreshRow = isAddingNewRecord || mode === 'add_another' || createdNewFieldRow;
+
+            if (resolvedField.id && !shouldCreateFreshRow) {
                 allowExistingRowOverwrite = true;
                 updatedExistingFieldRow = !overwroteKMLBoundary && !createdNewFieldRow;
             }
@@ -2002,7 +2164,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                 submissionFields,
                 {
                     allowExistingRowOverwrite,
-                    forceNewFieldRow: isAddingNewRecord,
+                    forceNewFieldRow: shouldCreateFreshRow,
                 }
             );
 
@@ -2020,6 +2182,8 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
             await onSubmitted();
             onSaved?.(overwroteKMLBoundary
                 ? 'KML/KMZ boundary overwritten and saved to the database.'
+                : shouldCreateFreshRow
+                    ? 'New duplicate field row saved to the database. The previous season row was left unchanged.'
                 : updatedExistingFieldRow
                     ? 'Existing field row updated in the database.'
                     : createdNewFieldRow
@@ -2031,6 +2195,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 
                 setParseSummary('Successfully saved to the database. Start a blank new record.');
                 setFormData(createEmptySubmission(collectorId));
+                isAddingNewRecordRef.current = true;
                 setIsAddingNewRecord(true);
                 setIsCreatingCustomField(false);
                 setDrawPoints([]);
@@ -2057,8 +2222,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
     };
 
     return (
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-            <DialogTitle>Enter Field Observation Record</DialogTitle>
+            <DialogTitle>{isAddingNewRecord ? 'Enter New Observation Record' : 'Enter Field Observation Record'}</DialogTitle>
             <DialogContent ref={dialogContentRef} dividers>
                 <Stack spacing={2.5}>
                     {error && <Alert severity="error">{error}</Alert>}
@@ -2070,7 +2236,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     )}
 
                     <Box>
-                    <SectionHeading title="1. Field Information" />
+                    <SectionHeading title="1. Field Information" icon={<MapRounded />} />
                     <Grid container spacing={2}>
                         {isCreatingCustomField && (
                             <Grid size={{ xs: 12 }}>
@@ -2329,7 +2495,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 select
                                 fullWidth
                                 label="Field Name"
-                                value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : isUploadingKML ? UPLOAD_KML_FIELD_VALUE : formData.field_name}
+                                value={isCreatingCustomField ? DRAW_NEW_FIELD_VALUE : isUploadingKML ? UPLOAD_KML_FIELD_VALUE : selectedFieldKey}
                                 onChange={(e) => handleFieldSelection(e.target.value)}
                                 helperText={isCreatingCustomField
                                     ? 'Drawing a new field or trial. Save the form to add it to the field management table and monitoring records.'
@@ -2339,13 +2505,16 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 SelectProps={{
                                     MenuProps: WHITE_SELECT_MENU_PROPS,
                                 }}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<MapRounded />} />,
+                                }}
                             >
                                 {selectableFieldOptions.map((field) => (
                                     <MenuItem
                                         key={`${field.blockId}-${field.sectionName}-${field.value}`}
                                         value={field.value}
                                     >
-                                        {field.value}
+                                        {field.label}
                                     </MenuItem>
                                 ))}
                                 <MenuItem value={DRAW_NEW_FIELD_VALUE} sx={{ fontWeight: 800, color: 'primary.main' }}>
@@ -2367,6 +2536,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     label={isCreatingCustomField ? "New Trial / Field Name" : "Field Name"}
                                     value={formData.field_name || ''}
                                     onChange={(e) => updateField('field_name', e.target.value)}
+                                    InputProps={{
+                                        startAdornment: <FieldIconAdornment icon={<MapRounded />} />,
+                                    }}
                                     helperText={isCreatingCustomField
                                         ? "This name will be saved into the field management table for future use."
                                         : "Enter a name for this field imported from KML/KMZ."}
@@ -2379,7 +2551,10 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     fullWidth
                                     label="Block ID"
                                     value={selectedField?.block_id || formData.block_id || ''}
-                                    InputProps={{ readOnly: true }}
+                                    InputProps={{
+                                        readOnly: true,
+                                        startAdornment: <FieldIconAdornment icon={<Inventory2Rounded />} />,
+                                    }}
                                     disabled
                                 />
                             </Grid>
@@ -2391,6 +2566,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                     label="Block ID"
                                     value={formData.block_id || ''}
                                     onChange={(e) => updateField('block_id', e.target.value)}
+                                    InputProps={{
+                                        startAdornment: <FieldIconAdornment icon={<Inventory2Rounded />} />,
+                                    }}
                                     helperText={isCreatingCustomField
                                         ? "Set the block where this new field or trial belongs."
                                         : "Auto-filled from the KML feature name; edit if needed."}
@@ -2405,6 +2583,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 value={formData.area ?? formData.block_size ?? ''}
                                 onChange={(e) => handleAreaChange(e.target.value)}
                                 inputProps={{ min: 0, step: '0.01' }}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<StraightenRounded />} />,
+                                }}
                                 helperText={isCreatingCustomField
                                     ? 'Area is estimated from the drawn boundary first, but you can edit it before saving.'
                                     : isUploadingKML
@@ -2419,6 +2600,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Irrigation Type"
                                 value={formData.irrigation_type || ''}
                                 onChange={(e) => updateField('irrigation_type', e.target.value)}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<WaterDropRounded />} />,
+                                }}
                             >
                                 {IRRIGATION_TYPE_OPTIONS.map((option) => (
                                     <MenuItem key={option} value={option}>
@@ -2434,6 +2618,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Water Source"
                                 value={formData.water_source || ''}
                                 onChange={(e) => updateField('water_source', e.target.value)}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<LocalDrinkRounded />} />,
+                                }}
                             >
                                 {WATER_SOURCE_OPTIONS.map((option) => (
                                     <MenuItem key={option} value={option}>
@@ -2448,6 +2635,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="TAM"
                                 value={formData.tam_mm || ''}
                                 onChange={(e) => updateField('tam_mm', e.target.value)}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<TerrainRounded />} />,
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -2457,6 +2647,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Soil Type"
                                 value={normalizeSoilTypeLabel(formData.soil_type)}
                                 onChange={(e) => updateField('soil_type', e.target.value)}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<SpaRounded />} />,
+                                }}
                             >
                                 {SOIL_TYPE_OPTIONS.map((option) => (
                                     <MenuItem key={option} value={option}>
@@ -2472,6 +2665,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="pH"
                                 value={formData.soil_ph ?? ''}
                                 onChange={(e) => updateField('soil_ph', parseOptionalNumericInput(e.target.value))}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<ScienceRounded />} />,
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 8 }}>
@@ -2481,6 +2677,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 rows={3}
                                 label="Field Remarks"
                                 value={formData.field_remarks || formData.remarks || ''}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<NotesRounded />} />,
+                                }}
                                 onChange={(e) => setFormData((prev) => ({
                                     ...prev,
                                     field_remarks: e.target.value,
@@ -2492,7 +2691,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
 	                    </Box>
 
 		                    <Box>
-		                    <SectionHeading title="2. Trial Information" />
+		                    <SectionHeading title="2. Trial Information" icon={<AgricultureRounded />} />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 3 }}>
                             <TextField
@@ -2500,6 +2699,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Trial Number"
                                 value={formData.trial_number ?? ''}
                                 onChange={(e) => updateField('trial_number', e.target.value)}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<NumbersRounded />} />,
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 5 }}>
@@ -2508,6 +2710,9 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 label="Trial Name"
                                 value={formData.trial_name || ''}
                                 onChange={(e) => updateField('trial_name', e.target.value)}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<AgricultureRounded />} />,
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -2515,12 +2720,21 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                 select
                                 fullWidth
                                 label="Contact Person"
-                                value={normalizeContactPersonLabel(formData.contact_person)}
-                                onChange={(e) => updateField('contact_person', e.target.value)}
+                                value={normalizeContactPersonLabel(formData.contact_person) || CONTACT_PERSON_CLEAR_VALUE}
+                                onChange={(e) => updateField(
+                                    'contact_person',
+                                    e.target.value === CONTACT_PERSON_CLEAR_VALUE ? '' : e.target.value
+                                )}
                                 SelectProps={{
                                     MenuProps: WHITE_SELECT_MENU_PROPS,
                                 }}
+                                InputProps={{
+                                    startAdornment: <FieldIconAdornment icon={<PersonRounded />} />,
+                                }}
                             >
+                                <MenuItem value={CONTACT_PERSON_CLEAR_VALUE}>
+                                    Clear
+                                </MenuItem>
                                 {CONTACT_PERSON_OPTIONS.map((option) => (
                                     <MenuItem key={option} value={option}>
                                         {option}
@@ -2529,20 +2743,25 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             </TextField>
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
+                            <DatePicker
                                 label="Date Recorded"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.date_recorded || ''}
-                                onChange={(e) => updateField('date_recorded', e.target.value)}
+                                value={parseDatePickerValue(formData.date_recorded)}
+                                onChange={(date) => updateField('date_recorded', formatDatePickerValue(date))}
+                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: {
+                                        fullWidth: true,
+                                        InputLabelProps: { shrink: true },
+                                        InputProps: {
+                                            startAdornment: <FieldIconAdornment icon={<CalendarMonthRounded />} />,
+                                        },
+                                    },
+                                }}
                             />
                         </Grid>
                     </Grid>
                     </Box>
 
                     <Box>
-                    <SectionHeading title="3. Crop Information" />
+                    <SectionHeading title="3. Crop Information" icon={<SpaRounded />} />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
@@ -2597,33 +2816,27 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             </TextField>
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
+                            <DatePicker
                                 label="Ploughing Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.ploughing_date || ''}
-                                onChange={(e) => updateField('ploughing_date', e.target.value)}
+                                value={parseDatePickerValue(formData.ploughing_date)}
+                                onChange={(date) => updateField('ploughing_date', formatDatePickerValue(date))}
+                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
+                            <DatePicker
                                 label="Planting Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.planting_date || ''}
-                                onChange={(e) => handlePlantingDateChange(e.target.value)}
+                                value={parseDatePickerValue(formData.planting_date)}
+                                onChange={(date) => handlePlantingDateChange(formatDatePickerValue(date))}
+                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
+                            <DatePicker
                                 label="Soil Sampling Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.soil_sampling_date || ''}
-                                onChange={(e) => updateField('soil_sampling_date', e.target.value)}
+                                value={parseDatePickerValue(formData.soil_sampling_date)}
+                                onChange={(date) => updateField('soil_sampling_date', formatDatePickerValue(date))}
+                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 8 }}>
@@ -2749,13 +2962,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             </Box>
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
+                            <DatePicker
                                 label="Foliar Sampling Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={normalizeDateInputValue(formData.foliar_sampling_date)}
-                                onChange={(e) => handleFoliarSamplingDateChange(e.target.value)}
+                                value={parseDatePickerValue(formData.foliar_sampling_date)}
+                                onChange={(date) => handleFoliarSamplingDateChange(formatDatePickerValue(date))}
+                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 8 }}>
@@ -2881,23 +3092,19 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                             </Box>
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
+                            <DatePicker
                                 label="Previous Cutting Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.previous_cutting_date || formData.cutting_date || ''}
-                                onChange={(e) => handlePreviousCuttingDateChange(e.target.value)}
+                                value={parseDatePickerValue(formData.previous_cutting_date || formData.cutting_date)}
+                                onChange={(date) => handlePreviousCuttingDateChange(formatDatePickerValue(date))}
+                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
+                            <DatePicker
                                 label="Expected Harvest Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.expected_harvest_date || ''}
-                                onChange={(e) => updateField('expected_harvest_date', e.target.value)}
+                                value={parseDatePickerValue(formData.expected_harvest_date)}
+                                onChange={(date) => updateField('expected_harvest_date', formatDatePickerValue(date))}
+                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                             />
                         </Grid>
                         {(plantingCalendarSearch || cuttingCalendarSearch) && (
@@ -2936,7 +3143,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     </Box>
 
                     <Box>
-                    <SectionHeading title="4. Residue Management" />
+                    <SectionHeading title="4. Residue Management" icon={<GrassRounded />} />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
@@ -2982,7 +3189,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     </Box>
 
                     <Box>
-                    <SectionHeading title="5. Nutrient Management" />
+                    <SectionHeading title="5. Nutrient Management" icon={<ScienceRounded />} />
                     <Stack spacing={2}>
                         {fertilizerApplicationRows.map((application, index) => (
                             <Paper
@@ -3019,13 +3226,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                             />
                                         </Grid>
                                         <Grid size={{ xs: 12, md: 4 }}>
-                                            <TextField
-                                                type="date"
-                                                fullWidth
+                                            <DatePicker
                                                 label="Application Date"
-                                                InputLabelProps={{ shrink: true }}
-                                                value={normalizeDateInputValue(application.application_date)}
-                                                onChange={(e) => handleFertilizerApplicationChange(index, 'application_date', e.target.value)}
+                                                value={parseDatePickerValue(application.application_date)}
+                                                onChange={(date) => handleFertilizerApplicationChange(index, 'application_date', formatDatePickerValue(date))}
+                                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                             />
                                         </Grid>
                                         <Grid size={{ xs: 12, md: 4 }}>
@@ -3054,7 +3259,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     </Box>
 
                     <Box>
-                    <SectionHeading title="6. Weed Management" />
+                    <SectionHeading title="6. Weed Management" icon={<GrassRounded />} />
                     <Stack spacing={2}>
                         {herbicideApplicationRows.map((application, index) => (
                             <Paper
@@ -3088,13 +3293,11 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                                             />
                                         </Grid>
                                         <Grid size={{ xs: 12, md: 4 }}>
-                                            <TextField
-                                                type="date"
-                                                fullWidth
+                                            <DatePicker
                                                 label="Application Date"
-                                                InputLabelProps={{ shrink: true }}
-                                                value={normalizeDateInputValue(application.application_date)}
-                                                onChange={(e) => handleHerbicideApplicationChange(index, 'application_date', e.target.value)}
+                                                value={parseDatePickerValue(application.application_date)}
+                                                onChange={(date) => handleHerbicideApplicationChange(index, 'application_date', formatDatePickerValue(date))}
+                                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                                             />
                                         </Grid>
                                         <Grid size={{ xs: 12, md: 4 }}>
@@ -3123,7 +3326,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     </Box>
 
                     <Box>
-                    <SectionHeading title="7. Crop Protection" />
+                    <SectionHeading title="7. Crop Protection" icon={<SpaRounded />} />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
@@ -3270,17 +3473,14 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     </Box>
 
                     <Box>
-                    <SectionHeading title="8. Harvest Information" />
+                    <SectionHeading title="8. Harvest Information" icon={<EmojiEventsRounded />} />
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                type="date"
-                                fullWidth
+                            <DatePicker
                                 label="Harvest Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.harvest_date || ''}
-                                onChange={(e) => handleHarvestDateChange(e.target.value)}
-                                sx={OBSERVATION_FIELD_SX}
+                                value={parseDatePickerValue(formData.harvest_date)}
+                                onChange={(date) => handleHarvestDateChange(formatDatePickerValue(date))}
+                                slotProps={{ ...CLEARABLE_DATE_PICKER_SLOT_PROPS, textField: { fullWidth: true, InputLabelProps: { shrink: true }, sx: OBSERVATION_FIELD_SX } }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -3358,6 +3558,7 @@ export const ObservationEntryIntakeDialog: React.FC<ObservationEntryIntakeDialog
                     {saving && saveMode === 'close' ? 'Saving...' : 'Save Form'}
                 </Button>
             </DialogActions>
-        </Dialog>
+            </Dialog>
+        </LocalizationProvider>
     );
 };

@@ -10,6 +10,7 @@ interface AuthContextType extends AuthState {
     resendConfirmationEmail: (email: string) => Promise<void>
     resetPassword: (email: string) => Promise<void>
     updatePassword: (password: string) => Promise<void>
+    uploadProfilePhoto: (file: File) => Promise<string>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -70,6 +71,10 @@ type ProfileRecord = {
     last_name?: string | null
     role?: string | null
     status?: string | null
+    avatar_url?: string | null
+    picture?: string | null
+    image_url?: string | null
+    photo_url?: string | null
 }
 
 function mapProfileUser(user: User, profile: ProfileRecord): AuthUser {
@@ -85,8 +90,18 @@ function mapProfileUser(user: User, profile: ProfileRecord): AuthUser {
         profile_role: profile.role?.trim() || undefined,
         status,
         full_name: `${firstName} ${lastName}`.trim(),
+        avatar_url: profile.avatar_url?.trim() || undefined,
+        picture: profile.picture?.trim() || undefined,
+        image_url: profile.image_url?.trim() || undefined,
+        photo_url: profile.photo_url?.trim() || undefined,
         must_change_password: getMustChangePassword(user),
-        user_metadata: user.user_metadata,
+        user_metadata: {
+            ...user.user_metadata,
+            avatar_url: profile.avatar_url?.trim() || user.user_metadata?.avatar_url,
+            picture: profile.picture?.trim() || user.user_metadata?.picture,
+            image_url: profile.image_url?.trim() || user.user_metadata?.image_url,
+            photo_url: profile.photo_url?.trim() || user.user_metadata?.photo_url,
+        },
     }
 }
 
@@ -98,7 +113,7 @@ function isMissingProfileError(error: unknown) {
 async function fetchProfileRecord(userId: string): Promise<ProfileRecord | null> {
     const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, first_name, last_name, role, status')
+        .select('id, email, first_name, last_name, role, status, avatar_url, picture, image_url, photo_url')
         .eq('id', userId)
         .maybeSingle()
 
@@ -295,6 +310,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error
     }
 
+    const uploadProfilePhoto = async (file: File) => {
+        const currentUser = authState.user
+
+        if (!currentUser) {
+            throw new Error('You must be logged in to upload a profile photo.')
+        }
+
+        const extension = file.name.split('.').pop()?.toLowerCase() || 'png'
+        const storagePath = `${currentUser.id}/profile-${Date.now()}.${extension}`
+        const { error: uploadError } = await supabase.storage
+            .from('profile-photos')
+            .upload(storagePath, file, {
+                cacheControl: '3600',
+                contentType: file.type,
+                upsert: true,
+            })
+
+        if (uploadError) throw uploadError
+
+        const { data } = supabase.storage
+            .from('profile-photos')
+            .getPublicUrl(storagePath)
+
+        const publicUrl = data.publicUrl
+
+        if (!publicUrl) {
+            throw new Error('The profile photo uploaded, but no public URL was returned.')
+        }
+
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+                avatar_url: publicUrl,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', currentUser.id)
+
+        if (profileError) throw profileError
+
+        setAuthState((previous) => {
+            if (!previous.user) return previous
+
+            return {
+                ...previous,
+                user: {
+                    ...previous.user,
+                    avatar_url: publicUrl,
+                    user_metadata: {
+                        ...previous.user.user_metadata,
+                        avatar_url: publicUrl,
+                    },
+                },
+            }
+        })
+
+        return publicUrl
+    }
+
     const value: AuthContextType = {
         ...authState,
         signIn,
@@ -302,6 +375,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resendConfirmationEmail,
         resetPassword,
         updatePassword,
+        uploadProfilePhoto,
     }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

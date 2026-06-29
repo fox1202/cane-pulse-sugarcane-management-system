@@ -115,7 +115,7 @@ function RoleBadge({ role }: { role: string }) {
     }
     const c = config[role.toLowerCase()] || { color: TEXT_MID, bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.12)' }
     return (
-        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.7, px: 1.2, py: 0.4, borderRadius: '6px', bgcolor: c.bg, border: `1px solid ${c.border}` }}>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.7, width: 'fit-content', maxWidth: '100%', px: 1.2, py: 0.4, borderRadius: '6px', bgcolor: c.bg, border: `1px solid ${c.border}` }}>
             <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: c.color, flexShrink: 0 }} />
             <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: c.color, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                 {getRoleLabel(role)}
@@ -133,7 +133,7 @@ function StatusBadge({ status }: { status: string }) {
     }
     const c = config[status] || config.pending
     return (
-        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.7, px: 1.2, py: 0.4, borderRadius: '6px', bgcolor: c.bg, border: `1px solid ${c.border}` }}>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.7, width: 'fit-content', maxWidth: '100%', px: 1.2, py: 0.4, borderRadius: '6px', bgcolor: c.bg, border: `1px solid ${c.border}` }}>
             <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: c.color, boxShadow: `0 0 5px ${c.color}`, flexShrink: 0 }} />
             <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: c.color, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                 {status}
@@ -183,13 +183,12 @@ function StatCard({ title, count, icon, color, loading }: { title: string; count
 // ─── Table shell ──────────────────────────────────────────────────────────────
 function DataTable({ headers, children, empty }: { headers: string[]; children: React.ReactNode; empty?: React.ReactNode }) {
     return (
-        <GlassPanel sx={{ overflow: 'hidden' }}>
+        <GlassPanel sx={{ overflow: 'hidden', border: 'none', boxShadow: 'none', '&::before': { display: 'none' } }}>
             {/* Header row */}
             <Box sx={{
                 display: 'grid',
-                gridTemplateColumns: headers.map((_, i) => i === headers.length - 1 ? 'auto' : '1fr').join(' '),
+                gridTemplateColumns: `repeat(${headers.length}, minmax(0, 1fr))`,
                 px: 3, py: 1.8,
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
                 bgcolor: 'rgba(0,0,0,0.25)',
             }}>
                 {headers.map(h => (
@@ -212,10 +211,8 @@ function TableRowWrap({ children, delay = 0 }: { children: React.ReactNode; dela
         >
             <Box sx={{
                 px: 3, py: 2.2,
-                borderBottom: '1px solid rgba(255,255,255,0.04)',
                 transition: 'background 0.15s',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.025)' },
-                '&:last-child': { borderBottom: 'none' },
             }}>
                 {children}
             </Box>
@@ -600,10 +597,10 @@ export function SecurityCenterPage() {
                                     <Typography sx={{ fontSize: '0.82rem', color: TEXT_DIM, fontFamily: '"Times New Roman", Times, serif', letterSpacing: '0.1em' }}>LOADING DIRECTORY…</Typography>
                                 </Box>
                             ) : (
-                                <DataTable headers={['Staff Member', 'Role', 'Status', 'Joined']}>
+                                <DataTable headers={['Staff Member', 'Role', 'Status']}>
                                     {allStaff.filter(u => u.status !== 'rejected').map((user, i) => (
                                         <TableRowWrap key={user.id} delay={i * 0.04}>
-                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', alignItems: 'center', gap: 2 }}>
+                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', alignItems: 'center', gap: 2 }}>
                                                 {/* Identity */}
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                                     <UserAvatar user={user} />
@@ -622,10 +619,6 @@ export function SecurityCenterPage() {
                                                 </Box>
                                                 {/* Status */}
                                                 <StatusBadge status={user.status} />
-                                                {/* Date */}
-                                                <Typography sx={{ fontSize: '0.82rem', color: TEXT_MID, fontFamily: '"Times New Roman", Times, serif' }}>
-                                                    {new Date(user.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                </Typography>
                                             </Box>
                                         </TableRowWrap>
                                     ))}

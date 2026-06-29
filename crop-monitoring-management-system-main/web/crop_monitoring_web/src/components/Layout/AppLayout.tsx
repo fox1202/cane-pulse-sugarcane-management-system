@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Alert,
   AppBar,
-  Avatar,
   Box,
   Button,
   ButtonBase,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -28,6 +28,7 @@ import {
   LogoutRounded,
   MapRounded,
   Menu as MenuIcon,
+  PhotoCameraRounded,
   ShieldRounded,
   SpaRounded,
   TableChartRounded,
@@ -50,13 +51,13 @@ const PAGE_META: Record<string, { eyebrow: string; title: string; note?: string;
   '/data': {
     eyebrow: 'Records',
     title: 'Field Records',
-    note: 'Review observation rows, intake details, and record quality with a cleaner table workspace.',
+    note: 'Review observation rows, intake details and record quality with a cleaner table workspace.',
     icon: <TableChartRounded fontSize="small" />,
   },
   '/entry-forms': {
     eyebrow: 'Workflow',
     title: 'Entry Forms',
-    note: 'Capture web submissions, trial details, and agronomy sections in the refreshed intake flow.',
+    note: 'Capture web submissions, trial details and agronomy sections in the refreshed intake flow.',
     icon: <DescriptionRounded fontSize="small" />,
   },
   '/field-statistics': {
@@ -67,7 +68,7 @@ const PAGE_META: Record<string, { eyebrow: string; title: string; note?: string;
   '/map': {
     eyebrow: 'Spatial',
     title: 'Map View',
-    note: 'Inspect trial boundaries, live polygons, and field context on a clearer spatial canvas.',
+    note: 'Inspect trial boundaries, live polygons and field context on a clearer spatial canvas.',
     icon: <MapRounded fontSize="small" />,
   },
   '/calendar': {
@@ -151,7 +152,10 @@ export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [offline, setOffline] = useState(!isOnline())
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null)
-  const { user, signOut } = useAuth()
+  const [profileUploadError, setProfileUploadError] = useState('')
+  const [profilePhotoUploading, setProfilePhotoUploading] = useState(false)
+  const profilePhotoInputRef = useRef<HTMLInputElement | null>(null)
+  const { user, signOut, uploadProfilePhoto } = useAuth()
 
   useEffect(() => {
     const handleOnline = () => setOffline(false)
@@ -180,20 +184,47 @@ export function AppLayout() {
   const displayName = rawDisplayName.replace(/\s+User$/i, '').trim() || rawDisplayName
   const roleLabel = getRoleLabel(user?.profile_role ?? user?.role)
   const profileImageUrl =
+    user?.avatar_url ||
+    user?.picture ||
+    user?.image_url ||
+    user?.photo_url ||
     user?.user_metadata?.avatar_url ||
     user?.user_metadata?.picture ||
     user?.user_metadata?.image_url ||
     user?.user_metadata?.photo_url
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('') || 'U'
 
   const handleChangePassword = () => {
     setProfileAnchor(null)
     navigate('/change-password')
+  }
+
+  const handleProfilePhotoSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    setProfileUploadError('')
+
+    if (!file.type.startsWith('image/')) {
+      setProfileUploadError('Choose an image file.')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileUploadError('Choose an image smaller than 5 MB.')
+      return
+    }
+
+    try {
+      setProfilePhotoUploading(true)
+      await uploadProfilePhoto(file)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Profile photo upload failed.'
+      setProfileUploadError(message)
+    } finally {
+      setProfilePhotoUploading(false)
+    }
   }
 
   const handleLogout = async () => {
@@ -362,7 +393,31 @@ export function AppLayout() {
             </Typography>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-              <Avatar src={profileImageUrl} sx={{ width: 42, height: 42, borderRadius: '12px' }}>{initials}</Avatar>
+              <Box
+                sx={{
+                  width: 42,
+                  height: 42,
+                  flexShrink: 0,
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  bgcolor: 'rgba(47,127,79,0.1)',
+                  boxShadow: 'inset 0 0 0 1px rgba(47,127,79,0.12)',
+                }}
+              >
+                {profileImageUrl ? (
+                  <Box
+                    component="img"
+                    src={profileImageUrl}
+                    alt={`${displayName} profile`}
+                    sx={{
+                      display: 'block',
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                ) : null}
+              </Box>
 
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Typography
@@ -427,7 +482,45 @@ export function AppLayout() {
                 />
               </Box>
 
+              <Box
+                component="input"
+                ref={profilePhotoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={handleProfilePhotoSelect}
+                sx={{ display: 'none' }}
+              />
+
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.8, mt: 1.25 }}>
+                <ButtonBase
+                  onClick={() => profilePhotoInputRef.current?.click()}
+                  aria-label="Upload profile picture"
+                  disabled={profilePhotoUploading}
+                  sx={{
+                    minHeight: 34,
+                    borderRadius: '12px',
+                    border: '1px solid rgba(47,127,79,0.14)',
+                    bgcolor: 'rgba(47,127,79,0.08)',
+                    color: 'primary.dark',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 0.55,
+                    px: 0.8,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    fontFamily: '"Times New Roman", Times, serif',
+                    '& svg': { fontSize: 16 },
+                    '&:hover': { bgcolor: 'rgba(47,127,79,0.14)' },
+                    '&.Mui-disabled': {
+                      color: 'text.secondary',
+                      opacity: 0.72,
+                    },
+                  }}
+                >
+                  {profilePhotoUploading ? <CircularProgress size={14} color="inherit" /> : <PhotoCameraRounded />}
+                  Photo
+                </ButtonBase>
                 <ButtonBase
                   onClick={handleChangePassword}
                   aria-label="Change password"
@@ -452,6 +545,8 @@ export function AppLayout() {
                   <LockResetRounded />
                   Password
                 </ButtonBase>
+              </Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0.8, mt: 0.8 }}>
                 <ButtonBase
                   onClick={() => void handleLogout()}
                   aria-label="Logout"
@@ -477,6 +572,11 @@ export function AppLayout() {
                   Logout
                 </ButtonBase>
               </Box>
+              {profileUploadError ? (
+                <Typography sx={{ mt: 1, fontSize: 11, color: 'error.main', lineHeight: 1.35 }}>
+                  {profileUploadError}
+                </Typography>
+              ) : null}
           </Popover>
         </Toolbar>
       </AppBar>

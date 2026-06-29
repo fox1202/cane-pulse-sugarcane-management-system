@@ -2122,10 +2122,10 @@ export function MapViewPage() {
                     </Box>
 
                     <Typography sx={{ fontSize: '1.18rem', fontWeight: 800, fontFamily: DISPLAY, mt: 1.35, mb: 0.7, color: '#102715' }}>
-                        Shape the map stage
+                        Explore the Fields That Matter
                     </Typography>
                     <Typography sx={{ fontSize: '0.74rem', color: TEXT_MID, lineHeight: 1.7, mb: 1.7 }}>
-                        Narrow the visible boundaries and polygon layers, then keep the map focused on the recorded fields that matter right now.
+                        Refine the map by crop type, soil condition or contact person and bring the most relevant fields into focus.
                     </Typography>
 
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 1, mb: 1.5 }}>

@@ -548,18 +548,6 @@ function FieldWorkTable({
                         >
                             Work that needs to be done on fields
                         </Typography>
-                        <Typography
-                            sx={{
-                                mt: 0.55,
-                                maxWidth: 720,
-                                fontSize: '0.94rem',
-                                lineHeight: 1.75,
-                                color: 'rgba(32,56,45,0.66)',
-                                fontFamily: BODY_FONT,
-                            }}
-                        >
-                            Calculated from live field planting dates and previous cutting dates saved in the database.
-                        </Typography>
                     </Box>
                     <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
                         <Chip
@@ -872,24 +860,46 @@ function SeasonStatCard({
     return (
         <Paper
             sx={{
+                position: 'relative',
+                overflow: 'hidden',
                 p: 2,
                 height: '100%',
                 borderRadius: '22px',
                 border: `1px solid ${alpha(accent, 0.16)}`,
-                bgcolor: alpha(accent, 0.07),
-                boxShadow: 'none',
+                background: `linear-gradient(145deg, ${alpha(accent, 0.09)} 0%, rgba(255,255,255,0.82) 100%)`,
+                boxShadow: `0 18px 34px ${alpha(accent, 0.08)}`,
+                transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+                '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: -34,
+                    right: -30,
+                    width: 92,
+                    height: 92,
+                    borderRadius: '50%',
+                    background: alpha(accent, 0.1),
+                },
+                '&:hover': {
+                    transform: 'translateY(-2px)',
+                    borderColor: alpha(accent, 0.28),
+                    boxShadow: `0 24px 42px ${alpha(accent, 0.12)}`,
+                },
             }}
         >
             <Box
                 sx={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: '14px',
+                    position: 'relative',
+                    width: 44,
+                    height: 44,
+                    borderRadius: '15px',
                     display: 'grid',
                     placeItems: 'center',
                     mb: 1.2,
-                    color: accent,
-                    bgcolor: alpha(accent, 0.12),
+                    color: '#fffdf7',
+                    bgcolor: accent,
+                    border: `1px solid ${alpha('#fff', 0.5)}`,
+                    boxShadow: `0 16px 26px ${alpha(accent, 0.24)}`,
+                    '& svg': { fontSize: 21 },
                 }}
             >
                 {icon}
@@ -1459,19 +1469,35 @@ export function FarmingCalendarPage() {
                         <Box sx={{ position: 'relative', zIndex: 1 }}>
                             <Grid container spacing={2.4}>
                                 <Grid size={{ xs: 12, lg: 7 }}>
-                                    <Typography
-                                        sx={{
-                                            fontSize: '0.78rem',
-                                            color: 'var(--calendar-green)',
-                                            letterSpacing: '0.18em',
-                                            textTransform: 'uppercase',
-                                            fontWeight: 900,
-                                            mb: 1,
-                                            fontFamily: BODY_FONT,
-                                        }}
-                                    >
-                                        Farm Calendar
-                                    </Typography>
+                                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                                        <Box
+                                            sx={{
+                                                width: 34,
+                                                height: 34,
+                                                borderRadius: '12px',
+                                                display: 'grid',
+                                                placeItems: 'center',
+                                                color: '#fffdf7',
+                                                bgcolor: 'var(--calendar-forest)',
+                                                boxShadow: '0 14px 26px rgba(47,127,79,0.2)',
+                                                '& svg': { fontSize: 18 },
+                                            }}
+                                        >
+                                            <CalendarMonthRounded fontSize="small" />
+                                        </Box>
+                                        <Typography
+                                            sx={{
+                                                fontSize: '0.78rem',
+                                                color: 'var(--calendar-green)',
+                                                letterSpacing: '0.18em',
+                                                textTransform: 'uppercase',
+                                                fontWeight: 900,
+                                                fontFamily: BODY_FONT,
+                                            }}
+                                        >
+                                            Farm Calendar
+                                        </Typography>
+                                    </Stack>
                                     <Typography
                                         sx={{
                                             fontSize: { xs: '2.25rem', md: '3.3rem' },
@@ -1490,16 +1516,59 @@ export function FarmingCalendarPage() {
                                     </Typography>
                                     <Typography
                                         sx={{
+                                            fontSize: { xs: '1.28rem', md: '1.48rem' },
+                                            lineHeight: 1.18,
+                                            color: 'var(--calendar-ink)',
+                                            fontWeight: 900,
+                                            maxWidth: 640,
+                                            mb: 0.8,
+                                            fontFamily: DISPLAY_FONT,
+                                        }}
+                                    >
+                                        Stay Ahead of Every Application
+                                    </Typography>
+                                    <Typography
+                                        sx={{
                                             fontSize: '1rem',
                                             lineHeight: 1.8,
                                             color: 'rgba(32,56,45,0.68)',
+                                            fontWeight: 400,
                                             maxWidth: 640,
                                             mb: 2.2,
                                             fontFamily: BODY_FONT,
                                         }}
                                     >
-                                        Must-do fertiliser and herbicide timing only, arranged as a cleaner season board with linked trial dates when available.
+                                        Track essential fertiliser and herbicide schedules alongside trial dates, helping every field receive the right treatment at the right time.
                                     </Typography>
+
+                                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2.2 }}>
+                                        {[
+                                            { icon: <TaskAltRounded fontSize="small" />, label: 'Timed Tasks', color: '#2f7f4f' },
+                                            { icon: <ScienceRounded fontSize="small" />, label: 'Nutrient Plan', color: '#d6b02c' },
+                                            { icon: <GrassRounded fontSize="small" />, label: 'Weed Control', color: '#d27f52' },
+                                        ].map((item) => (
+                                            <Box
+                                                key={item.label}
+                                                sx={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 0.8,
+                                                    px: 1.2,
+                                                    py: 0.75,
+                                                    borderRadius: '999px',
+                                                    color: item.color,
+                                                    bgcolor: alpha(item.color, 0.1),
+                                                    border: `1px solid ${alpha(item.color, 0.18)}`,
+                                                    boxShadow: `0 12px 24px ${alpha(item.color, 0.08)}`,
+                                                }}
+                                            >
+                                                <Box sx={{ display: 'flex', '& svg': { fontSize: 17 } }}>{item.icon}</Box>
+                                                <Typography sx={{ fontSize: '0.78rem', fontWeight: 800, fontFamily: BODY_FONT }}>
+                                                    {item.label}
+                                                </Typography>
+                                            </Box>
+                                        ))}
+                                    </Stack>
 
                                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1} useFlexGap flexWrap="wrap" sx={{ mb: 1.8 }}>
                                         {calendarTemplates.map((template) => (

@@ -1500,7 +1500,7 @@ export function HomePage() {
                                     title="Mapped Area Overview"
                                 >
                                     <Typography sx={{ fontSize: '0.95rem', color: TEXT_MID, lineHeight: 1.8, maxWidth: 540, mb: 2.4 }}>
-                                        Exact hectares from the current database, grouped by crop type so the total mapped area matches the live field records.
+                                        Explore how every hectare shapes the estate, revealing the balance between productive sugarcane fields, break crops and fallow land.
                                     </Typography>
                                     <AreaPieChart
                                         data={areaOverviewData}
